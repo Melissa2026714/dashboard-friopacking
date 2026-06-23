@@ -273,6 +273,17 @@ body.dark .gantt-axlbl{color:#64748b !important}
 body.dark .gantt-col{border-color:#2a3a4e !important}
 body.dark #gantt6{color:#cbd5e1}
 body.dark .gantt-legend span{color:#94a3b8 !important}
+
+/* ── GERENCIAL IMPROVEMENTS ── */
+.g-sema{width:11px;height:11px;border-radius:50%;display:inline-block;transition:background .4s,box-shadow .4s;background:rgba(255,255,255,.25);flex-shrink:0}
+.g-strip-box{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;text-align:center;min-width:0}
+.g-strip-val{font-size:22px;font-weight:800;color:#0f172a;line-height:1.1}
+.g-strip-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:3px}
+.g-strip-sub{font-size:10px;color:#64748b;margin-top:2px}
+.g-rank-card{background:#f8fafc;border-radius:8px;padding:10px 12px;border-left:3px solid #e2e8f0}
+body.dark .g-strip-box{background:#141e30!important;border-color:#2a3a4e!important}
+body.dark .g-strip-val{color:#e2e8f0!important}
+body.dark .g-rank-card{background:#111b2b!important}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -290,6 +301,7 @@ body.dark .gantt-legend span{color:#94a3b8 !important}
     <button class="tab" onclick="nav('p5')">⚡ Req. sin Pedido</button>
     <button class="tab" onclick="nav('p6')">🏗️ Proyectos PMO <span class="tbdg" id="bdg6">—</span></button>
     <button class="tab" onclick="nav('p1')">📊 Gerencial / KPIs</button>
+    <button class="tab" onclick="nav('p7')">🔍 Consultas</button>
   </div>
   <div class="nbr">
     <button class="btn bi" onclick="document.getElementById('fileMAESTRO').click()" title="Importar MAESTRO.xlsx y PedidoSinReq.xlsx">📂 IMPORTAR</button>
@@ -337,20 +349,55 @@ body.dark .gantt-legend span{color:#94a3b8 !important}
       <option value="0001">0001 — Compras Nacionales</option>
       <option value="0002">0002 — Importaciones</option>
     </select>
+    <select id="g-f-mes" onchange="renderGerencial()" style="font-size:11px;padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#334155;cursor:pointer">
+      <option value="">Mes OC: Todos</option>
+      <option value="1">Enero</option>
+      <option value="2">Febrero</option>
+      <option value="3">Marzo</option>
+      <option value="4">Abril</option>
+      <option value="5">Mayo</option>
+      <option value="6">Junio</option>
+      <option value="7">Julio</option>
+      <option value="8">Agosto</option>
+      <option value="9">Septiembre</option>
+      <option value="10">Octubre</option>
+      <option value="11">Noviembre</option>
+      <option value="12">Diciembre</option>
+    </select>
     <span id="g-f-cnt" style="font-size:11px;color:#94a3b8;margin-left:auto"></span>
   </div>
 
+  <!-- Strip de resumen ejecutivo -->
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <div class="g-strip-box" style="flex:1">
+      <div class="g-strip-lbl">OC Analizadas</div>
+      <div class="g-strip-val" id="g-strip-oc">—</div>
+      <div class="g-strip-sub">órdenes filtradas</div>
+    </div>
+    <div class="g-strip-box" style="flex:3">
+      <div class="g-strip-lbl">⏱ Pipeline Promedio — Fases del Proceso</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:5px;flex-wrap:wrap;min-height:26px" id="g-pipeline-flow">
+        <span style="font-size:10px;color:#94a3b8">Cargando…</span>
+      </div>
+    </div>
+    <div class="g-strip-box" style="flex:1">
+      <div class="g-strip-lbl">% Entrega a Tiempo</div>
+      <div class="g-strip-val" id="g-strip-ontime">—</div>
+      <div class="g-strip-sub">cumplimiento proveedor</div>
+    </div>
+  </div>
+
   <!-- 6 indicadores en orden solicitado -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
 
     <!-- 1. VELOCIDAD DE COMPRA -->
     <div style="background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">⚡</div>
-      <div style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8;margin-bottom:4px">1 — VELOCIDAD DE COMPRA</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">1 — VELOCIDAD DE COMPRA</span><span id="g-sema-1" class="g-sema" title="Semáforo: verde ≤5d · amarillo ≤10d · rojo >10d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">Requerimiento → OC · días hábiles</div>
       <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
-        <div><div style="font-size:40px;font-weight:800;line-height:1" id="g-avg-req-oc">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
-        <div><div style="font-size:20px;font-weight:700" id="g-med-req-oc">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
+        <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-req-oc">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
+        <div><div style="font-size:40px;font-weight:700" id="g-med-req-oc">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
         <div style="margin-left:auto;text-align:right"><div style="font-size:11px;font-weight:600" id="g-n-req-oc">—</div><div style="font-size:10px;opacity:.8">OCs</div></div>
       </div>
       <div style="display:flex;gap:3px;height:70px;align-items:flex-end" id="g-bar-req-oc"></div>
@@ -360,11 +407,11 @@ body.dark .gantt-legend span{color:#94a3b8 !important}
     <!-- 2. ALMACÉN -->
     <div style="background:linear-gradient(135deg,#be185d,#f472b6);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">🏪</div>
-      <div style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8;margin-bottom:4px">2 — TIEMPO DE ALMACÉN</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">2 — TIEMPO DE ALMACÉN</span><span id="g-sema-2" class="g-sema" title="Semáforo: verde ≤3d · amarillo ≤7d · rojo >7d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">Requerimiento → Pedido · días hábiles</div>
       <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
-        <div><div style="font-size:40px;font-weight:800;line-height:1" id="g-avg-req-ped">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
-        <div><div style="font-size:20px;font-weight:700" id="g-med-req-ped">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
+        <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-req-ped">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
+        <div><div style="font-size:40px;font-weight:700" id="g-med-req-ped">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
         <div style="margin-left:auto;text-align:right"><div style="font-size:11px;font-weight:600" id="g-n-req-ped">—</div><div style="font-size:10px;opacity:.8">OCs</div></div>
       </div>
       <div style="display:flex;gap:3px;height:70px;align-items:flex-end" id="g-bar-req-ped"></div>
@@ -374,11 +421,11 @@ body.dark .gantt-legend span{color:#94a3b8 !important}
     <!-- 3. COMPRADORES -->
     <div style="background:linear-gradient(135deg,#0891b2,#38bdf8);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">🛒</div>
-      <div style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8;margin-bottom:4px">3 — TIEMPO DE COMPRADORES</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">3 — TIEMPO DE COMPRADORES</span><span id="g-sema-3" class="g-sema" title="Semáforo: verde ≤5d · amarillo ≤10d · rojo >10d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">Pedido → OC · días hábiles</div>
       <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
-        <div><div style="font-size:40px;font-weight:800;line-height:1" id="g-avg-ped-oc">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
-        <div><div style="font-size:20px;font-weight:700" id="g-med-ped-oc">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
+        <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-ped-oc">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
+        <div><div style="font-size:40px;font-weight:700" id="g-med-ped-oc">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
         <div style="margin-left:auto;text-align:right"><div style="font-size:11px;font-weight:600" id="g-n-ped-oc">—</div><div style="font-size:10px;opacity:.8">OCs</div></div>
       </div>
       <div style="display:flex;gap:3px;height:70px;align-items:flex-end" id="g-bar-ped-oc"></div>
@@ -388,11 +435,11 @@ body.dark .gantt-legend span{color:#94a3b8 !important}
     <!-- 4. APROBACIÓN -->
     <div style="background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">✅</div>
-      <div style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8;margin-bottom:4px">4 — TIEMPO DE APROBACIÓN</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">4 — TIEMPO DE APROBACIÓN</span><span id="g-sema-4" class="g-sema" title="Semáforo: verde ≤1d · amarillo ≤3d · rojo >3d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">OC → Aprobación Manuel · días hábiles</div>
       <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
-        <div><div style="font-size:40px;font-weight:800;line-height:1" id="g-avg-oc-apro">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
-        <div><div style="font-size:20px;font-weight:700" id="g-med-oc-apro">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
+        <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-oc-apro">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
+        <div><div style="font-size:40px;font-weight:700" id="g-med-oc-apro">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
         <div style="margin-left:auto;text-align:right"><div style="font-size:11px;font-weight:600" id="g-n-oc-apro">—</div><div style="font-size:10px;opacity:.8">OCs</div></div>
       </div>
       <div style="display:flex;gap:3px;height:70px;align-items:flex-end" id="g-bar-oc-apro"></div>
@@ -402,11 +449,11 @@ body.dark .gantt-legend span{color:#94a3b8 !important}
     <!-- 5. CUMPLIMIENTO DE ENTREGA -->
     <div style="background:linear-gradient(135deg,#065f46,#10b981);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">📦</div>
-      <div style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8;margin-bottom:4px">5 — CUMPLIMIENTO DE ENTREGA</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">5 — CUMPLIMIENTO DE ENTREGA</span><span id="g-sema-5" class="g-sema" title="Semáforo: verde ≥80% · amarillo ≥60% · rojo <60%"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">F. Entrega pactada → Recepción · días hábiles</div>
       <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
-        <div><div style="font-size:40px;font-weight:800;line-height:1" id="g-avg-ent-rec">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom. tardío</div></div>
-        <div><div style="font-size:20px;font-weight:700" id="g-pct-ontime">—</div><div style="font-size:10px;opacity:.8">% a tiempo</div></div>
+        <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-ent-rec">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom. tardío</div></div>
+        <div><div style="font-size:40px;font-weight:700" id="g-pct-ontime">—</div><div style="font-size:10px;opacity:.8">% a tiempo</div></div>
         <div style="margin-left:auto;text-align:right"><div style="font-size:11px;font-weight:600" id="g-n-ent-rec">—</div><div style="font-size:10px;opacity:.8">entregas</div></div>
       </div>
       <div style="display:flex;gap:3px;height:70px;align-items:flex-end" id="g-bar-ent-rec"></div>
@@ -416,17 +463,33 @@ body.dark .gantt-legend span{color:#94a3b8 !important}
     <!-- 6. ENTREGA A PISO -->
     <div style="background:linear-gradient(135deg,#b45309,#f59e0b);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">🏭</div>
-      <div style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8;margin-bottom:4px">6 — ENTREGA A PISO</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">6 — ENTREGA A PISO</span><span id="g-sema-6" class="g-sema" title="Semáforo: verde ≤7d · amarillo ≤15d · rojo >15d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">Aprobación → Recepción · días hábiles</div>
       <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
-        <div><div style="font-size:40px;font-weight:800;line-height:1" id="g-avg-aprob-rec">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
-        <div><div style="font-size:20px;font-weight:700" id="g-med-aprob-rec">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
+        <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-aprob-rec">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
+        <div><div style="font-size:40px;font-weight:700" id="g-med-aprob-rec">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
         <div style="margin-left:auto;text-align:right"><div style="font-size:11px;font-weight:600" id="g-n-aprob-rec">—</div><div style="font-size:10px;opacity:.8">OCs</div></div>
       </div>
       <div style="display:flex;gap:3px;height:70px;align-items:flex-end" id="g-bar-aprob-rec"></div>
       <div style="display:flex;gap:3px;margin-top:3px" id="g-lbl-aprob-rec"></div>
     </div>
 
+  </div>
+
+  <!-- Ranking de compradores -->
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-top:12px">
+    <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">🏆 Velocidad por Comprador — Req → OC · días hábiles promedio</div>
+    <div id="g-ranking-compradores" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px">
+      <span style="font-size:11px;color:#94a3b8">Cargando…</span>
+    </div>
+  </div>
+
+  <!-- OC por comprador -->
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-top:12px">
+    <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:16px">📊 Total OC Colocadas por Comprador — órdenes del período filtrado</div>
+    <div id="g-oc-por-comprador" style="display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:11px;color:#94a3b8">Cargando…</span>
+    </div>
   </div>
 
   <!-- IDs ocultos para compatibilidad con initP1() -->
@@ -452,14 +515,18 @@ body.dark .gantt-legend span{color:#94a3b8 !important}
     <span style="flex:1"></span>
     <div class="vtg"><button class="vtb act">Por OC</button><button class="vtb">Por Ítem</button></div>
   </div>
-  <div class="kpis" style="align-items:center">
-    <div class="kpi k0"><div class="klbl">Total OC</div><div class="kval" id="k2tot">—</div><div class="ksub">Órdenes 2026</div></div>
+  <div class="kpis" style="display:flex;flex-wrap:nowrap;gap:8px;align-items:stretch;overflow-x:auto">
+    <div class="kpi k0" style="flex:1;min-width:0"><div class="klbl">Total OC</div><div class="kval" id="k2tot">—</div><div class="ksub">Órdenes 2026</div></div>
     <div id="kpi2estados" style="display:contents"></div>
-    <div class="kpi k4"><div class="klbl">Responsables</div><div class="kval" id="k2resp">—</div><div class="ksub">Compradores</div></div>
-    <div class="kpi k5"><div class="klbl">Proyectos</div><div class="kval" id="k2proj">—</div><div class="ksub">Involucrados</div></div>
-    <div class="kpi" style="display:flex;align-items:center;gap:10px;min-width:0;padding:8px 12px">
-      <svg id="donut2" width="54" height="54" viewBox="0 0 72 72"><circle cx="36" cy="36" r="28" fill="none" stroke="#f1f5f9" stroke-width="12"/></svg>
-      <div class="dleg" id="dleg2" style="font-size:10px"></div>
+    <div class="kpi k4" style="flex:1;min-width:0"><div class="klbl">Responsables</div><div class="kval" id="k2resp">—</div><div class="ksub">Compradores</div></div>
+    <div class="kpi k5" style="flex:1;min-width:0"><div class="klbl">Proyectos</div><div class="kval" id="k2proj">—</div><div class="ksub">Involucrados</div></div>
+  </div>
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px">
+    <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:16px">🍩 Distribución por Estado — <span id="p2-estado-ttl" style="color:#0f172a;font-size:13px;font-weight:800">—</span> OC</div>
+    <div style="display:flex;align-items:center;gap:32px;flex-wrap:wrap">
+      <svg id="donut2" width="110" height="110" viewBox="0 0 72 72"><circle cx="36" cy="36" r="28" fill="none" stroke="#f1f5f9" stroke-width="12"/></svg>
+      <div id="dleg2" style="min-width:200px;display:flex;flex-direction:column;gap:10px"></div>
+      <div id="p2-estado-bars" style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:10px"></div>
     </div>
   </div>
   <div class="flt">
@@ -507,7 +574,7 @@ body.dark .gantt-legend span{color:#94a3b8 !important}
     <span class="fcnt" id="f3cnt">— registros</span>
   </div>
   <div class="tw">
-    <div class="th"><span class="thtt">Pedidos sin OC — En Cotización</span></div>
+    <div class="th"><span class="thtt">Pedidos sin OC — En Cotización</span><div class="thr"><button class="thb" onclick="exportP3HTML()" title="Exportar reporte HTML" style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">⬇ Exportar</button></div></div>
     <table class="ttbl"><thead><tr>
       <th>N° PEDIDO</th><th>FECHA PEDIDO</th><th>RESP. PEDIDO</th><th>RESPONSABLE / SOLICITANTE</th><th>ID PROYECTO</th><th>PROYECTO</th><th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>CANT.</th><th>UNIDAD</th><th>REQUERIMIENTO</th><th>FECHA REQ.</th><th>ESTADO</th>
     </tr></thead><tbody id="tb3"></tbody></table>
@@ -531,13 +598,13 @@ body.dark .gantt-legend span{color:#94a3b8 !important}
     <div class="kpi k4"><div class="klbl">Resp. Pedido</div><div class="kval" id="k4resp">—</div><div class="ksub">Compradores</div></div>
     <div class="kpi k5"><div class="klbl">Proveedores</div><div class="kval" id="k4prov">—</div><div class="ksub">Únicos</div></div>
   </div>
-  <div class="cr">
-    <div class="cc"><div class="ctitle">🍩 Por Estado</div>
-      <div class="dwrap"><svg id="donut4" width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="28" fill="none" stroke="#f1f5f9" stroke-width="12"/></svg>
-      <div class="dleg" id="dleg4"></div></div></div>
-    <div class="cc"><div class="ctitle">📊 Por Resp. Pedido</div><div class="hbl" id="hbar4"></div></div>
-    <div class="cc"><div class="ctitle">🏆 Top Proveedores</div><div class="rkl" id="rank4"></div></div>
-    <div class="cc"><div class="ctitle">📈 OC por Mes 2026</div><div class="vbs" id="vbar4"></div></div>
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px">
+    <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:16px">🍩 Distribución por Estado — <span id="p4-estado-ttl" style="color:#0f172a;font-size:13px;font-weight:800">—</span> OC</div>
+    <div style="display:flex;align-items:center;gap:32px;flex-wrap:wrap">
+      <svg id="donut4" width="110" height="110" viewBox="0 0 72 72"><circle cx="36" cy="36" r="28" fill="none" stroke="#f1f5f9" stroke-width="12"/></svg>
+      <div id="dleg4" style="min-width:200px;display:flex;flex-direction:column;gap:10px"></div>
+      <div id="p4-estado-bars" style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:10px"></div>
+    </div>
   </div>
   <div class="flt">
     <div class="ms-wrap"><div class="ms-btn" id="f4est-btn" data-label="Estado" onclick="toggleMS('f4est')"><span id="f4est-lbl">Estado: Todos</span><span class="ms-arr">▼</span></div><div class="ms-dd" id="f4est-dd"></div></div>
@@ -728,23 +795,23 @@ function isVenc(ds){return dateStatus(ds)==='late';}
 // ── NAVIGATION ──────────────────────────────────────────────────
 let curPage='home', mapInited=false;
 function nav(id){
+  if(id==='p1'&&!sessionStorage.getItem('fp_p1_auth')){showP1Auth();return;}
+  if(id==='p7'&&!sessionStorage.getItem('fp_p7_auth')){showP7Auth();return;}
   document.querySelectorAll('.pg').forEach(e=>e.classList.remove('act'));
   document.querySelectorAll('.tab').forEach(e=>e.classList.remove('act'));
   document.getElementById('ph').classList.remove('act');
-  // IDs are pp2, pp3, pp4, pp5, pp6, pp1 — id param is 'p2','p3'... or 'home'
-  const pgId = id==='home' ? null : 'p'+id;  // 'p2' → 'pp2'
+  const pgId = id==='home' ? null : 'p'+id;
   const pg = pgId ? document.getElementById(pgId) : null;
   if(pg){ pg.classList.add('act'); }
   else { document.getElementById('ph').classList.add('act'); }
   const tabs=[...document.querySelectorAll('.tab')];
-  const ti={home:0,p2:1,p3:2,p4:3,p5:4,p6:5,p1:6};
+  const ti={home:0,p2:1,p3:2,p4:3,p5:4,p6:5,p1:6,p7:7};
   if(ti[id]!==undefined&&tabs[ti[id]])tabs[ti[id]].classList.add('act');
   curPage=id;
   if(id==='p4'){try{initP4();}catch(e){}}
   if(id==='p5'){try{initP5();}catch(e){}}
   if(id==='p1'){initP1();renderGerencial();}
-  // p4 initialized at startup
-  // p5 initialized at startup
+  if(id==='p7'){renderP7();}
   if(id==='p6'&&!mapInited){setTimeout(initMap,100);mapInited=true;}
 }
 
@@ -816,7 +883,7 @@ function renderP2(){
   const allEstados=Object.keys(counts).sort((a,b)=>sortOrder(a)-sortOrder(b));
   document.getElementById('kpi2estados').innerHTML=allEstados.map(e=>{
     const cfg=estadoCls(e);
-    return`<div class="kpi ${cfg.cls}"><div class="klbl">${e}</div><div class="kval">${counts[e]||0}</div><div class="ksub">${cfg.sub}</div></div>`;
+    return`<div class="kpi ${cfg.cls}" style="flex:1;min-width:0"><div class="klbl">${e}</div><div class="kval">${counts[e]||0}</div><div class="ksub">${cfg.sub}</div></div>`;
   }).join('');
   const pend=Object.entries(counts).filter(([e])=>!e.toLowerCase().includes('completo')&&!e.toLowerCase().includes('parcial')).reduce((s,[,v])=>s+v,0);
   const parc=Object.entries(counts).filter(([e])=>e.toLowerCase().includes('parcial')).reduce((s,[,v])=>s+v,0);
@@ -889,13 +956,21 @@ function togglePgsz2(){
 
 // ── CHARTS P2 ────────────────────────────────────────────────────
 function drawDonut2(pend,parc,comp){
+  const segs=[
+    {v:pend,c:'#dc2626',label:'Pendiente'},
+    {v:parc,c:'#f59e0b',label:'Atend. Parcial'},
+    {v:comp,c:'#16a34a',label:'Atend. Completo'},
+  ];
   const tot=pend+parc+comp||1;
+  const ttlEl=document.getElementById('p2-estado-ttl');
+  if(ttlEl) ttlEl.textContent=pend+parc+comp;
+  // Donut
   const circ=2*Math.PI*28, r=28;
   let off=20;
-  const segs=[{v:pend,c:'#dc2626'},{v:parc,c:'#f59e0b'},{v:comp,c:'#16a34a'}];
   const svg=document.getElementById('donut2');
   svg.innerHTML=`<circle cx="36" cy="36" r="${r}" fill="none" stroke="#f1f5f9" stroke-width="12"/>`;
   segs.forEach(({v,c})=>{
+    if(!v) return;
     const da=circ*v/tot, gap=circ-da;
     const el=document.createElementNS('http://www.w3.org/2000/svg','circle');
     el.setAttribute('cx',36);el.setAttribute('cy',36);el.setAttribute('r',r);
@@ -909,10 +984,30 @@ function drawDonut2(pend,parc,comp){
   txt.setAttribute('x',36);txt.setAttribute('y',40);txt.setAttribute('text-anchor','middle');
   txt.setAttribute('font-size',11);txt.setAttribute('font-weight',700);txt.setAttribute('fill','#0f172a');
   txt.textContent=tot;svg.appendChild(txt);
-  document.getElementById('dleg2').innerHTML=
-    `<div class="li"><span class="ld" style="background:#dc2626"></span>Pendiente (${pend})</div>
-     <div class="li"><span class="ld" style="background:#f59e0b"></span>Parcial (${parc})</div>
-     <div class="li"><span class="ld" style="background:#16a34a"></span>Completo (${comp})</div>`;
+  // Leyenda
+  document.getElementById('dleg2').innerHTML=segs.map(({v,c,label})=>{
+    const pct=Math.round(v/tot*100);
+    return`<div style="display:flex;align-items:center;gap:8px">
+      <span style="width:12px;height:12px;border-radius:3px;background:${c};flex-shrink:0;display:inline-block"></span>
+      <span style="font-size:11px;color:#475569;flex:1">${label}</span>
+      <span style="font-size:13px;font-weight:700;color:#0f172a">${v}</span>
+      <span style="font-size:10px;color:#94a3b8;min-width:32px;text-align:right">${pct}%</span>
+    </div>`;
+  }).join('');
+  // Barras horizontales
+  const barsEl=document.getElementById('p2-estado-bars');
+  if(barsEl) barsEl.innerHTML=segs.map(({v,c,label})=>{
+    const pct=Math.round(v/tot*100);
+    return`<div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span style="color:#334155;font-weight:600">${label}</span>
+        <span style="color:#64748b">${v} OC &nbsp;·&nbsp; ${pct}%</span>
+      </div>
+      <div style="background:#f1f5f9;border-radius:6px;height:14px;overflow:hidden">
+        <div style="width:${pct}%;background:${c};height:100%;border-radius:6px;transition:width .4s"></div>
+      </div>
+    </div>`;
+  }).join('');
 }
 function drawHbar2(data){
   data=data||D.oc;
@@ -1086,6 +1181,370 @@ function renderP3Table(){
   document.getElementById('p3info').textContent=`Mostrando ${p3pg*sz+1}–${Math.min((p3pg+1)*sz,tot)} de ${tot}`;
   renderPag('p3pag',pages,p3pg,p=>{p3pg=p;renderP3Table();});
 }
+function exportP3HTML(){
+  // Ensure p3fil is populated; fall back to full D.sinoc if needed
+  if(!p3fil||!p3fil.length){
+    if(D.sinoc&&D.sinoc.length){renderP3();}
+    else{alert('No hay datos para exportar. Importe primero el archivo MAESTRO.xlsx.');return;}
+  }
+  var exportData=p3fil.length?p3fil:D.sinoc;
+  var now=new Date();
+  var fechaGen=now.toLocaleDateString('es-PE',{day:'2-digit',month:'long',year:'numeric'})+' · '+now.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+  var dd=now.toISOString().slice(0,10);
+  var jsonData=JSON.stringify(exportData.map(function(r,i){return{
+    i:i,ped:r.ped||'',fecha:r.fecha||'',respPed:r.respPed||'',resp:r.resp||'',
+    idproy:r.idproy||'',proy:r.proy||'',cod:r.cod||'',prod:r.prod||'',
+    cant:r.cant||0,unid:r.unid||'',req:r.req||'',freq:r.freq||'',estado:r.estado||''
+  };}));
+  // Build HTML using string parts — NO nested backtick template literals
+  var S='';
+  S+='<!DOCTYPE html><html lang="es"><head>';
+  S+='<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
+  S+='<title>Sin OC — Cotización · FRIOPACKING S.A.</title>';
+  S+='<link rel="preconnect" href="https://fonts.googleapis.com">';
+  S+='<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">';
+  S+='<style>';
+  S+='*{box-sizing:border-box;margin:0;padding:0}';
+  S+='body{font-family:\'Inter\',Arial,sans-serif;background:#f0f4f8;color:#0f172a;font-size:13px}';
+  S+='.page{max-width:1500px;margin:0 auto;padding:28px 20px}';
+  S+='.hdr{background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 60%,#2563eb 100%);border-radius:16px;padding:26px 32px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;box-shadow:0 8px 32px rgba(30,64,175,.3)}';
+  S+='.hdr-left{display:flex;align-items:center;gap:18px}';
+  S+='.hdr-logo{background:rgba(255,255,255,.15);border-radius:12px;padding:10px 16px;font-size:20px;font-weight:900;color:#fff;letter-spacing:1px;border:1px solid rgba(255,255,255,.25)}';
+  S+='.hdr-title h1{font-size:21px;font-weight:800;color:#fff;letter-spacing:-.3px;line-height:1.15}';
+  S+='.hdr-title p{font-size:12px;color:rgba(255,255,255,.65);margin-top:3px}';
+  S+='.hdr-right{display:flex;gap:12px}';
+  S+='.hdr-stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:10px 18px;text-align:center;color:#fff}';
+  S+='.hdr-stat .n{font-size:28px;font-weight:800;line-height:1}';
+  S+='.hdr-stat .l{font-size:9px;text-transform:uppercase;letter-spacing:.8px;opacity:.7;margin-top:2px}';
+  S+='.kstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}';
+  S+='.kcard{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:13px 16px;border-top:3px solid #2563eb}';
+  S+='.kcard:nth-child(2){border-top-color:#dc2626}.kcard:nth-child(3){border-top-color:#0891b2}.kcard:nth-child(4){border-top-color:#16a34a}';
+  S+='.kcard .kv{font-size:26px;font-weight:800;color:#0f172a;line-height:1;margin-bottom:2px}';
+  S+='.kcard .kl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8}';
+  S+='.fbar{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px}';
+  S+='.fbar-group{display:flex;flex-direction:column;gap:5px;min-width:0}';
+  S+='.fbar-group label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#64748b}';
+  S+='.msd{position:relative;min-width:190px}';
+  S+='.msd-btn{display:flex;align-items:center;justify-content:space-between;background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12px;font-weight:500;color:#334155;gap:8px;user-select:none}';
+  S+='.msd-btn:hover,.msd-btn.open{border-color:#2563eb;background:#eff6ff}';
+  S+='.msd-btn .arr{font-size:9px;color:#94a3b8;transition:transform .2s;display:inline-block}';
+  S+='.msd-btn.open .arr{transform:rotate(180deg)}';
+  S+='.msd-drop{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:100%;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:100;max-height:220px;overflow-y:auto;padding:5px}';
+  S+='.msd-drop.open{display:block}';
+  S+='.msd-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:7px;cursor:pointer;font-size:12px;color:#334155}';
+  S+='.msd-item:hover{background:#eff6ff}';
+  S+='.msd-item input[type=checkbox]{width:15px;height:15px;accent-color:#2563eb;cursor:pointer;flex-shrink:0}';
+  S+='.fsrch{background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 12px;font-size:12px;color:#334155;outline:none;min-width:220px;font-family:inherit}';
+  S+='.fsrch:focus{border-color:#2563eb;background:#fff}';
+  S+='.abar{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:12px;margin-bottom:10px}';
+  S+='.abar-info{font-size:12px;color:#64748b;flex:1}';
+  S+='.abar-info strong{color:#1e40af;font-size:13px}';
+  S+='.btn-primary{background:linear-gradient(135deg,#1e40af,#2563eb);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}';
+  S+='.btn-primary:hover{opacity:.88}.btn-primary:disabled{background:#cbd5e1;cursor:default}';
+  S+='.btn-sec{background:transparent;color:#94a3b8;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit}';
+  S+='.btn-sec:hover{border-color:#dc2626;color:#dc2626}';
+  S+='.tw{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06)}';
+  S+='.tw-hdr{background:#f8fafc;border-bottom:2px solid #e2e8f0;padding:12px 18px;display:flex;align-items:center;justify-content:space-between}';
+  S+='.tw-hdr h2{font-size:12px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px}';
+  S+='.tw-hdr span{font-size:11px;color:#94a3b8}';
+  S+='.tw-wrap{overflow-x:auto}';
+  S+='table{width:100%;border-collapse:collapse;min-width:900px}';
+  S+='thead tr{background:linear-gradient(135deg,#1e3a8a,#1e40af)}';
+  S+='thead th{color:#fff;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:11px 9px;text-align:left;white-space:nowrap;border-right:1px solid rgba(255,255,255,.1)}';
+  S+='thead th:first-child{width:40px;text-align:center}';
+  S+='tbody tr.even{background:#fff}tbody tr.odd{background:#f8fafc}';
+  S+='tbody tr.sel{background:#dbeafe!important}';
+  S+='tbody tr:hover{background:#eff6ff!important}';
+  S+='tbody td{padding:8px 9px;border-bottom:1px solid #e8edf3;vertical-align:middle;line-height:1.4}';
+  S+='tbody td:first-child{text-align:center}';
+  S+='.row-cb{width:15px;height:15px;accent-color:#2563eb;cursor:pointer}';
+  S+='.badge{display:inline-block;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700;white-space:nowrap;border:1px solid transparent}';
+  S+='.modal-bg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px)}';
+  S+='.modal-bg.open{display:flex}';
+  S+='.modal{background:#fff;border-radius:16px;width:96%;max-width:1280px;max-height:94vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.25)}';
+  S+='.modal-hdr{background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:18px 24px;display:flex;align-items:center;justify-content:space-between}';
+  S+='.modal-hdr h3{color:#fff;font-size:15px;font-weight:700}';
+  S+='.modal-hdr-sub{color:rgba(255,255,255,.7);font-size:11px;margin-top:2px}';
+  S+='.modal-close{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit}';
+  S+='.modal-body{padding:20px 24px;overflow-y:auto;flex:1}';
+  S+='.modal-footer{padding:14px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px}';
+  S+='.btn-print{background:linear-gradient(135deg,#065f46,#16a34a);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}';
+  S+='.cgroup{margin-bottom:18px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}';
+  S+='.cgroup-hdr{background:#f0f7ff;border-bottom:1px solid #dbeafe;padding:10px 16px;display:flex;align-items:center;justify-content:space-between}';
+  S+='.cgroup-hdr h4{font-size:12px;font-weight:700;color:#1e40af}';
+  S+='.cgroup-hdr span{font-size:11px;color:#64748b}';
+  S+='.cgroup table{min-width:0}';
+  S+='.cgroup thead tr{background:linear-gradient(135deg,#1e3a8a,#2563eb)}';
+  S+='.cgroup thead th{font-size:9px;padding:8px 9px}';
+  S+='.footer{margin-top:20px;text-align:center;font-size:11px;color:#94a3b8;padding-bottom:12px}';
+  S+='@media print{.fbar,.abar,.modal-bg{display:none!important}body{background:#fff}.tw{box-shadow:none}}';
+  S+='</style></head><body>';
+  S+='<div class="page">';
+  // Header
+  S+='<div class="hdr"><div class="hdr-left"><div class="hdr-logo">FP</div>';
+  S+='<div class="hdr-title"><h1>Sin OC — Cotización</h1>';
+  S+='<p>FRIOPACKING S.A. &nbsp;&middot;&nbsp; Pedidos en cotización sin Orden de Compra asignada</p></div></div>';
+  S+='<div class="hdr-right"><div class="hdr-stat"><div class="n" id="hdr-tot">—</div><div class="l">Pedidos visibles</div></div>';
+  S+='<div class="hdr-stat"><div class="n" id="hdr-sel">0</div><div class="l">Seleccionados</div></div></div></div>';
+  // KPIs
+  S+='<div class="kstrip">';
+  S+='<div class="kcard"><div class="kv" id="kv1">—</div><div class="kl">Total Pedidos</div></div>';
+  S+='<div class="kcard"><div class="kv" id="kv2">—</div><div class="kl">Responsables</div></div>';
+  S+='<div class="kcard"><div class="kv" id="kv3">—</div><div class="kl">Proyectos</div></div>';
+  S+='<div class="kcard"><div class="kv" id="kv4">—</div><div class="kl">Unidades Totales</div></div>';
+  S+='</div>';
+  // Filters
+  S+='<div class="fbar">';
+  S+='<div class="fbar-group"><label>Resp. Pedido</label><div class="msd" id="msd-rp"><div class="msd-btn" onclick="toggleMsd(\'msd-rp\')"><span id="lbl-rp">Todos</span><span class="arr">▼</span></div><div class="msd-drop" id="drop-rp"></div></div></div>';
+  S+='<div class="fbar-group"><label>Responsable / Solicitante</label><div class="msd" id="msd-re"><div class="msd-btn" onclick="toggleMsd(\'msd-re\')"><span id="lbl-re">Todos</span><span class="arr">▼</span></div><div class="msd-drop" id="drop-re"></div></div></div>';
+  S+='<div class="fbar-group"><label>Estado</label><div class="msd" id="msd-es"><div class="msd-btn" onclick="toggleMsd(\'msd-es\')"><span id="lbl-es">Todos</span><span class="arr">▼</span></div><div class="msd-drop" id="drop-es"></div></div></div>';
+  S+='<div class="fbar-group" style="flex:1"><label>Buscar</label><input class="fsrch" id="srch" oninput="applyFilters()" placeholder="Código / descripción / pedido / proyecto…"></div>';
+  S+='<button class="btn-sec" onclick="clearAllFilters()">✕ Limpiar filtros</button>';
+  S+='</div>';
+  // Action bar
+  S+='<div class="abar"><div class="abar-info"><strong id="sel-cnt">0</strong> pedidos seleccionados &nbsp;&middot;&nbsp; <span id="vis-cnt">—</span> visibles</div>';
+  S+='<button class="btn-sec" onclick="deselectAll()" id="btn-desel" style="display:none">☐ Quitar selección</button>';
+  S+='<button class="btn-primary" onclick="openConsolidar()" id="btn-consol" disabled>📋 Consolidar selección</button></div>';
+  // Table
+  S+='<div class="tw"><div class="tw-hdr"><h2>Detalle de Pedidos en Cotización</h2><span>Generado: '+fechaGen+'</span></div>';
+  S+='<div class="tw-wrap"><table id="main-table">';
+  S+='<thead><tr><th><input type="checkbox" id="chk-all" onchange="toggleAll(this.checked)" title="Seleccionar todos los visibles"></th>';
+  S+='<th>N° Pedido</th><th>F. Pedido</th><th>Resp. Pedido</th><th>Responsable / Solicitante</th>';
+  S+='<th>ID Proyecto</th><th>Proyecto</th><th>Código</th><th>Descripción Producto</th>';
+  S+='<th>Cant.</th><th>Unidad</th><th>Requerimiento</th><th>Fecha Req.</th><th>Estado</th>';
+  S+='</tr></thead><tbody id="tbody"></tbody></table></div></div>';
+  S+='<div class="footer">Documento generado automáticamente &nbsp;&middot;&nbsp; <strong>FRIOPACKING S.A.</strong> &nbsp;&middot;&nbsp; Plataforma de Seguimiento de Compras 2026</div>';
+  S+='</div>';
+  // Modal
+  S+='<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeConsolidar()">';
+  S+='<div class="modal"><div class="modal-hdr"><div><h3>📋 Consolidado de Cotización</h3>';
+  S+='<div class="modal-hdr-sub">FRIOPACKING S.A. &nbsp;&middot;&nbsp; Pedidos seleccionados para cotizar</div></div>';
+  S+='<button class="modal-close" onclick="closeConsolidar()">✕ Cerrar</button></div>';
+  S+='<div class="modal-body" id="modal-body"></div>';
+  S+='<div class="modal-footer"><button class="btn-sec" onclick="closeConsolidar()">Cerrar</button><button class="btn-sec" onclick="limpiarSeleccion()" style="color:#dc2626;border-color:#dc2626">🗑 Limpiar selección</button>';
+  S+='<button class="btn-mail" onclick="enviarCorreo()" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✉ Enviar por correo</button>';
+  S+='<button class="btn-print" onclick="printConsolidar()">🖨 Imprimir / Guardar PDF</button></div></div></div>';
+  // Embedded script — uses ONLY single-quoted strings, no backtick template literals
+  S+='<script>';
+  S+='var DATA='+jsonData+';';
+  S+='var sel=new Set();';
+  S+='var visibleData=DATA.slice();';
+  S+='function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}';
+  S+='function ec(e){if(!e)return"#94a3b8";var l=e.toLowerCase();if(l==="finalizado")return"#16a34a";if(l==="pendiente")return"#dc2626";return"#d97706";}';
+  // ── Dropdown helpers — NO inline event handlers (avoids nested quote bugs) ──
+  S+='var lblMap={"drop-rp":"lbl-rp","drop-re":"lbl-re","drop-es":"lbl-es"};';
+  S+='function uniq(k){var s=new Set();DATA.forEach(function(r){if(r[k])s.add(r[k]);});return Array.from(s).sort();}';
+  S+='function oChg(dropId){';
+  S+='  var opts=Array.from(document.querySelectorAll(".opt-"+dropId));';
+  S+='  var all=opts.every(function(c){return c.checked;});';
+  S+='  var none=opts.every(function(c){return!c.checked;});';
+  S+='  var allCb=document.getElementById(dropId+"-all");';
+  S+='  if(allCb){allCb.checked=all;allCb.indeterminate=!all&&!none;}';
+  S+='  var lbl=document.getElementById(lblMap[dropId]);';
+  S+='  if(lbl)lbl.textContent=all?"Todos":none?"(ninguno)":(opts.filter(function(c){return c.checked;}).length)+" seleccionados";';
+  S+='  applyFilters();';
+  S+='}';
+  S+='function tAll(cb,dropId){document.querySelectorAll(".opt-"+dropId).forEach(function(c){c.checked=cb.checked;});oChg(dropId);}';
+  // buildMsd — uses addEventListener, zero inline handlers
+  S+='function buildMsd(dropId,opts){';
+  S+='  var d=document.getElementById(dropId);';
+  S+='  if(!d)return;';
+  S+='  var h="";';
+  S+='  h+=\'<div class="msd-item"><input type="checkbox" id="\'+dropId+\'-all" data-drop="\'+dropId+\'" data-isall="1" checked> \';';
+  S+='  h+=\'<label for="\'+dropId+\'-all" style="cursor:pointer;flex:1;font-weight:600">Todos</label></div>\';';
+  S+='  opts.forEach(function(v){';
+  S+='    h+=\'<div class="msd-item"><input type="checkbox" class="opt-\'+dropId+\'" data-drop="\'+dropId+\'" value="\'+esc(v)+\'" checked> \';';
+  S+='    h+=\'<label style="cursor:pointer;flex:1">\'+esc(v)+\'</label></div>\';';
+  S+='  });';
+  S+='  d.innerHTML=h;';
+  S+='}';
+  // Single delegated listener — handles ALL dropdown checkboxes
+  S+='document.addEventListener("change",function(e){';
+  S+='  var cb=e.target;';
+  S+='  if(cb.tagName!=="INPUT"||cb.type!=="checkbox"||!cb.dataset.drop)return;';
+  S+='  var dropId=cb.dataset.drop;';
+  S+='  if(cb.dataset.isall)tAll(cb,dropId);';
+  S+='  else oChg(dropId);';
+  S+='});';
+  // Init dropdowns
+  S+='buildMsd("drop-rp",uniq("respPed"));';
+  S+='buildMsd("drop-re",uniq("resp"));';
+  S+='buildMsd("drop-es",uniq("estado"));';
+  // toggleMsd
+  S+='function toggleMsd(id){';
+  S+='  var btn=document.querySelector("#"+id+" .msd-btn");';
+  S+='  var drop=document.querySelector("#"+id+" .msd-drop");';
+  S+='  var isOpen=drop.classList.contains("open");';
+  S+='  document.querySelectorAll(".msd-drop.open").forEach(function(d){d.classList.remove("open");});';
+  S+='  document.querySelectorAll(".msd-btn.open").forEach(function(b){b.classList.remove("open");});';
+  S+='  if(!isOpen){drop.classList.add("open");btn.classList.add("open");}';
+  S+='}';
+  S+='document.addEventListener("click",function(e){if(!e.target.closest(".msd")){document.querySelectorAll(".msd-drop.open").forEach(function(d){d.classList.remove("open");});document.querySelectorAll(".msd-btn.open").forEach(function(b){b.classList.remove("open");});}});';
+  // getChecked
+  S+='function getChecked(dropId){var opts=Array.from(document.querySelectorAll(".opt-"+dropId));if(opts.every(function(c){return c.checked;}))return null;return opts.filter(function(c){return c.checked;}).map(function(c){return c.value;});}';
+  // renderRows
+  S+='function renderRows(data){';
+  S+='  var tb=document.getElementById("tbody");';
+  S+='  var h="";';
+  S+='  data.forEach(function(r,idx){';
+  S+='    var c=ec(r.estado);';
+  S+='    var chk=sel.has(r.i)?"checked":"";';
+  S+='    var sc=sel.has(r.i)?" sel":"";';
+  S+='    h+=\'<tr class="\'+(idx%2===0?"even":"odd")+sc+\'" data-i="\'+r.i+\'">\';';
+  S+='    h+=\'<td><input type="checkbox" class="row-cb" data-i="\'+r.i+\'" \'+chk+\' onchange="toggleRow(this)"></td>\';';
+  S+='    h+=\'<td style="font-weight:700;color:#1e40af;white-space:nowrap">\'+esc(r.ped||"—")+\'</td>\';';
+  S+='    h+=\'<td style="white-space:nowrap;color:#64748b;font-size:12px">\'+esc(r.fecha||"—")+\'</td>\';';
+  S+='    h+=\'<td style="font-size:11px;color:#334155">\'+esc(r.respPed||"—")+\'</td>\';';
+  S+='    h+=\'<td>\'+esc(r.resp||"—")+\'</td>\';';
+  S+='    h+=\'<td style="font-size:11px;color:#0891b2;font-weight:600;text-align:center">\'+esc(r.idproy||"—")+\'</td>\';';
+  S+='    h+=\'<td style="font-size:11px">\'+esc(r.proy||"—")+\'</td>\';';
+  S+='    h+=\'<td style="font-family:monospace;font-size:11px;color:#7c3aed;font-weight:600">\'+esc(r.cod||"—")+\'</td>\';';
+  S+='    h+=\'<td style="font-size:12px">\'+esc(r.prod||"—")+\'</td>\';';
+  S+='    h+=\'<td style="text-align:right;font-weight:700">\'+Number(r.cant||0).toLocaleString()+\'</td>\';';
+  S+='    h+=\'<td style="text-align:center;color:#64748b;font-size:11px">\'+esc(r.unid||"—")+\'</td>\';';
+  S+='    h+=\'<td style="font-size:11px;color:#475569">\'+esc(r.req||"—")+\'</td>\';';
+  S+='    h+=\'<td style="white-space:nowrap;color:#64748b;font-size:11px">\'+esc(r.freq||"—")+\'</td>\';';
+  S+='    h+=\'<td style="text-align:center"><span class="badge" style="background:\'+c+\'20;color:\'+c+\';border-color:\'+c+\'55">\'+esc(r.estado||"—")+\'</span></td>\';';
+  S+='    h+="</tr>";';
+  S+='  });';
+  S+='  tb.innerHTML=h;';
+  S+='}';
+  // applyFilters
+  S+='function applyFilters(){';
+  S+='  var fRP=getChecked("drop-rp"),fR=getChecked("drop-re"),fE=getChecked("drop-es");';
+  S+='  var q=(document.getElementById("srch").value||"").toLowerCase();';
+  S+='  visibleData=DATA.filter(function(r){';
+  S+='    if(fRP&&fRP.indexOf(r.respPed)===-1)return false;';
+  S+='    if(fR&&fR.indexOf(r.resp)===-1)return false;';
+  S+='    if(fE&&fE.indexOf(r.estado)===-1)return false;';
+  S+='    if(q&&(r.ped+" "+r.cod+" "+r.prod+" "+r.proy+" "+r.req+" "+r.resp+" "+r.respPed).toLowerCase().indexOf(q)===-1)return false;';
+  S+='    return true;';
+  S+='  });';
+  S+='  renderRows(visibleData);updateKpis(visibleData);updateSelBar();';
+  S+='}';
+  S+='function clearAllFilters(){["drop-rp","drop-re","drop-es"].forEach(function(id){document.querySelectorAll(".opt-"+id).forEach(function(c){c.checked=true;});document.getElementById(id+"-all").checked=true;document.getElementById(id+"-all").indeterminate=false;var l=document.getElementById(lblMap[id]);if(l)l.textContent="Todos";});document.getElementById("srch").value="";applyFilters();}';
+  // updateKpis
+  S+='function updateKpis(data){';
+  S+='  var rSet=new Set(),pSet=new Set(),tot=0;';
+  S+='  data.forEach(function(r){if(r.resp)rSet.add(r.resp);if(r.proy)pSet.add(r.proy);tot+=r.cant||0;});';
+  S+='  document.getElementById("kv1").textContent=data.length;';
+  S+='  document.getElementById("kv2").textContent=rSet.size;';
+  S+='  document.getElementById("kv3").textContent=pSet.size;';
+  S+='  document.getElementById("kv4").textContent=Math.round(tot).toLocaleString();';
+  S+='  document.getElementById("hdr-tot").textContent=data.length;';
+  S+='  document.getElementById("vis-cnt").textContent=data.length+" visibles";';
+  S+='}';
+  // Selection
+  S+='function toggleRow(cb){var i=parseInt(cb.dataset.i);if(cb.checked){sel.add(i);cb.closest("tr").classList.add("sel");}else{sel.delete(i);cb.closest("tr").classList.remove("sel");}updateSelBar();}';
+  S+='function toggleAll(checked){visibleData.forEach(function(r){if(checked)sel.add(r.i);else sel.delete(r.i);});document.querySelectorAll(".row-cb").forEach(function(cb){cb.checked=checked;cb.closest("tr").classList.toggle("sel",checked);});updateSelBar();}';
+  S+='function deselectAll(){sel.clear();document.querySelectorAll(".row-cb").forEach(function(cb){cb.checked=false;cb.closest("tr").classList.remove("sel");});document.getElementById("chk-all").checked=false;updateSelBar();}';
+  S+='function updateSelBar(){var n=sel.size;document.getElementById("sel-cnt").textContent=n;document.getElementById("hdr-sel").textContent=n;document.getElementById("btn-consol").disabled=n===0;document.getElementById("btn-desel").style.display=n>0?"":"none";}';
+  // Consolidar
+  S+='function openConsolidar(){';
+  S+='  if(!sel.size)return;';
+  S+='  var selRows=DATA.filter(function(r){return sel.has(r.i);});';
+  S+='  var groups={};';
+  S+='  selRows.forEach(function(r){var k=r.respPed||"Sin asignar";if(!groups[k])groups[k]=[];groups[k].push(r);});';
+  S+='  var body="";';
+  S+='  var genFecha="'+fechaGen+'";';
+  S+='  Object.keys(groups).forEach(function(resp){';
+  S+='    var rows=groups[resp];';
+  S+='    var unid=Math.round(rows.reduce(function(s,r){return s+(r.cant||0);},0)).toLocaleString();';
+  S+='    body+=\'<div class="cgroup"><div class="cgroup-hdr"><h4>\u{1F464} Resp. Pedido: \'+esc(resp)+\'</h4><span>\'+rows.length+\' pedido\'+( rows.length>1?"s":"")+\' &nbsp;&middot;&nbsp; \'+unid+\' unidades</span></div>\';';
+  S+='    body+=\'<table><thead><tr><th>N° Pedido</th><th>F. Pedido</th><th>Responsable</th><th>ID Proyecto</th><th>Proyecto</th><th>Código</th><th>Descripción</th><th>Cant.</th><th>Unid.</th><th>Estado</th></tr></thead><tbody>\';';
+  S+='    rows.forEach(function(r,i){';
+  S+='      var c=ec(r.estado);';
+  S+='      body+=\'<tr class="\'+(i%2===0?"even":"odd")+\'">\';';
+  S+='      body+=\'<td style="font-weight:700;color:#1e40af">\'+esc(r.ped)+\'</td>\';';
+  S+='      body+=\'<td style="font-size:11px">\'+esc(r.fecha)+\'</td>\';';
+  S+='      body+=\'<td style="font-size:11px">\'+esc(r.resp)+\'</td>\';';
+  S+='      body+=\'<td style="font-size:11px;color:#0891b2;font-weight:600;text-align:center">\'+esc(r.idproy)+\'</td>\';';
+  S+='      body+=\'<td style="font-size:11px">\'+esc(r.proy)+\'</td>\';';
+  S+='      body+=\'<td style="font-family:monospace;font-size:11px;color:#7c3aed;font-weight:600">\'+esc(r.cod)+\'</td>\';';
+  S+='      body+=\'<td style="font-size:11px">\'+esc(r.prod)+\'</td>\';';
+  S+='      body+=\'<td style="text-align:right;font-weight:700">\'+Number(r.cant||0).toLocaleString()+\'</td>\';';
+  S+='      body+=\'<td style="text-align:center;font-size:11px">\'+esc(r.unid)+\'</td>\';';
+  S+='      body+=\'<td style="text-align:center"><span class="badge" style="background:\'+c+\'20;color:\'+c+\';border-color:\'+c+\'55">\'+esc(r.estado)+\'</span></td>\';';
+  S+='      body+="</tr>";';
+  S+='    });';
+  S+='    body+="</tbody></table></div>";';
+  S+='  });';
+  S+='  var info=\'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1e40af"><strong>\'+sel.size+\' pedidos seleccionados</strong> &nbsp;&middot;&nbsp; \'+Object.keys(groups).length+\' responsable\'+(Object.keys(groups).length>1?"s":"")+\' &nbsp;&middot;&nbsp; Generado: \'+genFecha+\'</div>\';';
+  S+='  document.getElementById("modal-body").innerHTML=info+body;';
+  S+='  document.getElementById("modal-bg").classList.add("open");';
+  S+='}';
+  S+='function printConsolidar(){';
+  S+='  var body=document.getElementById("modal-body");';
+  S+='  if(!body||!body.innerHTML.trim()){alert("No hay contenido para imprimir.");return;}';
+  S+='  var w=window.open("","_blank","width=900,height=700");';
+  S+='  if(!w){alert("El navegador bloqueó la ventana emergente. Habilítala e intenta nuevamente.");return;}';
+  S+='  var h="<!DOCTYPE html><html><head><meta charset=\'utf-8\'><title>Consolidado Cotización — FRIOPACKING</title>";';
+  S+='  h+="<style>";';
+  S+='  h+="body{font-family:\'Segoe UI\',sans-serif;font-size:12px;color:#1e293b;margin:24px 32px;}";';
+  S+='  h+=".hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #0369a1;padding-bottom:12px;margin-bottom:20px;}";';
+  S+='  h+=".hdr-logo{font-size:18px;font-weight:800;color:#0369a1;letter-spacing:1px;}";';
+  S+='  h+=".hdr-sub{font-size:10px;color:#64748b;margin-top:2px;}";';
+  S+='  h+=".hdr-date{font-size:10px;color:#64748b;text-align:right;}";';
+  S+='  h+=".section{margin-bottom:24px;page-break-inside:avoid;}";';
+  S+='  h+=".resp-title{background:#0369a1;color:#fff;padding:8px 14px;font-size:12px;font-weight:700;border-radius:6px 6px 0 0;margin-bottom:0;}";';
+  S+='  h+="table{width:100%;border-collapse:collapse;font-size:11px;}";';
+  S+='  h+="th{background:#e0f2fe;color:#0369a1;font-weight:700;padding:7px 10px;text-align:left;border-bottom:2px solid #bae6fd;}";';
+  S+='  h+="td{padding:6px 10px;border-bottom:1px solid #e2e8f0;}";';
+  S+='  h+="tr:nth-child(even)td{background:#f8fafc;}";';
+  S+='  h+=".badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;color:#fff;}";';
+  S+='  h+=".footer{margin-top:28px;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:10px;}";';
+  S+='  h+="@media print{@page{margin:15mm;}body{margin:0;}}";';
+  S+='  h+="</style></head><body>";';
+  S+='  var now=new Date();';
+  S+='  var dd=now.getDate().toString().padStart(2,"0")+"/"+( (now.getMonth()+1).toString().padStart(2,"0") )+"/"+now.getFullYear();';
+  S+='  var hh=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");';
+  S+='  h+="<div class=\'hdr\'><div><div class=\'hdr-logo\'>FRIOPACKING S.A.</div><div class=\'hdr-sub\'>Consolidado de Pedidos para Cotización</div></div><div class=\'hdr-date\'>Generado: "+dd+" "+hh+"</div></div>";';
+  S+='  h+=body.innerHTML;';
+  S+='  h+="<div class=\'footer\'>Documento generado automáticamente por el sistema de compras · FRIOPACKING S.A.</div>";';
+  S+='  h+="</body></html>";';
+  S+='  w.document.write(h);';
+  S+='  w.document.close();';
+  S+='  w.focus();';
+  S+='  setTimeout(function(){w.print();},400);';
+  S+='}';
+  S+='function closeConsolidar(){document.getElementById("modal-bg").classList.remove("open");}';
+  S+='function enviarCorreo(){';
+  S+='  var items=DATA.filter(function(r){return sel.has(r.i);});';
+  S+='  if(!items.length){alert("No hay pedidos seleccionados.");return;}';
+  S+='  var asunto=encodeURIComponent("Solicitud de Cotizacion - FRIOPACKING S.A.");';
+  S+='  var cuerpo="Estimado proveedor,\\n\\nPor medio del presente, le hacemos llegar nuestra solicitud de cotizacion para los siguientes articulos:\\n\\n";';
+  S+='  var grupos={};';
+  S+='  items.forEach(function(r){var k=r.ped||"Sin pedido";if(!grupos[k])grupos[k]=[];grupos[k].push(r);});';
+  S+='  Object.keys(grupos).forEach(function(ped){';
+  S+='    cuerpo+="Pedido: "+ped+"\\n";';
+  S+='    grupos[ped].forEach(function(r,idx){';
+  S+='      cuerpo+="  "+(idx+1)+". ["+r.cod+"] "+r.prod+" - Cant: "+r.cant+" "+r.unid+"\\n";';
+  S+='    });';
+  S+='    cuerpo+="\\n";';
+  S+='  });';
+  S+='  cuerpo+="Quedamos a la espera de su cotizacion indicando precio unitario, moneda, plazo de entrega y condiciones de pago.\\n\\n";';
+  S+='  cuerpo+="Atentamente,\\nArea de Compras\\nFRIOPACKING S.A.";';
+  S+='  window.location.href="mailto:?subject="+asunto+"&body="+encodeURIComponent(cuerpo);';
+  S+='}';
+  S+='function limpiarSeleccion(){';
+  S+='  sel.clear();';
+  S+='  document.querySelectorAll(".row-cb").forEach(function(cb){cb.checked=false;});';
+  S+='  var hdr=document.getElementById("cb-all");if(hdr)hdr.checked=false;';
+  S+='  closeConsolidar();';
+  S+='  applyFilters();';
+  S+='}';
+
+  S+='applyFilters();';
+  S+='<\/script>';
+  S+='</body></html>';
+  var blob=new Blob([S],{type:'text/html;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='SinOC_Cotizacion_'+dd+'.html';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(a.href);},1000);
+}
+
 function clearF3(){
   resetMsel('f3respPedDrop','f3respPedBtn','f3respPedLbl','Resp. Pedido: Todos');
   ['f3resp','f3proj'].forEach(id=>document.getElementById(id).value='');
@@ -1748,6 +2207,7 @@ function renderGerencial(){
   const origen=(document.getElementById('g-f-origen')||{}).value||'maestro';
   const ucomp=(document.getElementById('g-f-ucomp')||{}).value||'';
   const tipo=(document.getElementById('g-f-tipo')||{}).value||'';
+  const mes=parseInt((document.getElementById('g-f-mes')||{}).value||'')||0;
 
   // Normalizar campos de D.p4 al mismo esquema que D.oc
   // freq=null porque Compras Directas no tiene requerimiento
@@ -1776,6 +2236,7 @@ function renderGerencial(){
   let fil=data;
   if(ucomp)fil=fil.filter(o=>o.ucomp===ucomp);
   if(tipo)fil=fil.filter(o=>o.oc&&o.oc.startsWith(tipo));
+  if(mes)fil=fil.filter(o=>o.foc&&parseInt(o.foc.split('/')[1])===mes);
 
   const directLabel=origen==='directas'?' (Compras Directas)':origen==='ambas'?' (Maestro + Directas)':' (Con Req.)';
   const elCnt=document.getElementById('g-f-cnt');
@@ -1789,6 +2250,26 @@ function renderGerencial(){
     return{avg,med,n:arr.length};
   }
 
+  // Semáforo helpers (lower is better, except setSemaInv)
+  function setSema(id,val,lo,hi){
+    const el=document.getElementById(id);if(!el)return;
+    if(val==='—'||val===null||val===undefined){el.style.background='rgba(255,255,255,.25)';el.style.boxShadow='none';return;}
+    const v=typeof val==='number'?val:parseFloat(String(val));
+    if(isNaN(v)){el.style.background='rgba(255,255,255,.25)';return;}
+    const ok=v<=lo,warn=v<=hi;
+    el.style.background=ok?'#4ade80':warn?'#fbbf24':'#f87171';
+    el.style.boxShadow=`0 0 8px ${ok?'rgba(74,222,128,.7)':warn?'rgba(251,191,36,.7)':'rgba(248,113,113,.7)'}`;
+  }
+  function setSemaInv(id,val,lo,hi){// higher is better (% on-time)
+    const el=document.getElementById(id);if(!el)return;
+    const v=typeof val==='number'?val:parseFloat(String(val));
+    if(isNaN(v)){el.style.background='rgba(255,255,255,.25)';return;}
+    const ok=v>=hi,warn=v>=lo;
+    el.style.background=ok?'#4ade80':warn?'#fbbf24':'#f87171';
+    el.style.boxShadow=`0 0 8px ${ok?'rgba(74,222,128,.7)':warn?'rgba(251,191,36,.7)':'rgba(248,113,113,.7)'}`;
+  }
+  let _avg1='—',_avg2='—',_avg3='—',_avg4='—',_pctOT='—';
+
   // Vertical bar chart: buckets = [{k,label,max}]
   function vbar(arr,buckets,barId,lblId,color){
     const elB=document.getElementById(barId);
@@ -1798,15 +2279,23 @@ function renderGerencial(){
     arr.forEach(v=>{for(const b of buckets){if(v<=b.max){counts[b.k]++;break;}}});
     const maxV=Math.max(...Object.values(counts),1);
     const H=70;// container height in px
+    const total=arr.length||1;
     elB.innerHTML=buckets.map(b=>{
       const c=counts[b.k];
       const h=Math.round(c/maxV*H);
-      return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-        <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.9)">${c||''}</span>
-        <div style="width:100%;height:${h}px;background:rgba(255,255,255,.75);border-radius:3px 3px 0 0;min-height:${c?3:0}px"></div>
+      return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px">
+        <span style="font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)">${c||''}</span>
+        <div style="width:100%;height:${h}px;background:rgba(255,255,255,.82);border-radius:3px 3px 0 0;min-height:${c?3:0}px;box-shadow:0 2px 4px rgba(0,0,0,.1)"></div>
       </div>`;
     }).join('');
-    elL.innerHTML=buckets.map(b=>`<div style="flex:1;text-align:center;font-size:8px;color:rgba(255,255,255,.7);line-height:1.2">${b.label}</div>`).join('');
+    elL.innerHTML=buckets.map(b=>{
+      const c=counts[b.k];
+      const pct=c?Math.round(c/total*100)+'%':'';
+      return`<div style="flex:1;text-align:center;line-height:1.3">
+        <div style="font-size:8.5px;color:rgba(255,255,255,.85);font-weight:500">${b.label}</div>
+        ${pct?`<div style="font-size:9px;color:rgba(255,255,255,.6);font-weight:600">${pct}</div>`:''}
+      </div>`;
+    }).join('');
   }
 
   const bkShort=[{k:'1-3',label:'1-3d',max:3},{k:'4-7',label:'4-7d',max:7},{k:'8-15',label:'8-15d',max:15},{k:'>15',label:'>15d',max:9999}];
@@ -1836,6 +2325,7 @@ function renderGerencial(){
     // Actualizar subtítulo de la tarjeta
     const sub=document.getElementById('g-sub-1');
     if(sub)sub.textContent=esDirectas?'Pedido → OC · días hábiles':'Requerimiento → OC · días hábiles';
+    setSema('g-sema-1',s.avg,5,10);_avg1=s.avg;
   }
 
   // ── 2. ALMACÉN: freq→fpedido (solo aplica si hay requerimiento) ───────────
@@ -1848,6 +2338,7 @@ function renderGerencial(){
     setText('g-med-req-ped',s.med+(s.n?'d':''));
     setText('g-n-req-ped',s.n.toLocaleString());
     vbar(d2,bkShort,'g-bar-req-ped','g-lbl-req-ped','#f472b6');
+    setSema('g-sema-2',s.avg,3,7);_avg2=s.avg;
   }
 
   // ── 3. COMPRADORES: fpedido→foc ───────────────────────────────────────────
@@ -1858,6 +2349,7 @@ function renderGerencial(){
     setText('g-med-ped-oc',s.med+(s.n?'d':''));
     setText('g-n-ped-oc',s.n.toLocaleString());
     vbar(d3,bkShort,'g-bar-ped-oc','g-lbl-ped-oc','#38bdf8');
+    setSema('g-sema-3',s.avg,5,10);_avg3=s.avg;
   }
 
   // ── 4. APROBACIÓN: foc→fapro ─────────────────────────────────────────────
@@ -1868,6 +2360,7 @@ function renderGerencial(){
     setText('g-med-oc-apro',s.med+(s.n?'d':''));
     setText('g-n-oc-apro',s.n.toLocaleString());
     vbar(d4,bkApro,'g-bar-oc-apro','g-lbl-oc-apro','#a78bfa');
+    setSema('g-sema-4',s.avg,1,3);_avg4=s.avg;
   }
 
   // ── 5. CUMPLIMIENTO ENTREGA: fent→frec ────────────────────────────────────
@@ -1881,6 +2374,7 @@ function renderGerencial(){
     setText('g-pct-ontime',pctOT+(d5.length?'%':''));
     setText('g-n-ent-rec',d5.length.toLocaleString());
     vbar(d5,[{k:'<=0',label:'A tiempo',max:0},{k:'1-3',label:'1-3d',max:3},{k:'4-7',label:'4-7d',max:7},{k:'>7',label:'>7d',max:9999}],'g-bar-ent-rec','g-lbl-ent-rec','#10b981');
+    setSemaInv('g-sema-5',pctOT,60,80);_pctOT=pctOT;
   }
 
   // ── 6. ENTREGA A PISO: fapro→frec ────────────────────────────────────────
@@ -1891,7 +2385,265 @@ function renderGerencial(){
     setText('g-med-aprob-rec',s.med+(s.n?'d':''));
     setText('g-n-aprob-rec',s.n.toLocaleString());
     vbar(d6,bkLong,'g-bar-aprob-rec','g-lbl-aprob-rec','#f59e0b');
+    setSema('g-sema-6',s.avg,7,15);
   }
+
+  // ── Strip resumen + Pipeline ──────────────────────────────────────────────
+  setText('g-strip-oc', fil.length.toLocaleString());
+  setText('g-strip-ontime', _pctOT+(typeof _pctOT==='number'?'%':''));
+  const pipeEl=document.getElementById('g-pipeline-flow');
+  if(pipeEl){
+    const stages=[
+      {val:_avg2,col:'#be185d',lbl:'Almacén'},
+      {val:_avg3,col:'#0891b2',lbl:'Compras'},
+      {val:_avg4,col:'#7c3aed',lbl:'Aprobac.'},
+    ];
+    let html=`<span style="font-size:10px;font-weight:600;color:#64748b">REQ</span>`;
+    let ttl=0;
+    stages.forEach(({val,col,lbl})=>{
+      if(val!=='—'&&typeof val==='number'){
+        ttl+=val;
+        html+=`<span style="color:#94a3b8;font-size:11px;margin:0 1px">→</span>`;
+        html+=`<span style="background:${col};color:#fff;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${val}d <span style="font-size:8px;opacity:.8">${lbl}</span></span>`;
+      }
+    });
+    html+=`<span style="color:#94a3b8;font-size:11px;margin:0 1px">→</span>`;
+    html+=`<span style="font-size:10px;font-weight:600;color:#64748b">RECEP.</span>`;
+    if(ttl>0)html+=`<span style="background:#0f172a;color:#fff;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;margin-left:8px">≈${ttl}d total</span>`;
+    pipeEl.innerHTML=html;
+  }
+
+  // ── Ranking compradores ───────────────────────────────────────────────────
+  const comprMap={};
+  fil.forEach(o=>{
+    const key=o.ucomp||'';if(!key)return;
+    const d=diffBizDays(esDirectas?o.fpedido:o.freq, o.foc);
+    if(d===null)return;
+    if(!comprMap[key])comprMap[key]={sum:0,cnt:0};
+    comprMap[key].sum+=d;comprMap[key].cnt++;
+  });
+  const comprRank=Object.entries(comprMap).filter(([,v])=>v.cnt>=2).map(([k,v])=>({name:k,avg:Math.round(v.sum/v.cnt),cnt:v.cnt})).sort((a,b)=>a.avg-b.avg);
+  const rankEl=document.getElementById('g-ranking-compradores');
+  if(rankEl){
+    if(!comprRank.length){rankEl.innerHTML='<span style="font-size:11px;color:#94a3b8">Sin datos suficientes (mín. 2 OC por comprador)</span>';}
+    else{
+      const medals=['🥇','🥈','🥉'];
+      rankEl.innerHTML=comprRank.map((r,i)=>{
+        const col=r.avg<=5?'#16a34a':r.avg<=10?'#d97706':'#dc2626';
+        return`<div class="g-rank-card" style="border-left-color:${col}">
+          <div style="font-size:11px;font-weight:600;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.name}">${medals[i]||'  '} ${r.name}</div>
+          <div style="font-size:24px;font-weight:800;color:${col};line-height:1.2">${r.avg}d</div>
+          <div style="font-size:10px;color:#94a3b8">${r.cnt} OC · vel. compra</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ── OC colocadas por comprador ────────────────────────────────
+  const ocByComp={};
+  fil.forEach(o=>{
+    const k=o.ucomp||'(sin asignar)';
+    ocByComp[k]=(ocByComp[k]||0)+1;
+  });
+  const ocRank=Object.entries(ocByComp).map(([k,v])=>({name:k,cnt:v})).sort((a,b)=>b.cnt-a.cnt);
+  const ocEl=document.getElementById('g-oc-por-comprador');
+  if(ocEl){
+    if(!ocRank.length){ocEl.innerHTML='<span style="font-size:11px;color:#94a3b8">Sin datos en el período filtrado.</span>';}
+    else{
+      const maxV=ocRank[0].cnt||1;
+      const palette=['#1e40af','#0891b2','#7c3aed','#be185d','#065f46','#b45309','#374151','#9d174d','#1e3a8a','#134e4a'];
+      ocEl.innerHTML=ocRank.map((r,i)=>{
+        const pct=Math.round(r.cnt/maxV*100);
+        const col=palette[i%palette.length];
+        const pctTot=fil.length?Math.round(r.cnt/fil.length*100):0;
+        return`<div style="display:flex;align-items:center;gap:12px">
+          <div style="min-width:160px;max-width:200px;font-size:12px;font-weight:600;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.name}">${r.name}</div>
+          <div style="flex:1;background:#f1f5f9;border-radius:8px;height:28px;overflow:hidden;position:relative">
+            <div style="width:${pct}%;background:${col};height:100%;border-radius:8px;transition:width .5s;display:flex;align-items:center;padding-left:10px;box-sizing:border-box">
+              <span style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap">${r.cnt} OC</span>
+            </div>
+          </div>
+          <div style="min-width:42px;text-align:right;font-size:12px;font-weight:700;color:#64748b">${pctTot}%</div>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+function showP1Auth(){
+  const modal=document.getElementById('p1-auth-modal');
+  modal.style.display='flex';
+  const inp=document.getElementById('p1-pass-input');
+  inp.value='';
+  document.getElementById('p1-pass-err').textContent='';
+  setTimeout(()=>inp.focus(),120);
+}
+function checkP1Pass(){
+  const v=document.getElementById('p1-pass-input').value;
+  if(v==='MLUJAN2026$'){
+    sessionStorage.setItem('fp_p1_auth','1');
+    document.getElementById('p1-auth-modal').style.display='none';
+    nav('p1');
+  } else {
+    const err=document.getElementById('p1-pass-err');
+    err.textContent='⚠ Contraseña incorrecta';
+    const inp=document.getElementById('p1-pass-input');
+    inp.value='';inp.focus();
+    inp.style.borderColor='#dc2626';
+    setTimeout(()=>{inp.style.borderColor='#e2e8f0';err.textContent='';},2000);
+  }
+}
+
+// ── CONSULTAS (P7) ────────────────────────────────────────────────
+function showP7Auth(){
+  const modal=document.getElementById('p7-auth-modal');
+  modal.style.display='flex';
+  const inp=document.getElementById('p7-pass-input');
+  inp.value='';
+  document.getElementById('p7-pass-err').textContent='';
+  setTimeout(()=>inp.focus(),120);
+}
+function checkP7Pass(){
+  const v=document.getElementById('p7-pass-input').value;
+  if(v==='COMPRAS2026$'){
+    sessionStorage.setItem('fp_p7_auth','1');
+    document.getElementById('p7-auth-modal').style.display='none';
+    nav('p7');
+  } else {
+    const err=document.getElementById('p7-pass-err');
+    err.textContent='⚠ Contraseña incorrecta';
+    const inp=document.getElementById('p7-pass-input');
+    inp.value='';inp.focus();
+    inp.style.borderColor='#dc2626';
+    setTimeout(()=>{inp.style.borderColor='#e2e8f0';err.textContent='';},2000);
+  }
+}
+
+let p7pg=0, p7pgsz=50;
+function importConsultas(wb){
+  const sh=wb.Sheets[wb.SheetNames[0]];
+  const raw=XLSX.utils.sheet_to_json(sh,{header:1,defval:''});
+  // Detectar fila de encabezados reales (puede haber título en fila 0)
+  let hdrIdx=0;
+  for(let i=0;i<Math.min(10,raw.length);i++){
+    const row=raw[i].map(c=>String(c||'').toUpperCase());
+    if(row.some(c=>c.includes('OCOMPRA')||c.includes('IDPROD')||c.includes('RAZON_SOC')||c.includes('DESCRIPCION'))){
+      hdrIdx=i; break;
+    }
+  }
+  const hdrs=raw[hdrIdx].map(c=>String(c||'').trim().toUpperCase());
+  const gi=(...cands)=>{for(const c of cands){const i=hdrs.findIndex(h=>h.includes(c.toUpperCase()));if(i>=0)return i;}return -1;};
+  // Buscar índices con múltiples candidatos — el gi() usa includes()
+  // Columna OC: busca "DOCUM" o "N° OC" o "OCOMPRA"
+  const iOC   =gi('DOCUM','N° OC','OCOMPRA','DOCUMENTO');
+  // Fecha
+  const iFECH =gi('FECHA');
+  // RUC/ID proveedor: primera columna que diga solo "PROVEEDOR" (sin "RAZON")
+  // Se hace buscando índice de la primera col que incluya PROVEEDOR
+  const iRUC  =(()=>{const idx=hdrs.findIndex((h,i)=>h.includes('PROVEEDOR')&&!h.includes('RAZON')&&!h.includes('NOMBRE'));return idx>=0?idx:gi('IDCLIEPROV','IDCLIEROV');})();
+  // Razón social: columna que incluye PROVEEDOR y (RAZO o NOMBRE o SOC)
+  const iRAZON=(()=>{const idx=hdrs.findIndex(h=>h.includes('PROVEEDOR')&&(h.includes('RAZO')||h.includes('NOMBRE')||h.includes('SOC')));return idx>=0?idx:gi('RAZON_SOCIAL','RAZON_SOC','RAZON');})();
+  // Moneda
+  const iMONE =gi('MONE','MONEDA','MON_DSC');
+  // Código producto: primera col que incluya PRODUCTO y (COD o C )
+  const iPROD =(()=>{const idx=hdrs.findIndex(h=>h.includes('PRODUCTO')&&(h.includes('COD')||h.match(/PRODUCTO\s*C/)));return idx>=0?idx:gi('IDPROD','CODIGO')})();
+  // Descripción producto
+  const iDESC =(()=>{const idx=hdrs.findIndex(h=>h.includes('PRODUCTO')&&(h.includes('DES')||h.includes('NOMBRE')));return idx>=0?idx:gi('DESCRIPCION','DESC')})();
+  // Precio unitario: prioriza ME unitario, luego MN unitario, luego PREC o TOTAL
+  const iPREC =gi('PRECIO M.E. UNIT','PRECIO M.N. UNIT','PRECIO M.E UNIT','PRECIO M.N UNIT','PREC UNIT','PREC','TOTAL','IMPORTE');
+  // Responsable
+  const iCREA =gi('RESPON','RESP_DOC','CREADOO_POR','CREADO_POR','RESPONSABLE');
+  const iEST  =gi('ESTAD','ESTADO','EST_DOC','STATUS');
+  const gv=(r,i)=>i>=0?String(r[i]||'').trim():'';
+  // Formatear fecha a DD/MM/YYYY (acepta Date string largo o ya formateado)
+  const fmtFecha=(v)=>{
+    if(!v)return'';
+    const s=String(v).trim();
+    if(/^\d{2}\/\d{2}\/\d{4}$/.test(s))return s;
+    const d=new Date(s);
+    if(isNaN(d.getTime()))return s.slice(0,10);
+    return d.getDate().toString().padStart(2,'0')+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getFullYear();
+  };
+  // Moneda: códigos numéricos o texto libre
+  const fmtMon=(v)=>{
+    const s=String(v||'').trim();
+    if(s==='01'||s.toLowerCase().includes('sol'))return'S/';
+    if(s==='02'||s.toLowerCase().includes('dolar')||s.toLowerCase().includes('dollar'))return'US$';
+    if(s==='03'||s.toLowerCase().includes('euro'))return'€';
+    return s;
+  };
+  if(!D.consultas)D.consultas=[];
+  D.consultas=raw.slice(hdrIdx+1)
+    .filter(r=>r&&r.some(c=>c!=null&&c!==''))
+    .map(r=>({
+      oc:       gv(r,iOC),
+      fecha:    fmtFecha(gv(r,iFECH)),
+      fechaRaw: new Date(gv(r,iFECH)).getTime()||0,
+      ruc:      gv(r,iRUC),
+      proveedor:gv(r,iRAZON),
+      moneda:   fmtMon(gv(r,iMONE)),
+      codigo:   gv(r,iPROD),
+      desc:     gv(r,iDESC),
+      valor:    gv(r,iPREC),
+      resp:     gv(r,iCREA),
+      estado:   gv(r,iEST),
+    }));
+  // Ordenar por fecha descendente (más reciente primero)
+  D.consultas.sort((a,b)=>b.fechaRaw-a.fechaRaw);
+  const _st=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  _st('k7tot',D.consultas.length.toLocaleString());
+  _st('k7prov',[...new Set(D.consultas.map(r=>r.proveedor).filter(Boolean))].length);
+  _st('k7art',[...new Set(D.consultas.map(r=>r.codigo).filter(Boolean))].length);
+  renderP7();
+  alert('✅ CONSULTAS.xlsx importado: '+D.consultas.length+' registros');
+}
+function handleConsultasUpload(input){
+  if(!input.files[0])return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      importConsultas(wb);
+    }catch(ex){alert('Error leyendo CONSULTAS.xlsx: '+ex.message);}
+    input.value='';
+  };
+  reader.readAsArrayBuffer(input.files[0]);
+}
+function renderP7(){
+  const _st7=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  const data=D.consultas||[];
+  const q=(document.getElementById('f7q')||{}).value||'';
+  const ql=q.toLowerCase();
+  const fil=ql?data.filter(r=>(r.codigo+r.desc+r.proveedor).toLowerCase().includes(ql)):data;
+  _st7('k7tot',data.length.toLocaleString());
+  _st7('k7prov',[...new Set(data.map(r=>r.proveedor).filter(Boolean))].length);
+  _st7('k7art',[...new Set(data.map(r=>r.codigo).filter(Boolean))].length);
+  const cnt=document.getElementById('f7cnt');
+  if(cnt)cnt.textContent=fil.length.toLocaleString()+' registros';
+  const tot=fil.length, pages=Math.ceil(tot/p7pgsz)||1;
+  const slice=fil.slice(p7pg*p7pgsz,(p7pg+1)*p7pgsz);
+  const tb=document.getElementById('tb7');
+  if(!tb)return;
+  if(!fil.length){
+    tb.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">${data.length?'Sin resultados para la búsqueda.':'Aún no se ha cargado el archivo CONSULTAS.xlsx.<br><br>Use el botón 📂 Importar CONSULTAS.xlsx'}</td></tr>`;
+    const pi=document.getElementById('p7info');if(pi)pi.textContent='';
+    return;
+  }
+  tb.innerHTML=slice.map(r=>`<tr>
+    <td style="font-weight:600;color:#1e40af">${r.codigo||'—'}</td>
+    <td>${r.desc||'—'}</td>
+    <td style="font-size:11px;color:#64748b;font-family:monospace">${r.ruc||'—'}</td>
+    <td>${r.proveedor||'—'}</td>
+    <td style="text-align:center">${r.moneda||'—'}</td>
+    <td style="text-align:right;font-weight:700;color:#0f172a">${r.valor||'—'}</td>
+    <td style="text-align:center">${r.fecha||'—'}</td>
+    <td style="text-align:center">${r.oc||'—'}</td>
+    <td style="text-align:center">${r.estado?`<span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;background:${r.estado.toLowerCase().includes('atendido')?'#dcfce7':r.estado.toLowerCase().includes('pend')?'#fee2e2':'#f1f5f9'};color:${r.estado.toLowerCase().includes('atendido')?'#16a34a':r.estado.toLowerCase().includes('pend')?'#dc2626':'#475569'}">${r.estado}</span>`:'—'}</td>
+    <td>${r.resp||'—'}</td>
+  </tr>`).join('');
+  const pi=document.getElementById('p7info');
+  if(pi)pi.textContent=`Mostrando ${p7pg*p7pgsz+1}–${Math.min((p7pg+1)*p7pgsz,tot)} de ${tot}`;
+  renderPag('p7pag',pages,p7pg,p=>{p7pg=p;renderP7();});
 }
 
 function toggleDark(){
@@ -2038,6 +2790,7 @@ function renderP4(){
   document.getElementById('k4comp').textContent=p4fil.filter(r=>r.estado&&(r.estado.toLowerCase().includes('completo')||r.estado.toLowerCase().includes('completa'))).length;
   document.getElementById('k4resp').textContent=new Set(p4fil.map(r=>r.respPed).filter(Boolean)).size;
   document.getElementById('k4prov').textContent=new Set(p4fil.map(r=>r.prov).filter(Boolean)).size;
+  drawDonut4Charts(p4fil);
   renderP4Table();
 }
 function renderP4Table(){
@@ -2091,21 +2844,29 @@ function clearF4(){
   ['f4resp','f4ucomp','f4prov'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f4q').value='';renderP4();
 }
-function drawDonut4Charts(){
-  const data=D.p4||[];
-  const pend=data.filter(r=>r.estado&&r.estado.toLowerCase().includes('pendiente')).length;
-  const parc=data.filter(r=>r.estado&&r.estado.toLowerCase().includes('parcial')).length;
-  const comp=data.filter(r=>r.estado&&(r.estado.toLowerCase().includes('completo')||r.estado.toLowerCase().includes('completa'))).length;
-  const tot=pend+parc+comp||1;
-  const circ=2*Math.PI*28, r=28;
-  let off=20;
-  const segs=[{v:pend,c:'#dc2626'},{v:parc,c:'#f59e0b'},{v:comp,c:'#16a34a'}];
+function drawDonut4Charts(data){
+  data=data||D.p4||[];
+  const segs=[
+    {k:'pendiente',label:'Pendiente',c:'#dc2626'},
+    {k:'parcial',  label:'Atend. Parcial',c:'#f59e0b'},
+    {k:'completo', label:'Atend. Completo',c:'#16a34a'},
+  ];
+  segs.forEach(s=>{
+    s.v=data.filter(r=>r.estado&&r.estado.toLowerCase().includes(s.k)).length;
+  });
+  const tot=segs.reduce((a,s)=>a+s.v,0)||1;
+  const ttlEl=document.getElementById('p4-estado-ttl');
+  if(ttlEl)ttlEl.textContent=data.length;
+  // Donut
+  const circ=2*Math.PI*28,R=28;let off=20;
   const svg=document.getElementById('donut4');
-  svg.innerHTML=`<circle cx="36" cy="36" r="${r}" fill="none" stroke="#f1f5f9" stroke-width="12"/>`;
+  if(!svg)return;
+  svg.innerHTML=`<circle cx="36" cy="36" r="${R}" fill="none" stroke="#f1f5f9" stroke-width="12"/>`;
   segs.forEach(({v,c})=>{
-    const da=circ*v/tot, gap=circ-da;
+    if(!v)return;
+    const da=circ*v/tot,gap=circ-da;
     const el=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    el.setAttribute('cx',36);el.setAttribute('cy',36);el.setAttribute('r',r);
+    el.setAttribute('cx',36);el.setAttribute('cy',36);el.setAttribute('r',R);
     el.setAttribute('fill','none');el.setAttribute('stroke',c);el.setAttribute('stroke-width',12);
     el.setAttribute('stroke-dasharray',`${da} ${gap}`);el.setAttribute('stroke-dashoffset',-off);
     el.setAttribute('stroke-linecap','round');
@@ -2114,32 +2875,31 @@ function drawDonut4Charts(){
   const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
   txt.setAttribute('x',36);txt.setAttribute('y',40);txt.setAttribute('text-anchor','middle');
   txt.setAttribute('font-size',11);txt.setAttribute('font-weight',700);txt.setAttribute('fill','#0f172a');
-  txt.textContent=tot;svg.appendChild(txt);
-  document.getElementById('dleg4').innerHTML=
-    `<div class="li"><span class="ld" style="background:#dc2626"></span>Pendiente (${pend})</div>
-     <div class="li"><span class="ld" style="background:#f59e0b"></span>Parcial (${parc})</div>
-     <div class="li"><span class="ld" style="background:#16a34a"></span>Completo (${comp})</div>`;
-  // Hbar — por resp. pedido
-  const rcnt={};data.forEach(r=>{if(r.respPed)rcnt[r.respPed]=(rcnt[r.respPed]||0)+1;});
-  const rsorted=Object.entries(rcnt).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const rmax=rsorted[0]?.[1]||1;
-  document.getElementById('hbar4').innerHTML=rsorted.map(([n,c],i)=>`
-    <div class="hbr"><div class="hblab"><span>${n.split(' ').slice(0,2).join(' ')}</span><span>${c}</span></div>
-    <div class="hbt"><div class="hbf" style="width:${c/rmax*100}%;background:${COLORS[i%COLORS.length]}"></div></div></div>`).join('');
-  // Rank — top proveedores
-  const pcnt={};data.forEach(r=>{if(r.prov)pcnt[r.prov]=(pcnt[r.prov]||0)+1;});
-  const psorted=Object.entries(pcnt).sort((a,b)=>b[1]-a[1]).slice(0,7);
-  document.getElementById('rank4').innerHTML=psorted.map(([n,c],i)=>`
-    <div class="rkr"><span class="rkn">${i+1}</span><span class="rknm" title="${n}">${n}</span><span class="rkvl">${c}</span></div>`).join('');
-  // Vbar — OC por mes
-  const months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const mcnt={};data.forEach(r=>{const m=r.foc?parseInt(r.foc.split('/')[1]):null;if(m)mcnt[m]=(mcnt[m]||0)+1;});
-  const meses=Object.keys(mcnt).map(Number).sort((a,b)=>a-b);
-  const mmax=Math.max(...Object.values(mcnt))||1;
-  const mcolors=['#16a34a','#1d4ed8','#1d4ed8','#f59e0b','#f59e0b','#dc2626'];
-  document.getElementById('vbar4').innerHTML=meses.map((m,i)=>{
-    const h=mcnt[m]/mmax*100;
-    return`<div class="vbc"><div class="vb" style="height:${h}%;background:${mcolors[Math.min(i,5)]}"></div><span class="vbl">${months[m-1]}</span></div>`;
+  txt.textContent=data.length;svg.appendChild(txt);
+  // Leyenda
+  const legEl=document.getElementById('dleg4');
+  if(legEl)legEl.innerHTML=segs.map(({v,c,label})=>{
+    const pct=Math.round(v/tot*100);
+    return`<div style="display:flex;align-items:center;gap:8px">
+      <span style="width:12px;height:12px;border-radius:3px;background:${c};flex-shrink:0;display:inline-block"></span>
+      <span style="font-size:11px;color:#475569;flex:1">${label}</span>
+      <span style="font-size:13px;font-weight:700;color:#0f172a">${v}</span>
+      <span style="font-size:10px;color:#94a3b8;min-width:32px;text-align:right">${pct}%</span>
+    </div>`;
+  }).join('');
+  // Barras horizontales por estado
+  const barsEl=document.getElementById('p4-estado-bars');
+  if(barsEl)barsEl.innerHTML=segs.map(({v,c,label})=>{
+    const pct=Math.round(v/tot*100);
+    return`<div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span style="color:#334155;font-weight:600">${label}</span>
+        <span style="color:#64748b">${v} OC · ${pct}%</span>
+      </div>
+      <div style="background:#f1f5f9;border-radius:6px;height:14px;overflow:hidden">
+        <div style="width:${pct}%;background:${c};height:100%;border-radius:6px;transition:width .4s"></div>
+      </div>
+    </div>`;
   }).join('');
 }
 
@@ -2160,7 +2920,10 @@ function handleMultiUpload(input){
     reader.onload=function(e){
       try{
         const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-        if(name.includes('pedido')){
+        if(name.includes('consulta')){
+          importConsultas(wb);
+          results.push('✅ '+file.name+' (CONSULTAS)');
+        } else if(name.includes('pedido')){
           importPedidoSinReq(wb);
           results.push('✅ '+file.name+' (Compras Directas)');
         } else {
@@ -2851,7 +3614,77 @@ setInterval(function(){
     </div>
   </div>
 </div>
+<!-- P7 CONSULTAS -->
+<div class="pg" id="pp7">
+  <div class="ib">
+    <span class="idot"></span>
+    <span>Consulta de Precios Anteriores</span>
+    <span style="flex:1"></span>
+    <button class="btn bi" onclick="document.getElementById('fileCONSULTAS').click()" title="Importar CONSULTAS.xlsx" style="font-size:11px;padding:5px 10px">📂 Importar CONSULTAS.xlsx</button>
+  </div>
+  <div class="kpis">
+    <div class="kpi k0"><div class="klbl">Total Registros</div><div class="kval" id="k7tot">—</div><div class="ksub">Líneas cargadas</div></div>
+    <div class="kpi k4"><div class="klbl">Proveedores</div><div class="kval" id="k7prov">—</div><div class="ksub">Únicos</div></div>
+    <div class="kpi k5"><div class="klbl">Artículos</div><div class="kval" id="k7art">—</div><div class="ksub">Códigos distintos</div></div>
+  </div>
+  <div class="flt">
+    <input class="fsrch" id="f7q" oninput="renderP7()" placeholder="Buscar código / descripción / proveedor…" style="max-width:420px"/>
+    <button class="fclr" onclick="document.getElementById('f7q').value='';renderP7()">✕ Limpiar</button>
+    <span class="fcnt" id="f7cnt">— registros</span>
+  </div>
+  <div class="tw">
+    <div class="th"><span class="thtt">Historial de Precios</span></div>
+    <table class="ttbl"><thead><tr>
+      <th>CÓDIGO</th>
+      <th>DESCRIPCIÓN DEL ARTÍCULO</th>
+      <th>RUC</th>
+      <th>PROVEEDOR</th>
+      <th>MONEDA</th>
+      <th>VALOR UNIT.</th>
+      <th>FECHA OC</th>
+      <th>N° OC</th>
+      <th>ESTADO</th>
+      <th>RESPONSABLE</th>
+    </tr></thead><tbody id="tb7"></tbody></table>
+    <div class="pag"><span id="p7info">—</span><div class="pbts" id="p7pag"></div></div>
+  </div>
+</div>
+
+<!-- Modal contraseña Gerencial -->
+<div id="p1-auth-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.88);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(6px)" onclick="if(event.target===this)document.getElementById('p1-auth-modal').style.display='none'">
+  <div style="background:#fff;border-radius:18px;padding:40px 44px;width:380px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45)">
+    <div style="width:60px;height:60px;background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:18px;box-shadow:0 6px 20px rgba(29,78,216,.35)">🔒</div>
+    <h2 style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:5px;font-family:'Inter',sans-serif">Gerencial / KPIs</h2>
+    <p style="font-size:12px;color:#64748b;margin-bottom:26px;font-family:'Inter',sans-serif">Acceso restringido · Solo Gerencia</p>
+    <input type="password" id="p1-pass-input" placeholder="Contraseña" autocomplete="off"
+      style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:11px 14px;font-size:14px;font-family:'Inter',sans-serif;outline:none;margin-bottom:6px;box-sizing:border-box;transition:border .2s"
+      onfocus="this.style.borderColor='#3b82f6'"
+      onblur="this.style.borderColor='#e2e8f0'"
+      onkeydown="if(event.key==='Enter')checkP1Pass()">
+    <div id="p1-pass-err" style="font-size:11px;color:#dc2626;min-height:18px;margin-bottom:10px;font-family:'Inter',sans-serif"></div>
+    <button onclick="checkP1Pass()" style="width:100%;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:9px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 14px rgba(29,78,216,.3);transition:opacity .15s" onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">Ingresar</button>
+    <button onclick="document.getElementById('p1-auth-modal').style.display='none'" style="width:100%;background:transparent;color:#94a3b8;border:none;padding:9px;font-size:12px;cursor:pointer;margin-top:4px;font-family:'Inter',sans-serif">Cancelar</button>
+  </div>
+</div>
+
+<!-- Modal contraseña Consultas -->
+<div id="p7-auth-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.88);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(6px)" onclick="if(event.target===this)document.getElementById('p7-auth-modal').style.display='none'">
+  <div style="background:#fff;border-radius:18px;padding:40px 44px;width:380px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45)">
+    <div style="width:60px;height:60px;background:linear-gradient(135deg,#0891b2,#38bdf8);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:18px;box-shadow:0 6px 20px rgba(8,145,178,.35)">🔍</div>
+    <h2 style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:5px;font-family:'Inter',sans-serif">Consultas de Precios</h2>
+    <p style="font-size:11px;color:#64748b;margin-bottom:20px;font-family:'Inter',sans-serif">Acceso restringido · Solo Compras</p>
+    <input type="password" id="p7-pass-input" placeholder="Contraseña"
+      style="width:100%;box-sizing:border-box;border:2px solid #e2e8f0;border-radius:9px;padding:11px 14px;font-size:14px;margin-bottom:6px;outline:none;font-family:'Inter',sans-serif;transition:border .2s"
+      onfocus="this.style.borderColor='#0891b2'" onblur="this.style.borderColor='#e2e8f0'"
+      onkeydown="if(event.key==='Enter')checkP7Pass()">
+    <div id="p7-pass-err" style="font-size:11px;color:#dc2626;min-height:18px;margin-bottom:10px;font-family:'Inter',sans-serif"></div>
+    <button onclick="checkP7Pass()" style="width:100%;background:linear-gradient(135deg,#0891b2,#38bdf8);color:#fff;border:none;border-radius:9px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 14px rgba(8,145,178,.3);transition:opacity .15s" onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">Ingresar</button>
+    <button onclick="document.getElementById('p7-auth-modal').style.display='none'" style="width:100%;background:transparent;color:#94a3b8;border:none;padding:9px;font-size:12px;cursor:pointer;margin-top:4px;font-family:'Inter',sans-serif">Cancelar</button>
+  </div>
+</div>
+
 <input type="file" id="fileMAESTRO" accept=".xlsx,.xls" style="display:none" multiple onchange="handleMultiUpload(this)"/>
+<input type="file" id="fileCONSULTAS" accept=".xlsx,.xls" style="display:none" onchange="handleConsultasUpload(this)"/>
 <div id="sticky-hscroll"><div id="sticky-hscroll-inner"></div></div>
 <script>
 (function(){
