@@ -621,7 +621,7 @@ body.dark .g-rank-card{background:#111b2b!important}
       <div class="thr"><button class="thb" id="p4pgsz" onclick="togglePgsz4()">50/pág</button></div>
     </div>
     <table class="ttbl"><thead><tr>
-      <th>OC</th><th>F. OC</th><th>F. APROB.</th><th>F. ENTREGA</th><th>ESTADO</th><th>USR. COMP.</th>
+      <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th>ESTADO</th><th>USR. COMP.</th>
       <th>PROVEEDOR</th><th>RESP. PEDIDO</th><th>N° PEDIDO</th><th>F. PEDIDO</th>
       <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th>
       <th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th>
@@ -717,7 +717,7 @@ body.dark .g-rank-card{background:#111b2b!important}
 
 <script>
 // ── DATA ────────────────────────────────────────────────────────
-const D = {"p4":[],"oc":[],"p5reqs":[],"sinoc":[],"proj":[],"gerencial":{"summary":{"totalOC":0,"pendientes":0,"atendidoParcial":0,"atendidoCompleto":0,"totalReqs":0,"pendienteReqs":0},"byResponsable":[],"byProject":[]},"ocMeta":{}};
+const D = {"p4":[],"oc":[],"p5reqs":[],"sinoc":[],"proj":[],"gerencial":{"summary":{"totalOC":0,"pendientes":0,"atendidoParcial":0,"atendidoCompleto":0,"totalReqs":0,"pendienteReqs":0},"byResponsable":[],"byProject":[]},"ocMeta":{},"cotMeta":{}};
 
 
 
@@ -967,8 +967,13 @@ function toggleCorreo(cb,oc){
   if(el)el.textContent=D.ocMeta[oc].fcorreo||'—';
   saveLocal();
 }
+function toggleCotiz(key,checked){
+  if(!D.cotMeta)D.cotMeta={};
+  D.cotMeta[key]=checked;
+  saveLocal();
+}
 function enviarCorreoOC(oc){
-  var items=SKUS[oc]||[];
+  var items=SKUS[oc]||SKUS_P4[oc]||[];
   if(!items.length){alert('No se encontraron ítems para esta OC.');return;}
   var prov=items[0].prov||'';
   var idproy=items[0].idproy||'';
@@ -989,7 +994,7 @@ function enviarCorreoOC(oc){
   window.location.href='mailto:?subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(L.join('\r\n'));
 }
 function verCorreoFormateadoOC(oc){
-  var items=SKUS[oc]||[];
+  var items=SKUS[oc]||SKUS_P4[oc]||[];
   if(!items.length){alert('No se encontraron ítems para esta OC.');return;}
   var ocRow=D.oc?D.oc.find(function(o){return o.oc===oc;}):null;
   items=items.map(function(r){return r.unid?r:Object.assign({},r,{unid:ocRow?(ocRow.unid||''):''});});
@@ -1323,11 +1328,15 @@ function exportP3HTML(){
   var now=new Date();
   var fechaGen=now.toLocaleDateString('es-PE',{day:'2-digit',month:'long',year:'numeric'})+' · '+now.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
   var dd=now.toISOString().slice(0,10);
-  var jsonData=JSON.stringify(exportData.map(function(r,i){return{
-    i:i,ped:r.ped||'',fecha:r.fecha||'',respPed:r.respPed||'',resp:r.resp||'',
-    idproy:r.idproy||'',proy:r.proy||'',cod:r.cod||'',prod:r.prod||'',
-    cant:r.cant||0,unid:r.unid||'',req:r.req||'',freq:r.freq||'',estado:r.estado||''
-  };}));
+  var jsonData=JSON.stringify(exportData.map(function(r,i){
+    var key=(r.ped||'')+'_'+(r.cod||'');
+    return{
+      i:i,ped:r.ped||'',fecha:r.fecha||'',respPed:r.respPed||'',resp:r.resp||'',
+      idproy:r.idproy||'',proy:r.proy||'',cod:r.cod||'',prod:r.prod||'',
+      cant:r.cant||0,unid:r.unid||'',req:r.req||'',freq:r.freq||'',estado:r.estado||'',
+      key:key,cotiz:!!(D.cotMeta&&D.cotMeta[key])
+    };
+  }));
   // Build HTML using string parts — NO nested backtick template literals
   var S='';
   S+='<!DOCTYPE html><html lang="es"><head>';
@@ -1444,6 +1453,7 @@ function exportP3HTML(){
   S+='<th>N° Pedido</th><th>F. Pedido</th><th>Resp. Pedido</th><th>Responsable / Solicitante</th>';
   S+='<th>ID Proyecto</th><th>Proyecto</th><th>Código</th><th>Descripción Producto</th>';
   S+='<th>Cant.</th><th>Unidad</th><th>Requerimiento</th><th>Fecha Req.</th><th>Estado</th>';
+  S+='<th style="background:#16a34a;color:#fff;text-align:center;white-space:nowrap"><div style="display:flex;align-items:center;justify-content:center;gap:5px"><input type="checkbox" id="chk-cotiz-all" onchange="toggleAllCotiz(this.checked)" title="Marcar todos los visibles" style="width:14px;height:14px;cursor:pointer;accent-color:#fff"> COTIZ.</div></th>';
   S+='</tr></thead><tbody id="tbody"></tbody></table></div></div>';
   S+='<div class="footer">Documento generado automáticamente &nbsp;&middot;&nbsp; <strong>FRIOPACKING S.A.</strong> &nbsp;&middot;&nbsp; Plataforma de Seguimiento de Compras 2026</div>';
   S+='</div>';
@@ -1461,6 +1471,9 @@ function exportP3HTML(){
   S+='<script>';
   S+='var DATA='+jsonData+';';
   S+='var sel=new Set();';
+  S+='function saveCotiz(cb){try{if(window.opener&&window.opener.toggleCotiz)window.opener.toggleCotiz(cb.dataset.key,cb.checked);}catch(e){}}';
+  S+='function toggleAllCotiz(checked){document.querySelectorAll("[data-key]").forEach(function(cb){cb.checked=checked;saveCotiz(cb);});}';
+
   S+='var visibleData=DATA.slice();';
   S+='function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}';
   S+='function ec(e){if(!e)return"#94a3b8";var l=e.toLowerCase();if(l==="finalizado")return"#16a34a";if(l==="pendiente")return"#dc2626";return"#d97706";}';
@@ -1538,6 +1551,8 @@ function exportP3HTML(){
   S+='    h+=\'<td style="font-size:11px;color:#475569">\'+esc(r.req||"—")+\'</td>\';';
   S+='    h+=\'<td style="white-space:nowrap;color:#64748b;font-size:11px">\'+esc(r.freq||"—")+\'</td>\';';
   S+='    h+=\'<td style="text-align:center"><span class="badge" style="background:\'+c+\'20;color:\'+c+\';border-color:\'+c+\'55">\'+esc(r.estado||"—")+\'</span></td>\';';
+  S+='    var cotChk=r.cotiz?"checked":"";';
+  S+='    h+=\'<td style="text-align:center;background:#f0fdf4"><input type="checkbox" \'+cotChk+\' data-key="\'+esc(r.key)+\'" onchange="saveCotiz(this)" style="width:15px;height:15px;cursor:pointer;accent-color:#16a34a"></td>\';';
   S+='    h+="</tr>";';
   S+='  });';
   S+='  tb.innerHTML=h;';
@@ -3095,13 +3110,16 @@ function renderP4Table(){
     const pedHtml=(r.ped&&r.ped.length>1)
       ? r.ped.map(p=>`<span style="display:inline-block;margin:1px 2px;font-size:10px;background:#f1f5f9;color:#334155;padding:1px 5px;border-radius:4px">${p}</span>`).join('')
       : (r.ped&&r.ped[0])||'—';
+    const ocEsc4=r.oc.replace(/'/g,"\\'");
     const ocCell=r.nItems>1
       ? `<span class="cl" style="cursor:pointer" onclick="openSkuModalP4(this)" data-oc="${r.oc}" data-proy="" data-prov="${r.prov.replace(/"/g,'&quot;')}" title="Ver ${r.nItems} SKUs">${r.oc} <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:3px;margin-left:3px">${r.nItems} SKU</span></span>`
       : `<strong>${r.oc}</strong>`;
     return `<tr>
-      <td>${ocCell}</td>
+      <td><div style="display:flex;align-items:center;gap:5px"><button onclick="verCorreoFormateadoOC('${ocEsc4}')" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="Ver correo formateado para proveedor">✉</button>${ocCell}</div></td>
       <td>${r.foc||'—'}</td>
       <td>${r.fapro||'—'}</td>
+      <td style="text-align:center;background:#f0fdf4"><input type="checkbox" ${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].correo)?'checked':''} onchange="toggleCorreo(this,'${r.oc}')" style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a"></td>
+      <td style="text-align:center;background:#f0fdf4;font-size:11px;color:#15803d;font-weight:600;white-space:nowrap" id="fcorreo_${r.oc.replace(/[^a-z0-9]/gi,'_')}">${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].fcorreo)||'—'}</td>
       <td>${fentHtml}</td>
       <td>${badgeOC(r.estado)}</td>
       <td><span style="font-size:10px;font-weight:600;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px">${r.ucomp||'—'}</span></td>
