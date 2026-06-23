@@ -835,6 +835,8 @@ function initP2(){
   proj.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;fp.appendChild(o);});
   document.getElementById('bdg2').textContent=D.oc.length;
   document.getElementById('hc2').textContent=D.oc.length+' órdenes';
+  // Limpiar filtros al inicializar para que cargue todo sin filtros previos
+  const f2q=document.getElementById('f2q');if(f2q)f2q.value='';
   renderP2();
 }
 function getF2(){
