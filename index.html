@@ -1826,6 +1826,9 @@ const GH_FILE='data.json';
 const GH_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE;
 const GH_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE;
 const GH_TOKEN_KEY='fp_gh_token';
+const GH_CONSULTAS_FILE='consultas.json';
+const GH_CONSULTAS_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_CONSULTAS_FILE;
+const GH_CONSULTAS_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_CONSULTAS_FILE;
 
 // ── Guardar en localStorage (siempre) ────────────────────────────────────────
 function saveLocal(){
@@ -1864,6 +1867,21 @@ async function loadGitHub(){
     if(s.SKUS_P4)Object.assign(SKUS_P4,s.SKUS_P4);
     showSavedLabel('☁ '+new Date(s.ts).toLocaleString('es-PE'),'#0ea5e9');
     localStorage.setItem(LS_KEY,JSON.stringify(s)); // cache local
+    // Cargar consultas.json por separado (puede ser grande)
+    fetch(GH_CONSULTAS_RAW+'?t='+Date.now()).then(function(r2){
+      if(!r2.ok)return;
+      r2.json().then(function(c){
+        if(c&&Array.isArray(c.consultas)&&c.consultas.length){
+          D.consultas=c.consultas.map(function(row){
+            var parts=row.fecha?row.fecha.split('/'):[];
+            var ts=parts.length===3?new Date(parts[2]+'-'+parts[1]+'-'+parts[0]).getTime():0;
+            return Object.assign({},row,{fechaRaw:isNaN(ts)?0:ts});
+          });
+          D.consultas.sort(function(a,b){return b.fechaRaw-a.fechaRaw;});
+          try{renderP7();}catch(e){}
+        }
+      }).catch(function(){});
+    }).catch(function(){});
     return true;
   }catch(e){console.warn('GitHub load failed:',e);return false;}
 }
@@ -1884,6 +1902,24 @@ async function saveGitHub(payload){
   }catch(e){console.warn('GitHub save failed:',e);return false;}
 }
 
+// ── Guardar consultas.json en GitHub ─────────────────────────────────────────
+async function saveConsultasGitHub(token){
+  if(!D.consultas||!D.consultas.length)return true; // nada que guardar
+  try{
+    // Guardar sin fechaRaw (campo calculado) para reducir tamaño
+    const rows=D.consultas.map(function(r){return{oc:r.oc,fecha:r.fecha,ruc:r.ruc,proveedor:r.proveedor,moneda:r.moneda,codigo:r.codigo,desc:r.desc,valor:r.valor,resp:r.resp,estado:r.estado};});
+    const cPayload=JSON.stringify({consultas:rows,ts:Date.now()});
+    let sha='';
+    const check=await fetch(GH_CONSULTAS_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+    if(check.ok){const meta=await check.json();sha=meta.sha||'';}
+    const content=btoa(unescape(encodeURIComponent(cPayload)));
+    const body={message:'consultas '+new Date().toISOString(),content};
+    if(sha)body.sha=sha;
+    const res=await fetch(GH_CONSULTAS_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    return res.ok;
+  }catch(e){console.warn('Consultas GitHub save failed:',e);return false;}
+}
+
 // ── Botón GUARDAR ─────────────────────────────────────────────────────────────
 async function manualSave(){
   const btn=document.getElementById('saveBtn');
@@ -1896,6 +1932,11 @@ async function manualSave(){
   }
   if(btn){btn.innerHTML='⏳ Subiendo…';btn.disabled=true;}
   const ok=await saveGitHub(payload);
+  // Guardar consultas en paralelo si hay datos
+  if(D.consultas&&D.consultas.length){
+    if(btn)btn.innerHTML='⏳ Subiendo consultas…';
+    await saveConsultasGitHub(token);
+  }
   if(btn){
     btn.innerHTML=ok?'✔ GUARDADO':'⚠ Solo local';
     btn.style.background=ok?'#15803d':'#d97706';
