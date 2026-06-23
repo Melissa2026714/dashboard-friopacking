@@ -1830,13 +1830,11 @@ const GH_TOKEN_KEY='fp_gh_token';
 // ── Guardar en localStorage (siempre) ────────────────────────────────────────
 function saveLocal(){
   if(!D.oc.length&&!D.p4.length&&!D.proj.length)return false;
-  try{
-    // Excluir D.consultas del payload — es muy grande (35k+ registros) y se importa por separado
-    const {consultas:_omit,...Dsin}=D;
-    const payload=JSON.stringify({D:Dsin,SKUS,SKUS_P4,ts:Date.now()});
-    localStorage.setItem(LS_KEY,payload);
-    return payload;
-  }catch(e){console.warn('localStorage lleno:',e);return false;}
+  // Excluir D.consultas del payload — es muy grande y se importa por separado
+  const {consultas:_omit,...Dsin}=D;
+  const payload=JSON.stringify({D:Dsin,SKUS,SKUS_P4,ts:Date.now()});
+  try{localStorage.setItem(LS_KEY,payload);}catch(e){console.warn('localStorage lleno, solo GitHub:',e);}
+  return payload;
 }
 
 // ── Cargar desde localStorage ─────────────────────────────────────────────────
