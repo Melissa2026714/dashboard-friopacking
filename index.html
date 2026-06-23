@@ -535,7 +535,7 @@ body.dark .g-rank-card{background:#111b2b!important}
     <select class="fsel" id="f2resp" onchange="renderP2()"><option value="">Responsable: Todos</option></select>
     <select class="fsel" id="f2ucomp" onchange="renderP2()"><option value="">Usr. Compras: Todos</option></select>
     <select class="fsel" id="f2proj" onchange="renderP2()"><option value="">Proyecto: Todos</option></select>
-    <input class="fsrch" id="f2q" oninput="renderP2()" placeholder="Buscar OC / Req. / ID Proyecto / Proveedor / Producto… (busca en todos los requerimientos)"/>
+    <input class="fsrch" id="f2q" oninput="renderP2()" placeholder="Buscar OC / Req. / ID Proyecto / Proveedor / Producto… (busca en todos los requerimientos)" autocomplete="off"/>
     <button class="fclr" onclick="clearF2()">✕ Limpiar</button>
     <span class="fcnt" id="f2cnt">— registros</span>
   </div>
@@ -836,7 +836,8 @@ function initP2(){
   document.getElementById('bdg2').textContent=D.oc.length;
   document.getElementById('hc2').textContent=D.oc.length+' órdenes';
   // Limpiar filtros al inicializar para que cargue todo sin filtros previos
-  const f2q=document.getElementById('f2q');if(f2q)f2q.value='';
+  const f2q=document.getElementById('f2q');
+  if(f2q){f2q.value='';setTimeout(function(){f2q.value='';renderP2();},200);}
   renderP2();
 }
 function getF2(){
