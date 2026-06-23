@@ -535,7 +535,7 @@ body.dark .g-rank-card{background:#111b2b!important}
     <select class="fsel" id="f2resp" onchange="renderP2()"><option value="">Responsable: Todos</option></select>
     <select class="fsel" id="f2ucomp" onchange="renderP2()"><option value="">Usr. Compras: Todos</option></select>
     <select class="fsel" id="f2proj" onchange="renderP2()"><option value="">Proyecto: Todos</option></select>
-    <input class="fsrch" id="f2q" oninput="renderP2()" placeholder="Buscar OC / Req. / ID Proyecto / Proveedor / Producto… (busca en todos los requerimientos)" autocomplete="off"/>
+    <input class="fsrch" id="f2q" oninput="renderP2()" placeholder="Buscar OC / Req. / ID Proyecto / Proveedor / Producto… (busca en todos los requerimientos)" autocomplete="off" name="f2q_search" readonly onfocus="this.removeAttribute('readonly')"/>
     <button class="fclr" onclick="clearF2()">✕ Limpiar</button>
     <span class="fcnt" id="f2cnt">— registros</span>
   </div>
@@ -543,9 +543,9 @@ body.dark .g-rank-card{background:#111b2b!important}
     <div class="th"><span class="thtt">Detalle de Órdenes de Compra</span>
       <div class="thr"><button class="thb" id="p2pgsz" onclick="togglePgsz2()">50/pág</button></div></div>
     <table class="ttbl"><thead><tr>
-      <th>OC</th><th>F. OC</th><th>F. APROB.</th><th>F. ENTREGA</th><th>ESTADO</th><th>USUARIO COMP.</th>
+      <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th>ESTADO</th><th>USUARIO COMP.</th>
       <th>PROVEEDOR</th><th>RESPONSABLE</th><th>ID PROYECTO</th><th>PROYECTO</th><th>N° PEDIDO</th><th>F. PEDIDO</th><th>N° REQ.</th><th>F. REQ.</th>
-      <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th>
+      <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th><th>F. SALIDA</th>
     </tr></thead><tbody id="tb2"></tbody></table>
     <div class="pag"><span id="p2info">—</span><div class="pbts" id="p2pag"></div></div>
   </div>
@@ -717,7 +717,7 @@ body.dark .g-rank-card{background:#111b2b!important}
 
 <script>
 // ── DATA ────────────────────────────────────────────────────────
-const D = {"p4":[],"oc":[],"p5reqs":[],"sinoc":[],"proj":[],"gerencial":{"summary":{"totalOC":0,"pendientes":0,"atendidoParcial":0,"atendidoCompleto":0,"totalReqs":0,"pendienteReqs":0},"byResponsable":[],"byProject":[]}};
+const D = {"p4":[],"oc":[],"p5reqs":[],"sinoc":[],"proj":[],"gerencial":{"summary":{"totalOC":0,"pendientes":0,"atendidoParcial":0,"atendidoCompleto":0,"totalReqs":0,"pendienteReqs":0},"byResponsable":[],"byProject":[]},"ocMeta":{}};
 
 
 
@@ -910,13 +910,16 @@ function renderP2Table(){
                      `<span class="dok">${r.fent}</span>`
     ):'—';
     const extra=r.nItems>1?` <span style="color:#94a3b8;font-size:9px">(+${r.nItems-1} ítems)</span>`:'';
+    const ocEsc=r.oc.replace(/'/g,"\\'");
     return`<tr>
-      <td><strong>${r.nItems>1
+      <td><div style="display:flex;align-items:center;gap:5px"><button onclick="verCorreoFormateadoOC('${ocEsc}')" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="Ver correo formateado para proveedor">✉</button><strong>${r.nItems>1
         ? `<span class="cl" style="cursor:pointer" onclick="openSkuModal(this)" data-oc="${r.oc}" data-proy="${r.proy.replace(/"/g,'&quot;')}" data-prov="${r.prov.replace(/"/g,'&quot;')}" title="Ver ${r.nItems} SKUs">${r.oc} <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:3px;margin-left:3px">${r.nItems} SKU</span></span>`
         : r.oc
-      }</strong></td>
+      }</strong></div></td>
       <td>${r.foc||'—'}</td>
       <td>${r.fapro||'—'}</td>
+      <td style="text-align:center;background:#f0fdf4"><input type="checkbox" ${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].correo)?'checked':''} onchange="toggleCorreo(this,'${r.oc}')" style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a"></td>
+      <td style="text-align:center;background:#f0fdf4;font-size:11px;color:#15803d;font-weight:600;white-space:nowrap" id="fcorreo_${r.oc.replace(/[^a-z0-9]/gi,'_')}">${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].fcorreo)||'—'}</td>
       <td>${fentHtml}</td>
       <td>${badgeOC(r.estado)}</td>
       <td><span style="font-size:10px;font-weight:600;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px">${r.ucomp||'—'}</span></td>
@@ -939,11 +942,137 @@ function renderP2Table(){
       <td>${r.cantRec}</td>
       <td class="${r.cantPend>0?'cpend':''}">${r.cantPend}</td>
       <td>${r.frec||'—'}</td>
+      <td style="font-size:11px;color:#0891b2;font-weight:600">${r.fsal||'—'}</td>
     </tr>`;
   }).join('');
   const tot=p2fil.length, pages=Math.ceil(tot/p2pgsz);
   document.getElementById('p2info').textContent=`Mostrando ${p2pg*p2pgsz+1}–${Math.min((p2pg+1)*p2pgsz,tot)} de ${tot} OC`;
   renderPag('p2pag',pages,p2pg,p=>{p2pg=p;renderP2Table();});
+}
+function toggleCorreo(cb,oc){
+  if(!D.ocMeta)D.ocMeta={};
+  if(!D.ocMeta[oc])D.ocMeta[oc]={};
+  D.ocMeta[oc].correo=cb.checked;
+  if(cb.checked){
+    const hoy=new Date();
+    const dd=String(hoy.getDate()).padStart(2,'0');
+    const mm=String(hoy.getMonth()+1).padStart(2,'0');
+    const yyyy=hoy.getFullYear();
+    D.ocMeta[oc].fcorreo=dd+'/'+mm+'/'+yyyy;
+  } else {
+    D.ocMeta[oc].fcorreo='';
+  }
+  const id='fcorreo_'+oc.replace(/[^a-z0-9]/gi,'_');
+  const el=document.getElementById(id);
+  if(el)el.textContent=D.ocMeta[oc].fcorreo||'—';
+  saveLocal();
+}
+function enviarCorreoOC(oc){
+  var items=SKUS[oc]||[];
+  if(!items.length){alert('No se encontraron ítems para esta OC.');return;}
+  var prov=items[0].prov||'';
+  var idproy=items[0].idproy||'';
+  var proy=items[0].proy||'';
+  var asunto='Orden de Compra N° '+oc+' — FRIOPACKING S.A. // '+prov+(idproy?' // '+idproy:'')+(proy?' // '+proy:'');
+  var L=[];
+  L.push('Estimado proveedor,');L.push('');
+  L.push('Reciba un cordial saludo de parte del Area de Compras de FRIOPACKING S.A.');L.push('');
+  L.push('Por medio del presente, les comunicamos que hemos generado la Orden de Compra N° '+oc+', con los siguientes articulos:');L.push('');
+  items.forEach(function(r,idx){
+    L.push('  '+(idx+1)+'. ['+r.cod+'] '+r.prod);
+    L.push('     Cantidad ordenada: '+r.cantOrd+(r.unid?' '+r.unid:''));
+    L.push('');
+  });
+  L.push('Les solicitamos confirmar la recepcion de la presente orden e indicar el plazo estimado de entrega.');L.push('');
+  L.push('Quedamos a su disposicion para cualquier consulta adicional.');L.push('');
+  L.push('Atentamente,');
+  window.location.href='mailto:?subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(L.join('\r\n'));
+}
+function verCorreoFormateadoOC(oc){
+  var items=SKUS[oc]||[];
+  if(!items.length){alert('No se encontraron ítems para esta OC.');return;}
+  var ocRow=D.oc?D.oc.find(function(o){return o.oc===oc;}):null;
+  items=items.map(function(r){return r.unid?r:Object.assign({},r,{unid:ocRow?(ocRow.unid||''):''});});
+  var prov=items[0].prov||'';
+  var idproy=items[0].idproy||'';
+  var proy=items[0].proy||'';
+  var foc=items[0].foc||'';
+  var asunto='Orden de Compra N° '+oc+' — FRIOPACKING S.A. // '+prov+(idproy?' // '+idproy:'')+(proy?' // '+proy:'');
+  var L=[];
+  L.push('Estimado proveedor,');L.push('');
+  L.push('Reciba un cordial saludo de parte del Area de Compras de FRIOPACKING S.A.');L.push('');
+  L.push('Por medio del presente, les comunicamos que hemos generado la Orden de Compra N° '+oc+', con los siguientes articulos:');L.push('');
+  items.forEach(function(r,idx){
+    L.push('  '+(idx+1)+'. ['+r.cod+'] '+r.prod);
+    L.push('     Cantidad ordenada: '+r.cantOrd+(r.unid?' '+r.unid:''));
+    L.push('');
+  });
+  L.push('Les solicitamos confirmar la recepcion de la presente orden e indicar el plazo estimado de entrega.');L.push('');
+  L.push('Quedamos a su disposicion para cualquier consulta adicional.');L.push('');
+  L.push('Atentamente,');
+  var cuerpo=L.join('\r\n');
+  var mailtoUrl='mailto:?subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(cuerpo);
+  var w=window.open('','_blank','width=820,height=720,scrollbars=yes,resizable=yes');
+  var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>OC '+oc+'</title><style>';
+  h+='body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:32px;max-width:780px;margin:0 auto}';
+  h+='.logo{font-size:20px;font-weight:800;color:#0369a1;letter-spacing:1px}';
+  h+='.sublogo{font-size:11px;color:#64748b;margin-bottom:24px}';
+  h+='.subject-box{background:#f0f9ff;border-left:4px solid #0369a1;padding:10px 16px;font-size:12px;color:#0369a1;font-weight:600;margin-bottom:20px;border-radius:0 6px 6px 0}';
+  h+='.oc-hdr{background:#0369a1;color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;margin-top:20px}';
+  h+='.oc-meta{background:#e0f2fe;padding:8px 16px;font-size:12px;color:#0c4a6e;border-left:1px solid #bae6fd;border-right:1px solid #bae6fd;border-bottom:1px solid #bae6fd;border-radius:0 0 4px 4px;margin-bottom:12px}';
+  h+='table{width:100%;border-collapse:collapse;margin:0}';
+  h+='thead tr{background:#e0f2fe}';
+  h+='th{padding:8px 12px;text-align:left;font-size:11px;color:#0369a1;font-weight:700;border:1px solid #bae6fd}';
+  h+='td{padding:7px 12px;border:1px solid #e2e8f0;font-size:12px}';
+  h+='tr:nth-child(even) td{background:#f8fafc}';
+  h+='.num{text-align:center;color:#64748b;font-size:11px}';
+  h+='.cod{color:#0369a1;font-weight:600}';
+  h+='.cant{text-align:center;font-weight:700;color:#0f172a}';
+  h+='.footer-mail{margin-top:28px;padding-top:16px;border-top:2px solid #e2e8f0;font-size:12px;color:#475569}';
+  h+='.footer-firma{font-weight:700;color:#0369a1;font-size:13px}';
+  h+='.btn-s{display:inline-block;margin:6px 4px;padding:10px 22px;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif}';
+  h+='.btn-img{background:linear-gradient(135deg,#7c3aed,#a855f7)}';
+  h+='.btn-ml{background:linear-gradient(135deg,#0369a1,#0891b2)}';
+  h+='.btn-pdf{background:linear-gradient(135deg,#dc2626,#ef4444)}';
+  h+='.toolbar{margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap}';
+  h+='.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;display:none}';
+  h+='@media print{.toolbar,.toast{display:none!important}@page{margin:15mm}}';
+  h+='</style><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script></head><body>';
+  h+='<div class="toast" id="toast">✅ Imagen copiada — pega con Ctrl+V en Outlook</div>';
+  h+='<div class="toolbar">';
+  h+='<button class="btn-s btn-img" onclick="copiarImagen()">📷 Copiar como imagen</button>';
+  h+='<button class="btn-s btn-ml" onclick=\'window.location.href="'+mailtoUrl.replace(/'/g,"%27")+'"\'>✉ Abrir Outlook</button>';
+  h+='<button class="btn-s btn-pdf" onclick="window.print()">🖨 Guardar PDF</button>';
+  h+='</div>';
+  h+='<div id="contenido-correo">';
+  h+='<div class="logo">FRIOPACKING S.A.</div>';
+  h+='<div class="sublogo">Área de Compras &nbsp;|&nbsp; Orden de Compra</div>';
+  h+='<div class="subject-box">Asunto: '+asunto+'</div>';
+  h+='<p>Estimado proveedor,</p>';
+  h+='<p>Por medio del presente, les comunicamos que hemos generado la siguiente Orden de Compra y les solicitamos confirmar la recepción de la misma:</p>';
+  h+='<div class="oc-hdr">Orden de Compra N° '+oc+'</div>';
+  h+='<div class="oc-meta"><strong>Proveedor:</strong> '+prov;
+  if(foc)h+='&nbsp;&nbsp;&nbsp;<strong>Fecha OC:</strong> '+foc;
+  if(idproy)h+='&nbsp;&nbsp;&nbsp;<strong>ID Proyecto:</strong> '+idproy;
+  if(proy)h+='&nbsp;&nbsp;&nbsp;<strong>Proyecto:</strong> '+proy;
+  h+='</div>';
+  h+='<table><thead><tr><th class="num">#</th><th>Código</th><th>Descripción del Artículo</th><th class="cant">Cant. Ordenada</th><th>Unidad</th></tr></thead><tbody>';
+  items.forEach(function(r,idx){
+    h+='<tr><td class="num">'+(idx+1)+'</td><td class="cod">'+r.cod+'</td><td>'+r.prod+'</td><td class="cant">'+r.cantOrd+'</td><td>'+(r.unid||'—')+'</td></tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div class="footer-mail"><p>Les solicitamos confirmar la recepción de la presente orden e indicar el plazo estimado de entrega.</p>';
+  h+='<p>Atentamente,<br><span class="footer-firma">Área de Compras &mdash; FRIOPACKING S.A.</span></p></div></div>';
+  h+='<script>';
+  h+='function copiarImagen(){var el=document.getElementById("contenido-correo");';
+  h+='html2canvas(el,{scale:2,backgroundColor:"#ffffff"}).then(function(canvas){';
+  h+='canvas.toBlob(function(blob){try{var item=new ClipboardItem({"image/png":blob});';
+  h+='navigator.clipboard.write([item]).then(function(){showToast();},function(){fallback(canvas);});}catch(e){fallback(canvas);}';
+  h+='},"image/png");});}';
+  h+='function fallback(canvas){var a=document.createElement("a");a.download="correo-oc.png";a.href=canvas.toDataURL("image/png");a.click();}';
+  h+='function showToast(){var t=document.getElementById("toast");t.style.display="block";setTimeout(function(){t.style.display="none";},3000);}';
+  h+='<\/script></body></html>';
+  w.document.write(h);w.document.close();w.focus();
 }
 function clearF2(){
   clearMS('f2est');clearMS('f2tipo');
@@ -3250,7 +3379,7 @@ function importMaestro(wb){
         prod:g(r,'Producto').slice(0,50),cod:g(r,'IdProducto'),
         unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||'',
         nItems:0,cantOrd:0,cantRec:0,cantPend:0,
-        frec:gd(r,'FechaRecepcion'),ucomp:g(r,'UsuarioCompras'),
+        frec:gd(r,'FechaRecepcion'),fsal:gd(r,'FechaSalida')||gd(r,'FechaSali'),ucomp:g(r,'UsuarioCompras'),
         reqs:[],
         ped:g(r,'CodPedido'),peds:[],fpedido:gd(r,'FechaPedido')||gd(r,'Fecha Pedido')||gd(r,'FechaPed')
       };
@@ -3278,7 +3407,8 @@ function importMaestro(wb){
       prov:g(r,'NombreProveedor').slice(0,35),resp:g(r,'NombreResponsable'),
       idproy:g(r,'IdProyecto'),proy:g(r,'NombreProyecto').slice(0,30),
       req:g(r,'CodRequerimiento'),freq:gd(r,'FechaRequerimiento'),
-      frec:gd(r,'FechaRecepcion')
+      frec:gd(r,'FechaRecepcion'),
+      unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||''
     });
   });
 
