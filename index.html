@@ -2007,7 +2007,7 @@ function exportP3HTML(){
   S+='        candidatos=candidatos.filter(function(v){return v<=base*20;});';
   S+='        var pu=candidatos[0];';
   S+='        var inpS=document.querySelector("[data-item=\'"+ri+"\'][data-prov=\'"+p+"\'][data-cur=\'S\']");';
-  S+='        if(inpS){inpS.value=pu.toFixed(2);inpS.style.background="#d1fae5";inpS.style.borderColor="#16a34a";inpS.style.color="#14532d";inpS.title="Auto-detectado — verifica antes de generar";encontrados++;}';
+  S+='        if(inpS){inpS.value=pu.toFixed(2);inpS.style.borderColor="#16a34a";inpS.style.borderWidth="2px";inpS.style.color="#1e293b";inpS.title="✅ Auto-detectado del PDF — verifica antes de generar";encontrados++;}';
   S+='      });';
   S+='      statusEl.textContent=file.name+(encontrados?" ✅ "+encontrados+" precios detectados":" ⚠️ sin coincidencias");';
   S+='    }).catch(function(err){statusEl.textContent=file.name+" ⚠️ Error al leer PDF";console.error(err);});';
