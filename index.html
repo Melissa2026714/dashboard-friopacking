@@ -306,6 +306,7 @@ body.dark .g-rank-card{background:#111b2b!important}
   <div class="nbr">
     <button class="btn bi" onclick="document.getElementById('fileMAESTRO').click()" title="Importar MAESTRO.xlsx y PedidoSinReq.xlsx">📂 IMPORTAR</button>
     <button class="btn" id="saveBtn" onclick="manualSave()" title="Guardar y sincronizar con todos los usuarios" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
+    <button id="spLoginBtn" onclick="spLogin()" title="Iniciar sesión para subir a SharePoint" style="display:none;background:#0078d4;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">☁ SP</button>
     <button class="btn" onclick="setupGHToken()" title="Configurar token GitHub (solo admin)" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer">🔑</button>
     <button class="btn br">↻</button>
     <button class="btn br" id="darkBtn" onclick="toggleDark()" title="Modo nocturno" style="font-size:16px">🌙</button>
@@ -962,9 +963,8 @@ function toggleCorreo(cb,oc){
   } else {
     D.ocMeta[oc].fcorreo='';
   }
-  const id='fcorreo_'+oc.replace(/[^a-z0-9]/gi,'_');
-  const el=document.getElementById(id);
-  if(el)el.textContent=D.ocMeta[oc].fcorreo||'—';
+  const elRow=cb.closest('tr').querySelector('[id^="fcorreo_"]');
+  if(elRow)elRow.textContent=D.ocMeta[oc].fcorreo||'—';
   saveLocal();
 }
 function toggleCotiz(key,checked){
@@ -1419,7 +1419,7 @@ function exportP3HTML(){
   S+='.cgroup thead th{font-size:9px;padding:8px 9px}';
   S+='.footer{margin-top:20px;text-align:center;font-size:11px;color:#94a3b8;padding-bottom:12px}';
   S+='@media print{.fbar,.abar,.modal-bg{display:none!important}body{background:#fff}.tw{box-shadow:none}}';
-  S+='</style></head><body>';
+  S+='</style><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"><\/script><script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/dist/msal-browser.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script></head><body>';
   S+='<div class="page">';
   // Header
   S+='<div class="hdr"><div class="hdr-left"><div class="hdr-logo">FP</div>';
@@ -1444,8 +1444,10 @@ function exportP3HTML(){
   S+='</div>';
   // Action bar
   S+='<div class="abar"><div class="abar-info"><strong id="sel-cnt">0</strong> pedidos seleccionados &nbsp;&middot;&nbsp; <span id="vis-cnt">—</span> visibles</div>';
+  S+='<button onclick="toggleAll(true)" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">☑ Seleccionar todos</button>';
   S+='<button class="btn-sec" onclick="deselectAll()" id="btn-desel" style="display:none">☐ Quitar selección</button>';
-  S+='<button class="btn-primary" onclick="openConsolidar()" id="btn-consol" disabled>📋 Consolidar selección</button></div>';
+  S+='<button onclick="abrirModalExport()" style="background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">📥 Exportar Excel</button>';
+  S+='<button class="btn-primary" onclick="openConsolidar()" id="btn-consol">📋 Consolidar selección</button></div>';
   // Table
   S+='<div class="tw"><div class="tw-hdr"><h2>Detalle de Pedidos en Cotización</h2><span>Generado: '+fechaGen+'</span></div>';
   S+='<div class="tw-wrap"><table id="main-table">';
@@ -1473,6 +1475,116 @@ function exportP3HTML(){
   S+='var sel=new Set();';
   S+='function saveCotiz(cb){try{if(window.opener&&window.opener.toggleCotiz)window.opener.toggleCotiz(cb.dataset.key,cb.checked);}catch(e){}}';
   S+='function toggleAllCotiz(checked){document.querySelectorAll("[data-key]").forEach(function(cb){cb.checked=checked;saveCotiz(cb);});}';
+  // SharePoint upload — delega al MSAL de la ventana principal (funciona desde localhost:8080)
+  S+='var SP_SHARE="https://friopacking-my.sharepoint.com/:f:/g/personal/plinares_friopacking_pe/IgC3g_rPetACQbbVlGitrWDzAaij5_jYvP9KDELBMlbWXzY?e=hfb3jh";';
+  S+='function _spNotif(fn){var nb=document.createElement("div");nb.style.cssText="position:fixed;bottom:20px;right:20px;background:#16A34A;color:#fff;padding:14px 18px;border-radius:10px;font-size:13px;font-family:Arial,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3)";nb.innerHTML="<strong>✓ Subido a SharePoint</strong><br><span style=\'font-size:11px;opacity:0.85\'>"+fn+"</span>";document.body.appendChild(nb);setTimeout(function(){nb.remove();},7000);}';
+  S+='function _spExport(buf,fn){var b=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download=fn;a.click();setTimeout(function(){URL.revokeObjectURL(u);},2000);}';
+  /* SHAREPOINT COTIZACIONES — en stand by hasta resolver permisos con plinares */
+  S+='function exportarExcel(opts){opts=opts||{};';
+  S+='var QC=String.fromCharCode(34);';
+  S+='var tcVal=opts.tc||(parseFloat((document.getElementById("me-tc")||{value:"3.75"}).value)||3.75);';
+  S+='var pNames=opts.provNames||[(document.getElementById("me-n1")||{value:""}).value||"PROVEEDOR 1",(document.getElementById("me-n2")||{value:""}).value||"PROVEEDOR 2",(document.getElementById("me-n3")||{value:""}).value||"PROVEEDOR 3"];';
+  S+='var precios=opts.precios||null;';
+  S+='var it=sel.size>0?DATA.filter(function(r){return sel.has(r.i);}):visibleData;';
+  S+='if(!it.length){alert("No hay ítems para exportar.");return;}';
+  S+='var now=new Date();var fd=now.toLocaleDateString("es-PE");';
+  S+='var proy=(it[0].proy||"SinProyecto").replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\\s\\-]/g,"").trim().replace(/\\s+/g,"-");';
+  S+='var peds=it.map(function(r){return r.ped||"";}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}).join("_");';
+  S+='var fn="Cotizacion_"+proy+(peds?"_Ped-"+peds:"")+"_"+fd.split("/").join("-")+".xlsx";';
+  S+='var wb=new ExcelJS.Workbook();wb.creator="FRIOPACKING S.A.";';
+  S+='var ws=wb.addWorksheet("Cotizacion");';
+  S+='ws.columns=[{width:4},{width:35},{width:8},{width:7},{width:11},{width:11},{width:13},{width:13},{width:11},{width:11},{width:13},{width:13},{width:11},{width:11},{width:13},{width:13},{width:9}];';
+  S+='var PC=[[4,5,6,7],[8,9,10,11],[12,13,14,15]];';
+  S+='var CN="FF0F172A";var CD="FF1E293B";var CA="FF1D4ED8";var CV="FF166534";var CG="FF22C55E";var CB="FFF1F5F9";var CM="FFE2E8F0";var CS="FF475569";var CAM="FFF59E0B";var CW="FFFFFFFF";';
+  S+='function cl(n){return String.fromCharCode(65+n);}';
+  S+='function mkF(h){return{type:"pattern",pattern:"solid",fgColor:{argb:h}};}';
+  S+='function mkFo(h,b,sz){return{bold:!!b,color:{argb:h},size:sz||10,name:"Arial"};}';
+  S+='function mkB(h){var s={style:"thin",color:{argb:h||"FFE2E8F0"}};return{top:s,bottom:s,left:s,right:s};}';
+  S+='function mkA(h,w){return{horizontal:h||"center",vertical:"middle",wrapText:!!w};}';
+  S+='function sc(addr,val,fill,fo,al,bd){var c=ws.getCell(addr);c.value=val;if(fill)c.fill=fill;if(fo)c.font=fo;if(al)c.alignment=al;c.border=bd||mkB();}';
+  S+='ws.addRow([]);ws.lastRow.height=30;';
+  S+='ws.mergeCells("A1:D1");sc("A1","FRIOPACKING S.A.",mkF(CN),mkFo(CG,true,13),mkA("center"),mkB(CN));';
+  S+='ws.mergeCells("E1:Q1");sc("E1","CUADRO COMPARATIVO DE COTIZACIONES",mkF(CN),mkFo(CW,true,13),mkA("center"),mkB(CN));';
+  S+='ws.addRow([]);ws.lastRow.height=20;';
+  S+='sc("A2","TC S/=",mkF(CD),mkFo(CW,true,9),mkA("right"),mkB(CD));';
+  S+='sc("B2",tcVal,mkF(CAM),mkFo(CN,true,11),mkA("center"),mkB(CAM));ws.getCell("B2").numFmt="#,##0.00";';
+  S+='sc("C2","Proyecto / Pedido:",mkF(CB),mkFo(CS,true,9),mkA("right"),mkB(CB));';
+  S+='ws.mergeCells("D2:I2");sc("D2",it[0].proy||"",mkF(CB),mkFo(CN,false,9),mkA("left"),mkB(CB));';
+  S+='sc("J2","Fecha:",mkF(CB),mkFo(CS,true,9),mkA("right"),mkB(CB));';
+  S+='ws.mergeCells("K2:L2");sc("K2",fd,mkF(CB),mkFo(CN,false,9),mkA("center"),mkB(CB));';
+  S+='ws.mergeCells("M2:Q2");sc("M2","",mkF(CB),null,null,mkB(CB));';
+  S+='ws.addRow([]);ws.lastRow.height=20;';
+  S+='["A3","B3","C3","D3"].forEach(function(a){sc(a,"",mkF(CD),null,null,mkB(CD));});';
+  S+='for(var p=0;p<3;p++){var fr=cl(PC[p][0])+"3:"+cl(PC[p][3])+"3";ws.mergeCells(fr);sc(cl(PC[p][0])+"3",pNames[p],mkF(CA),mkFo(CW,true,10),mkA("center"),mkB(CA));}';
+  S+='sc("Q3","MEJOR",mkF(CV),mkFo(CW,true,9),mkA("center"),mkB(CV));';
+  S+='ws.addRow([]);ws.lastRow.height=22;';
+  S+='["N°","Descripción","Cant.","Und."].forEach(function(v,i){sc(cl(i)+"4",v,mkF(CN),mkFo(CW,true,9),mkA("center"),mkB(CN));});';
+  S+='var SH=["P.U. S/","P.U. US$","V.Tot S/","V.Tot US$"];';
+  S+='for(var p=0;p<3;p++){for(var q=0;q<4;q++){sc(cl(PC[p][q])+"4",SH[q],mkF(CM),mkFo(CS,true,8),mkA("center"),mkB(CA));}}';
+  S+='sc("Q4","SKU",mkF(CV),mkFo(CW,true,9),mkA("center"),mkB(CV));';
+  S+='var fDR=5;var BGA=["FFEFF6FF","FFF0F9FF","FFF0FDF4"];var BGB=["FFE0EFFE","FFE0F2FE","FFDCFCE7"];';
+  S+='for(var i=0;i<it.length;i++){';
+  S+='var r=it[i];var rn=fDR+i;var rs=String(rn);var ev=i%2===0;';
+  S+='ws.addRow([]);ws.lastRow.height=16;';
+  S+='var itemV=[i+1,r.prod||"",Number(r.cant||0),r.unid||""];';
+  S+='var itemA=["center","left","center","center"];';
+  S+='for(var j=0;j<4;j++){var ic=ws.getCell(cl(j)+rs);ic.value=itemV[j];ic.fill=mkF(ev?"FFFFFFFF":"FFF8FAFC");ic.font=mkFo(j===0?CS:CN,j===0,9);ic.alignment=mkA(itemA[j]);ic.border=mkB();}';
+  S+='for(var p=0;p<3;p++){';
+  S+='var bg=ev?BGA[p]:BGB[p];';
+  S+='var us=cl(PC[p][0]);var ud=cl(PC[p][1]);var vs=cl(PC[p][2]);var vd=cl(PC[p][3]);';
+  S+='var puSv=(precios&&precios[i]&&precios[i][p]&&precios[i][p].puS!=null)?precios[i][p].puS:"";';
+  S+='var puDv=(precios&&precios[i]&&precios[i][p]&&precios[i][p].puD!=null)?precios[i][p].puD:"";';
+  S+='sc(us+rs,puSv,mkF(bg),mkFo(CA,false,9),mkA("right"),mkB(CA));';
+  S+='sc(ud+rs,puDv,mkF(bg),mkFo(CA,false,9),mkA("right"),mkB(CA));';
+  S+='ws.getCell(us+rs).numFmt=\'"S/ "#,##0.00\';ws.getCell(ud+rs).numFmt=\'"US$ "#,##0.00\';';
+  S+='var fmtVS="IF(AND(NOT(ISNUMBER("+us+rs+")),NOT(ISNUMBER("+ud+rs+")))," +QC+QC+",IF(ISNUMBER("+us+rs+"),"+us+rs+"*C"+rs+","+ud+rs+"*$B$2*C"+rs+"))";';
+  S+='var vsc=ws.getCell(vs+rs);vsc.value={formula:fmtVS,result:""};vsc.numFmt=\'"S/ "#,##0.00\';vsc.fill=mkF(bg);vsc.font=mkFo(CN,true,9);vsc.alignment=mkA("right");vsc.border=mkB(CA);';
+  S+='var fmtVD="IF(AND(NOT(ISNUMBER("+us+rs+")),NOT(ISNUMBER("+ud+rs+")))," +QC+QC+",IF(ISNUMBER("+ud+rs+"),"+ud+rs+"*C"+rs+","+us+rs+"/$B$2*C"+rs+"))";';
+  S+='var vdc=ws.getCell(vd+rs);vdc.value={formula:fmtVD,result:""};vdc.numFmt=\'"US$ "#,##0.00\';vdc.fill=mkF(bg);vdc.font=mkFo(CS,false,9);vdc.alignment=mkA("right");vdc.border=mkB(CA);';
+  S+='}';
+  S+='var gv=cl(PC[0][2])+rs;var kv=cl(PC[1][2])+rs;var ov=cl(PC[2][2])+rs;';
+  S+='var fmtQ="IF(AND("+gv+"="+QC+QC+","+kv+"="+QC+QC+","+ov+"="+QC+QC+"),"+QC+QC+",IF(AND("+gv+"<>"+QC+QC+",OR("+kv+"="+QC+QC+","+gv+"<="+kv+"),OR("+ov+"="+QC+QC+","+gv+"<="+ov+")),"+QC+"★ P1"+QC+",IF(AND("+kv+"<>"+QC+QC+",OR("+ov+"="+QC+QC+","+kv+"<="+ov+")),"+QC+"★ P2"+QC+","+QC+"★ P3"+QC+")))";';
+  S+='var qc=ws.getCell("Q"+rs);qc.value={formula:fmtQ,result:""};qc.fill=mkF(ev?"FFDCFCE7":"FFF0FDF4");qc.font=mkFo(CV,true,9);qc.alignment=mkA("center");qc.border=mkB(CV);';
+  S+='}';
+  S+='var lDR=fDR+it.length-1;var stR=lDR+2;var igR=stR+1;var toR=igR+1;var beR=toR+1;var thR=beR+2;var crR=thR+1;var ltR=crR+1;var plR=ltR+1;';
+  S+='ws.addRow([]);ws.lastRow.height=5;';
+  S+='ws.addRow([]);ws.lastRow.height=16;var stS=String(stR);ws.mergeCells("A"+stS+":D"+stS);';
+  S+='sc("A"+stS,"OBSERVACIONES",mkF(CB),mkFo(CS,true,9),mkA("left"),mkB());';
+  S+='for(var p=0;p<3;p++){var vs=cl(PC[p][2]);var vd=cl(PC[p][3]);ws.mergeCells(cl(PC[p][0])+stS+":"+cl(PC[p][1])+stS);sc(cl(PC[p][0])+stS,"SUBTOTAL",mkF(CA),mkFo(CW,true,9),mkA("center"),mkB(CA));var vsc2=ws.getCell(vs+stS);vsc2.value={formula:"IF(COUNT("+vs+fDR+":"+vs+lDR+")=0,"+QC+QC+",SUM("+vs+fDR+":"+vs+lDR+"))",result:""};vsc2.numFmt=\'"S/ "#,##0.00\';vsc2.fill=mkF(CA);vsc2.font=mkFo(CW,true,9);vsc2.alignment=mkA("right");vsc2.border=mkB(CA);var vdc2=ws.getCell(vd+stS);vdc2.value={formula:"IF(COUNT("+vd+fDR+":"+vd+lDR+")=0,"+QC+QC+",SUM("+vd+fDR+":"+vd+lDR+"))",result:""};vdc2.numFmt=\'"US$ "#,##0.00\';vdc2.fill=mkF(CA);vdc2.font=mkFo(CW,true,9);vdc2.alignment=mkA("right");vdc2.border=mkB(CA);}';
+  S+='sc("Q"+stS,"",mkF(CB),null,null,mkB(CB));';
+  S+='ws.addRow([]);ws.lastRow.height=14;var igS=String(igR);ws.mergeCells("A"+igS+":D"+igS);';
+  S+='sc("A"+igS,"",mkF(CB),mkFo(CS,false,9),mkA("left"),mkB());';
+  S+='for(var p=0;p<3;p++){var vs=cl(PC[p][2]);var vd=cl(PC[p][3]);ws.mergeCells(cl(PC[p][0])+igS+":"+cl(PC[p][1])+igS);sc(cl(PC[p][0])+igS,"IGV 18%",mkF(CB),mkFo(CS,true,9),mkA("center"),mkB(CA));var vsi=ws.getCell(vs+igS);vsi.value={formula:"IF("+vs+stS+"="+QC+QC+","+QC+QC+","+vs+stS+"*0.18)",result:""};vsi.numFmt=\'"S/ "#,##0.00\';vsi.fill=mkF(CB);vsi.font=mkFo(CS,false,9);vsi.alignment=mkA("right");vsi.border=mkB(CA);var vdi=ws.getCell(vd+igS);vdi.value={formula:"IF("+vd+stS+"="+QC+QC+","+QC+QC+","+vd+stS+"*0.18)",result:""};vdi.numFmt=\'"US$ "#,##0.00\';vdi.fill=mkF(CB);vdi.font=mkFo(CS,false,9);vdi.alignment=mkA("right");vdi.border=mkB(CA);}';
+  S+='sc("Q"+igS,"",mkF(CB),null,null,mkB(CB));';
+  S+='ws.addRow([]);ws.lastRow.height=22;var toS=String(toR);ws.mergeCells("A"+toS+":D"+toS);';
+  S+='sc("A"+toS,"TOTAL",mkF(CN),mkFo(CW,true,11),mkA("left"),mkB(CN));';
+  S+='for(var p=0;p<3;p++){var vs=cl(PC[p][2]);var vd=cl(PC[p][3]);ws.mergeCells(cl(PC[p][0])+toS+":"+cl(PC[p][1])+toS);sc(cl(PC[p][0])+toS,"",mkF(CN),null,null,mkB(CN));var vst=ws.getCell(vs+toS);vst.value={formula:"IF("+vs+stS+"="+QC+QC+","+QC+QC+","+vs+stS+"+IF("+vs+igS+"="+QC+QC+",0,"+vs+igS+"))",result:""};vst.numFmt=\'"S/ "#,##0.00\';vst.fill=mkF(CN);vst.font=mkFo(CW,true,11);vst.alignment=mkA("right");vst.border=mkB(CN);var vdt=ws.getCell(vd+toS);vdt.value={formula:"IF("+vd+stS+"="+QC+QC+","+QC+QC+","+vd+stS+"+IF("+vd+igS+"="+QC+QC+",0,"+vd+igS+"))",result:""};vdt.numFmt=\'"US$ "#,##0.00\';vdt.fill=mkF(CN);vdt.font=mkFo(CW,true,11);vdt.alignment=mkA("right");vdt.border=mkB(CN);}';
+  S+='sc("Q"+toS,"",mkF(CN),null,null,mkB(CN));';
+  S+='ws.addRow([]);ws.lastRow.height=18;var beS=String(beR);ws.mergeCells("A"+beS+":D"+beS);';
+  S+='sc("A"+beS,"",mkF("FFDCFCE7"),mkFo(CV,true,9),mkA("left"),mkB("FF86EFAC"));';
+  S+='var vs0t=cl(PC[0][2]);var vs1t=cl(PC[1][2]);var vs2t=cl(PC[2][2]);';
+  S+='for(var p=0;p<3;p++){var bvs=cl(PC[p][2]);ws.mergeCells(cl(PC[p][0])+beS+":"+cl(PC[p][3])+beS);var bc=ws.getCell(cl(PC[p][0])+beS);var bfml="IFERROR(IF(AND("+bvs+toS+"<>"+QC+QC+","+bvs+toS+"<=IF("+vs0t+toS+"<>"+QC+QC+","+vs0t+toS+",1E99),"+bvs+toS+"<=IF("+vs1t+toS+"<>"+QC+QC+","+vs1t+toS+",1E99),"+bvs+toS+"<=IF("+vs2t+toS+"<>"+QC+QC+","+vs2t+toS+",1E99)),"+QC+"✓ MEJOR TOTAL"+QC+","+QC+QC+"),"+QC+QC+")";bc.value={formula:bfml,result:""};bc.fill=mkF("FFDCFCE7");bc.font=mkFo(CV,true,10);bc.alignment=mkA("center");bc.border=mkB("FF86EFAC");}';
+  S+='sc("Q"+beS,"",mkF("FFDCFCE7"),null,null,mkB("FF86EFAC"));';
+  S+='ws.addRow([]);ws.lastRow.height=6;';
+  S+='ws.addRow([]);ws.lastRow.height=18;var thS=String(thR);ws.mergeCells("A"+thS+":D"+thS);';
+  S+='sc("A"+thS,"TÉRMINOS COMERCIALES",mkF("FFFEF3C7"),mkFo("FF92400E",true,10),mkA("left"),mkB("FFFDE68A"));';
+  S+='for(var p=0;p<3;p++){ws.mergeCells(cl(PC[p][0])+thS+":"+cl(PC[p][3])+thS);sc(cl(PC[p][0])+thS,"PROVEEDOR "+(p+1),mkF(CA),mkFo(CW,true,10),mkA("center"),mkB(CA));}';
+  S+='sc("Q"+thS,"",mkF("FFFEF3C7"),null,null,mkB("FFFDE68A"));';
+  S+='ws.addRow([]);ws.lastRow.height=16;var crS=String(crR);ws.mergeCells("A"+crS+":D"+crS);';
+  S+='sc("A"+crS,"CRÉDITO",mkF(CB),mkFo(CS,true,9),mkA("left"),mkB());';
+  S+='for(var p=0;p<3;p++){ws.mergeCells(cl(PC[p][0])+crS+":"+cl(PC[p][3])+crS);sc(cl(PC[p][0])+crS,"",mkF("FFF0F9FF"),mkFo(CN,false,9),mkA("left"),mkB(CA));}';
+  S+='sc("Q"+crS,"",mkF(CB),null,null,mkB());';
+  S+='ws.addRow([]);ws.lastRow.height=16;var ltS=String(ltR);ws.mergeCells("A"+ltS+":D"+ltS);';
+  S+='sc("A"+ltS,"LEAD TIME",mkF(CB),mkFo(CS,true,9),mkA("left"),mkB());';
+  S+='for(var p=0;p<3;p++){ws.mergeCells(cl(PC[p][0])+ltS+":"+cl(PC[p][3])+ltS);sc(cl(PC[p][0])+ltS,"",mkF(CB),mkFo(CN,false,9),mkA("left"),mkB(CA));}';
+  S+='sc("Q"+ltS,"",mkF(CB),null,null,mkB());';
+  S+='ws.addRow([]);ws.lastRow.height=16;var plS=String(plR);ws.mergeCells("A"+plS+":D"+plS);';
+  S+='sc("A"+plS,"ENTREGA EN PLANTA",mkF("FFFEF3C7"),mkFo("FF92400E",true,9),mkA("left"),mkB("FFFDE68A"));';
+  S+='for(var p=0;p<3;p++){ws.mergeCells(cl(PC[p][0])+plS+":"+cl(PC[p][3])+plS);var plC=ws.getCell(cl(PC[p][0])+plS);plC.value="";plC.fill=mkF(CB);plC.font=mkFo(CN,false,9);plC.alignment=mkA("center");plC.border=mkB(CA);plC.dataValidation={type:"list",allowBlank:true,formulae:[QC+"SI,NO"+QC],showErrorMessage:false};}';
+  S+='sc("Q"+plS,"",mkF("FFFEF3C7"),null,null,mkB("FFFDE68A"));';
+  S+='wb.xlsx.writeBuffer().then(function(buf){_spExport(buf,fn);}).catch(function(e){alert("Error al generar Excel: "+e.message);});';
+  S+='}';
+
 
   S+='var visibleData=DATA.slice();';
   S+='function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}';
@@ -1586,11 +1698,10 @@ function exportP3HTML(){
   S+='function toggleRow(cb){var i=parseInt(cb.dataset.i);if(cb.checked){sel.add(i);cb.closest("tr").classList.add("sel");}else{sel.delete(i);cb.closest("tr").classList.remove("sel");}updateSelBar();}';
   S+='function toggleAll(checked){visibleData.forEach(function(r){if(checked)sel.add(r.i);else sel.delete(r.i);});document.querySelectorAll(".row-cb").forEach(function(cb){cb.checked=checked;cb.closest("tr").classList.toggle("sel",checked);});updateSelBar();}';
   S+='function deselectAll(){sel.clear();document.querySelectorAll(".row-cb").forEach(function(cb){cb.checked=false;cb.closest("tr").classList.remove("sel");});document.getElementById("chk-all").checked=false;updateSelBar();}';
-  S+='function updateSelBar(){var n=sel.size;document.getElementById("sel-cnt").textContent=n;document.getElementById("hdr-sel").textContent=n;document.getElementById("btn-consol").disabled=n===0;document.getElementById("btn-desel").style.display=n>0?"":"none";}';
+  S+='function updateSelBar(){var n=sel.size;document.getElementById("sel-cnt").textContent=n;document.getElementById("hdr-sel").textContent=n;document.getElementById("btn-desel").style.display=n>0?"":"none";}';
   // Consolidar
   S+='function openConsolidar(){';
-  S+='  if(!sel.size)return;';
-  S+='  var selRows=DATA.filter(function(r){return sel.has(r.i);});';
+  S+='  var selRows=sel.size>0?DATA.filter(function(r){return sel.has(r.i);}):visibleData.slice();';
   S+='  var groups={};';
   S+='  selRows.forEach(function(r){var k=r.respPed||"Sin asignar";if(!groups[k])groups[k]=[];groups[k].push(r);});';
   S+='  var body="";';
@@ -1617,7 +1728,7 @@ function exportP3HTML(){
   S+='    });';
   S+='    body+="</tbody></table></div>";';
   S+='  });';
-  S+='  var info=\'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1e40af"><strong>\'+sel.size+\' pedidos seleccionados</strong> &nbsp;&middot;&nbsp; \'+Object.keys(groups).length+\' responsable\'+(Object.keys(groups).length>1?"s":"")+\' &nbsp;&middot;&nbsp; Generado: \'+genFecha+\'</div>\';';
+  S+='  var info=\'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1e40af"><strong>\'+selRows.length+\' pedidos consolidados</strong> &nbsp;&middot;&nbsp; \'+Object.keys(groups).length+\' responsable\'+(Object.keys(groups).length>1?"s":"")+\' &nbsp;&middot;&nbsp; Generado: \'+genFecha+\'</div>\';';
   S+='  document.getElementById("modal-body").innerHTML=info+body;';
   S+='  document.getElementById("modal-bg").classList.add("open");';
   S+='}';
@@ -1798,8 +1909,240 @@ function exportP3HTML(){
   S+='  applyFilters();';
   S+='}';
 
+  // ── MODAL EXPORTAR ───────────────────────────────────────────────────────
+  S+='var _pdfUrls=[null,null,null];';
+  S+='function abrirModalExport(){';
+  S+='  var it=sel.size>0?DATA.filter(function(r){return sel.has(r.i);}):visibleData;';
+  S+='  if(!it.length){alert("No hay ítems para exportar.");return;}';
+  S+='  window._exportIt=it;construirTablaPrecio(it);';
+  S+='  document.getElementById("me-bg").style.display="flex";';
+  S+='}';
+  S+='function cerrarModalExport(){document.getElementById("me-bg").style.display="none";}';
+  S+='function switchTabExport(n){';
+  S+='  ["me-c1","me-c2"].forEach(function(id,i){document.getElementById(id).style.display=(i+1===n)?"block":"none";});';
+  S+='  ["me-t1","me-t2"].forEach(function(id,i){var a=i+1===n;document.getElementById(id).style.background=a?"#1d4ed8":"#334155";document.getElementById(id).style.color=a?"#fff":"#94a3b8";});';
+  S+='}';
+  S+='function triggerPDF(p){document.getElementById("me-pf"+p).click();}';
+  S+='function adjuntarPDF(p){';
+  S+='  var inp=document.getElementById("me-pf"+p);';
+  S+='  if(!inp||!inp.files||!inp.files[0])return;';
+  S+='  var f=inp.files[0];';
+  S+='  if(_pdfUrls[p])URL.revokeObjectURL(_pdfUrls[p]);';
+  S+='  _pdfUrls[p]=URL.createObjectURL(f);';
+  S+='  document.getElementById("me-pfn"+p).textContent=f.name;';
+  S+='  var pi=document.getElementById("me-pi"+p);pi.style.cssText="display:flex;align-items:center;gap:6px;margin-top:8px";';
+  S+='  extraerPreciosPDF(p,f);';
+  S+='}';
+  S+='function verPDF(p){if(_pdfUrls[p])window.open(_pdfUrls[p],"_blank");}';
+  S+='function normTxt(t){return t.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\\s+/g," ").trim();}';
+  S+='function similaridad(a,b){';
+  S+='  var wa=normTxt(a).split(" ").filter(function(x){return x.length>2;});';
+  S+='  var wb=normTxt(b);';
+  S+='  var hits=wa.filter(function(w){return wb.indexOf(w)>=0;}).length;';
+  S+='  return wa.length?hits/wa.length:0;';
+  S+='}';
+  S+='function extraerPreciosPDF(p,file){';
+  S+='  if(typeof pdfjsLib==="undefined"){console.warn("PDF.js no cargado");return;}';
+  S+='  pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";';
+  S+='  var statusEl=document.getElementById("me-pfn"+p);';
+  S+='  statusEl.textContent="⏳ Leyendo PDF...";';
+  S+='  var reader=new FileReader();';
+  S+='  reader.onload=function(e){';
+  S+='    pdfjsLib.getDocument({data:e.target.result}).promise.then(function(pdf){';
+  S+='      var pages=[];';
+  S+='      for(var pg=1;pg<=pdf.numPages;pg++)pages.push(pg);';
+  S+='      return Promise.all(pages.map(function(n){return pdf.getPage(n).then(function(page){return page.getTextContent();});}));';
+  S+='    }).then(function(contents){';
+  // Extraer todos los items de texto con su posición Y aproximada
+  S+='      var items=[];';
+  S+='      contents.forEach(function(c,pi2){';
+  S+='        c.items.forEach(function(it){items.push({str:it.str,y:pi2*10000+(it.transform?it.transform[5]:0)});});';
+  S+='      });';
+  // Construir líneas agrupando items con Y similar
+  S+='      items.sort(function(a,b){return b.y-a.y;});';
+  S+='      var lines=[],curY=null,curLine=[];';
+  S+='      items.forEach(function(it){';
+  S+='        if(curY===null||Math.abs(it.y-curY)>4){if(curLine.length)lines.push(curLine.map(function(x){return x.str;}).join(" "));curLine=[it];curY=it.y;}';
+  S+='        else curLine.push(it);';
+  S+='      });';
+  S+='      if(curLine.length)lines.push(curLine.map(function(x){return x.str;}).join(" "));';
+  // Patrón de precio: número con punto/coma decimal
+  S+='      var numRe=/(?<![\\d.,])(\\d{1,3}(?:[,]\\d{3})*[.]\\d{2}|\\d{1,3}(?:[.]\\d{3})*[,]\\d{2}|\\d+[.,]\\d{2})(?![\\d.,])/g;';
+  S+='      function parseNum(s){return parseFloat(s.replace(/,(?=\\d{3})/g,"").replace(/\\.(?=\\d{3})/g,"").replace(",","."));}';
+  S+='      var it2=window._exportIt||[];';
+  S+='      var encontrados=0;';
+  // Pre-construir corpus: línea → palabras normalizadas
+  S+='      var corpus=lines.map(function(ln){return normTxt(ln);});';
+  S+='      it2.forEach(function(row,ri){';
+  S+='        var desc=row.prod||"";';
+  S+='        var cant=parseFloat(row.cant)||0;';
+  S+='        var cod=normTxt(row.cod||"");';
+  // Buscar la línea con mayor similitud — también considera código de producto
+  S+='        var bestScore=0,bestLine=-1;';
+  S+='        corpus.forEach(function(ln,li){';
+  S+='          if(ln.length<3)return;';
+  S+='          var sc=similaridad(desc,ln);';
+  S+='          if(cod.length>3&&ln.indexOf(cod)>=0)sc=Math.max(sc,0.8);';
+  S+='          if(sc>bestScore){bestScore=sc;bestLine=li;}';
+  S+='        });';
+  S+='        if(bestScore<0.2)return;';
+  // Buscar números en la línea hallada y hasta 5 líneas siguientes
+  S+='        var candidatos=[];';
+  S+='        for(var lx=bestLine;lx<=Math.min(bestLine+5,lines.length-1);lx++){';
+  S+='          var ms=lines[lx].match(numRe);';
+  S+='          if(ms)ms.forEach(function(m){';
+  S+='            var v=parseNum(m);';
+  // Excluir: 0, negativos, > 500000, números de ítem (enteros 1-200), cantidad exacta
+  S+='            if(v<=1.5||v>500000)return;';
+  S+='            if(Math.abs(v-cant)<0.01)return;';
+  S+='            if(Number.isInteger(v)&&v<=200&&v===Math.round(v))return;';
+  S+='            candidatos.push(v);';
+  S+='          });';
+  S+='        }';
+  S+='        if(!candidatos.length)return;';
+  // Preferir el valor con decimal .xx que más se repita o el primero razonable
+  S+='        candidatos.sort(function(a,b){return a-b;});';
+  // Descartar outliers extremos (> 10x el menor)
+  S+='        var base=candidatos[0];';
+  S+='        candidatos=candidatos.filter(function(v){return v<=base*20;});';
+  S+='        var pu=candidatos[0];';
+  S+='        var inpS=document.querySelector("[data-item=\'"+ri+"\'][data-prov=\'"+p+"\'][data-cur=\'S\']");';
+  S+='        if(inpS){inpS.value=pu.toFixed(2);inpS.style.background="#0d3321";inpS.title="Auto-detectado (verifica)";encontrados++;}';
+  S+='      });';
+  S+='      statusEl.textContent=file.name+(encontrados?" ✅ "+encontrados+" precios detectados":" ⚠️ sin coincidencias");';
+  S+='    }).catch(function(err){statusEl.textContent=file.name+" ⚠️ Error al leer PDF";console.error(err);});';
+  S+='  };';
+  S+='  reader.readAsArrayBuffer(file);';
+  S+='}';
+
+  S+='function construirTablaPrecio(items){';
+  S+='  var cls=["#1d4ed8","#22c55e","#7c3aed"];';
+  S+='  var clsBg=["#eff6ff","#f0fdf4","#faf5ff"];';
+  S+='  var clsBd=["#bfdbfe","#bbf7d0","#ddd6fe"];';
+  S+='  var pn=[0,1,2].map(function(p){var el=document.getElementById("me-pn"+p);return(el&&el.value.trim())||("PROVEEDOR "+(p+1));});';
+  S+='  var h=\'<table style="width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed">\';';
+  S+='  h+=\'<colgroup><col style="width:40px"><col style="width:110px"><col><col style="width:65px"><col style="width:55px">\';';
+  S+='  for(var q=0;q<3;q++)h+=\'<col style="width:130px"><col style="width:130px">\';';
+  S+='  h+=\'</colgroup>\';';
+  S+='  h+=\'<thead><tr style="background:#1e3a5f;position:sticky;top:0;z-index:2">\';';
+  S+='  h+=\'<th style="padding:12px 6px;color:#93c5fd;text-align:center;font-size:12px">#</th>\';';
+  S+='  h+=\'<th style="padding:12px 8px;color:#bfdbfe;text-align:left;font-size:12px;font-weight:700;letter-spacing:.3px">CÓDIGO</th>\';';
+  S+='  h+=\'<th style="padding:12px 12px;color:#fff;text-align:left;font-size:13px;font-weight:700">DESCRIPCIÓN</th>\';';
+  S+='  h+=\'<th style="padding:12px 6px;color:#bfdbfe;text-align:center;font-size:12px;font-weight:700">CANT.</th>\';';
+  S+='  h+=\'<th style="padding:12px 6px;color:#bfdbfe;text-align:center;font-size:12px;font-weight:700">UND</th>\';';
+  S+='  for(var q=0;q<3;q++){h+=\'<th colspan="2" style="padding:12px 6px;color:\'+cls[q]+\';text-align:center;border-left:3px solid \'+cls[q]+\';background:\'+clsBg[q]+\';font-size:13px;font-weight:800;letter-spacing:.4px">\'+pn[q]+\'</th>\';}';
+  S+='  h+=\'</tr><tr style="background:#f8fafc;position:sticky;top:47px;z-index:2;border-bottom:2px solid #e2e8f0">\';';
+  S+='  h+=\'<th colspan="5" style="padding:5px"></th>\';';
+  S+='  for(var q=0;q<3;q++){h+=\'<th style="padding:8px 6px;color:\'+cls[q]+\';font-size:12px;font-weight:700;text-align:center;border-left:3px solid \'+cls[q]+\';background:\'+clsBg[q]+\'">P.U. S/</th><th style="padding:8px 6px;color:\'+cls[q]+\';font-size:12px;font-weight:700;text-align:center;background:\'+clsBg[q]+\'">P.U. US$</th>\';}';
+  S+='  h+=\'</tr></thead><tbody>\';';
+  S+='  items.forEach(function(r,i){';
+  S+='    var bg=i%2===0?"#ffffff":"#f8fafc";';
+  S+='    h+=\'<tr style="background:\'+bg+\';border-bottom:1px solid #e2e8f0">\';';
+  S+='    h+=\'<td style="color:#94a3b8;padding:11px 6px;text-align:center;font-size:13px;font-weight:700;border-right:1px solid #e2e8f0">\'+(i+1)+\'</td>\';';
+  S+='    h+=\'<td style="color:#64748b;padding:11px 8px;font-size:12px;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="\'+esc(r.cod||"")+\'">\'+esc(r.cod||"—")+\'</td>\';';
+  S+='    h+=\'<td style="color:#1e293b;padding:11px 12px;font-size:14px;font-weight:500;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="\'+esc(r.prod||"")+\'">\'+esc(r.prod||"—")+\'</td>\';';
+  S+='    h+=\'<td style="color:#0f172a;padding:11px 6px;text-align:center;font-weight:800;font-size:15px">\'+Number(r.cant||0).toLocaleString()+\'</td>\';';
+  S+='    h+=\'<td style="color:#475569;padding:11px 6px;text-align:center;font-size:13px;font-weight:600">\'+esc(r.unid||"")+\'</td>\';';
+  S+='    for(var p=0;p<3;p++){';
+  S+='      h+=\'<td style="padding:6px 5px;border-left:3px solid \'+cls[p]+\';background:\'+clsBg[p]+\'">\';';
+  S+='      h+=\'<input type="number" data-item="\'+i+\'" data-prov="\'+p+\'" data-cur="S" step="0.01" min="0" placeholder="—" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#fff;border:1px solid \'+clsBd[p]+\';border-radius:6px;color:#1e293b;font-size:14px;font-weight:600;text-align:right;font-family:monospace;outline:none">\';';
+  S+='      h+=\'</td>\';';
+  S+='      h+=\'<td style="padding:6px 5px;background:\'+clsBg[p]+\'">\';';
+  S+='      h+=\'<input type="number" data-item="\'+i+\'" data-prov="\'+p+\'" data-cur="D" step="0.01" min="0" placeholder="—" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#fff;border:1px solid \'+clsBd[p]+\';border-radius:6px;color:#1e293b;font-size:14px;font-weight:600;text-align:right;font-family:monospace;outline:none">\';';
+  S+='      h+=\'</td>\';';
+  S+='    }';
+  S+='    h+=\'</tr>\';';
+  S+='  });';
+  S+='  h+=\'</tbody></table>\';';
+  S+='  document.getElementById("me-tbl-wrap").innerHTML=h;';
+  S+='}';
+  S+='function exportarExcelConDatos(){';
+  S+='  var it=window._exportIt;';
+  S+='  if(!it||!it.length){alert("No hay ítems.");return;}';
+  S+='  var tc=parseFloat(document.getElementById("me-tc2").value)||3.75;';
+  S+='  var pNames=[0,1,2].map(function(p){return(document.getElementById("me-pn"+p).value||"").trim()||("PROVEEDOR "+(p+1));});';
+  S+='  var precios=it.map(function(r,i){return[0,1,2].map(function(p){';
+  S+='    var sEl=document.querySelector("[data-item=\'"+i+"\'][data-prov=\'"+p+"\'][data-cur=\'S\']");';
+  S+='    var dEl=document.querySelector("[data-item=\'"+i+"\'][data-prov=\'"+p+"\'][data-cur=\'D\']");';
+  S+='    var sv=sEl&&sEl.value?parseFloat(sEl.value):null;var dv=dEl&&dEl.value?parseFloat(dEl.value):null;';
+  S+='    return{puS:(sv!==null&&sv>0)?sv:null,puD:(dv!==null&&dv>0)?dv:null};';
+  S+='  });});';
+  S+='  exportarExcel({tc:tc,provNames:pNames,precios:precios});';
+  S+='}';
   S+='applyFilters();';
   S+='<\/script>';
+  S+='<div id="me-bg" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:8000;align-items:center;justify-content:center;padding:4px" onclick="if(event.target.id===\'me-bg\')cerrarModalExport()">';
+  S+='<div style="background:#f0f4f8;border-radius:14px;width:99vw;max-width:1700px;height:97vh;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.4)">';
+  // Header
+  S+='<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 28px;background:#1e3a5f;border-radius:14px 14px 0 0;flex-shrink:0">';
+  S+='<div><div style="font-weight:800;font-size:18px;color:#ffffff">📊 Exportar Cuadro Comparativo de Cotizaciones</div>';
+  S+='<div style="font-size:13px;color:#93c5fd;margin-top:3px">FRIOPACKING S.A. — Área de Compras</div></div>';
+  S+='<button onclick="cerrarModalExport()" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;cursor:pointer;line-height:1">✕</button>';
+  S+='</div>';
+  // Tabs
+  S+='<div style="display:flex;background:#1e3a5f;padding:0 28px;flex-shrink:0">';
+  S+='<button id="me-t1" onclick="switchTabExport(1)" style="padding:12px 24px;border:none;border-radius:8px 8px 0 0;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:#2563eb;color:#fff;margin-right:6px;margin-top:10px">📋 Modo Manual</button>';
+  S+='<button id="me-t2" onclick="switchTabExport(2)" style="padding:12px 24px;border:none;border-radius:8px 8px 0 0;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:rgba(255,255,255,.1);color:#bfdbfe;margin-top:10px">📎 Adjuntar PDFs de Proveedores</button>';
+  S+='</div>';
+  // Body
+  S+='<div style="overflow-y:auto;flex:1;padding:28px;background:#f0f4f8">';
+  // TAB 1
+  S+='<div id="me-c1">';
+  S+='<p style="color:#475569;font-size:14px;margin:0 0 22px">Genera el cuadro comparativo con los ítems seleccionados. Abre el Excel descargado e ingresa los precios de cada proveedor directamente en el archivo.</p>';
+  S+='<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:26px">';
+  S+='<div><label style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">TC S/ × US$</label>';
+  S+='<input id="me-tc" type="number" value="3.75" step="0.01" min="1" style="width:110px;padding:10px 12px;background:#fff;border:2px solid #d97706;border-radius:8px;color:#92400e;font-size:16px;font-weight:700"></div>';
+  S+='<div><label style="font-size:12px;color:#1d4ed8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor 1</label>';
+  S+='<input id="me-n1" type="text" placeholder="PROVEEDOR 1" style="width:210px;padding:10px 12px;background:#fff;border:2px solid #1d4ed8;border-radius:8px;color:#1e293b;font-size:14px"></div>';
+  S+='<div><label style="font-size:12px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor 2</label>';
+  S+='<input id="me-n2" type="text" placeholder="PROVEEDOR 2" style="width:210px;padding:10px 12px;background:#fff;border:2px solid #16a34a;border-radius:8px;color:#1e293b;font-size:14px"></div>';
+  S+='<div><label style="font-size:12px;color:#7c3aed;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor 3</label>';
+  S+='<input id="me-n3" type="text" placeholder="PROVEEDOR 3" style="width:210px;padding:10px 12px;background:#fff;border:2px solid #7c3aed;border-radius:8px;color:#1e293b;font-size:14px"></div>';
+  S+='</div>';
+  S+='<button onclick="exportarExcel({})" style="background:linear-gradient(135deg,#166534,#16a34a);color:#fff;border:none;border-radius:10px;padding:13px 32px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(22,163,74,.35)">📥 Generar Excel vacío</button>';
+  S+='</div>';
+  // TAB 2
+  S+='<div id="me-c2" style="display:none">';
+  S+='<p style="color:#475569;font-size:14px;margin:0 0 20px">Adjunta los PDFs de cada proveedor para consultarlos como referencia. Ingresa los precios en la tabla y genera el comparativo ya llenado.</p>';
+  S+='<div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:20px">';
+  S+='<div><label style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">TC S/ × US$</label>';
+  S+='<input id="me-tc2" type="number" value="3.75" step="0.01" min="1" style="width:110px;padding:10px 12px;background:#fff;border:2px solid #d97706;border-radius:8px;color:#92400e;font-size:16px;font-weight:700"></div>';
+  S+='</div>';
+  S+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
+  // Card P1
+  S+='<div style="background:#fff;border:2px solid #bfdbfe;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(29,78,216,.08)">';
+  S+='<div style="font-size:13px;color:#1d4ed8;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">▸ Proveedor 1</div>';
+  S+='<input id="me-pn0" type="text" placeholder="Nombre del proveedor" style="width:100%;box-sizing:border-box;padding:9px 11px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;color:#1e293b;font-size:13px;margin-bottom:10px">';
+  S+='<input id="me-pf0" type="file" accept=".pdf" style="display:none" onchange="adjuntarPDF(0)">';
+  S+='<button onclick="triggerPDF(0)" style="width:100%;padding:9px;background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;color:#1d4ed8;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📎 Adjuntar PDF</button>';
+  S+='<div id="me-pi0" style="display:none;align-items:center;gap:8px;margin-top:10px"><span id="me-pfn0" style="flex:1;font-size:12px;color:#16a34a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600"></span>';
+  S+='<button onclick="verPDF(0)" style="background:#1d4ed8;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">👁 Ver</button></div>';
+  S+='</div>';
+  // Card P2
+  S+='<div style="background:#fff;border:2px solid #bbf7d0;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(22,163,74,.08)">';
+  S+='<div style="font-size:13px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">▸ Proveedor 2</div>';
+  S+='<input id="me-pn1" type="text" placeholder="Nombre del proveedor" style="width:100%;box-sizing:border-box;padding:9px 11px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;color:#1e293b;font-size:13px;margin-bottom:10px">';
+  S+='<input id="me-pf1" type="file" accept=".pdf" style="display:none" onchange="adjuntarPDF(1)">';
+  S+='<button onclick="triggerPDF(1)" style="width:100%;padding:9px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;color:#16a34a;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📎 Adjuntar PDF</button>';
+  S+='<div id="me-pi1" style="display:none;align-items:center;gap:8px;margin-top:10px"><span id="me-pfn1" style="flex:1;font-size:12px;color:#16a34a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600"></span>';
+  S+='<button onclick="verPDF(1)" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">👁 Ver</button></div>';
+  S+='</div>';
+  // Card P3
+  S+='<div style="background:#fff;border:2px solid #ddd6fe;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(124,58,237,.08)">';
+  S+='<div style="font-size:13px;color:#7c3aed;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">▸ Proveedor 3</div>';
+  S+='<input id="me-pn2" type="text" placeholder="Nombre del proveedor" style="width:100%;box-sizing:border-box;padding:9px 11px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;color:#1e293b;font-size:13px;margin-bottom:10px">';
+  S+='<input id="me-pf2" type="file" accept=".pdf" style="display:none" onchange="adjuntarPDF(2)">';
+  S+='<button onclick="triggerPDF(2)" style="width:100%;padding:9px;background:#faf5ff;border:1px solid #c4b5fd;border-radius:8px;color:#7c3aed;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📎 Adjuntar PDF</button>';
+  S+='<div id="me-pi2" style="display:none;align-items:center;gap:8px;margin-top:10px"><span id="me-pfn2" style="flex:1;font-size:12px;color:#16a34a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600"></span>';
+  S+='<button onclick="verPDF(2)" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">👁 Ver</button></div>';
+  S+='</div>';
+  S+='</div>';
+  S+='<div id="me-tbl-wrap" style="overflow-x:auto;border-radius:10px;border:1px solid #cbd5e1;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.06)"></div>';
+  S+='<button onclick="exportarExcelConDatos()" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;border:none;border-radius:10px;padding:13px 32px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(37,99,235,.35)">📊 Generar Comparativo Llenado</button>';
+  S+='</div>';
+  S+='</div>';
+  S+='</div>';
+  S+='</div>';
   S+='</body></html>';
   var w=window.open('','_blank','width=1200,height=800,scrollbars=yes,resizable=yes');
   w.document.write(S);
@@ -4040,6 +4383,89 @@ setInterval(function(){
   window.addEventListener('scroll',tick);
   window.addEventListener('resize',tick);
   setInterval(tick,500);
+})();
+</script>
+<!-- SharePoint upload via MSAL — only active when served from localhost:8080 -->
+<script>
+(function(){
+  if(location.hostname!=='localhost'&&location.hostname!=='127.0.0.1')return;
+  var _msal=null;
+  var _cfg={auth:{clientId:'4aab5beb-5b53-45a0-81ea-b11f0fa8d50f',authority:'https://login.microsoftonline.com/friopacking.pe',redirectUri:'http://localhost:8080'}};
+  var _scopes=['Files.ReadWrite','User.Read'];
+  var _share='https://friopacking-my.sharepoint.com/:f:/g/personal/plinares_friopacking_pe/IgC3g_rPetACQbbVlGitrWDzAaij5_jYvP9KDELBMlbWXzY?e=hfb3jh';
+  var _msalUrls=[
+    '/msal-browser.min.js',
+    'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js',
+    'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.js'
+  ];
+  function _loadMsal(urls,cb){
+    if(typeof msal!=='undefined'){cb(null);return;}
+    if(!urls.length){cb('No se pudo cargar la librería MSAL');return;}
+    var s=document.createElement('script');
+    s.src=urls[0];
+    s.onload=function(){cb(null);};
+    s.onerror=function(){_loadMsal(urls.slice(1),cb);};
+    document.head.appendChild(s);
+  }
+  function _init(cb){
+    if(_msal){cb(_msal,null);return;}
+    _loadMsal(_msalUrls,function(err){
+      if(err){cb(null,err);return;}
+      try{
+        _msal=new msal.PublicClientApplication(_cfg);
+        _msal.initialize().then(function(){_msal.handleRedirectPromise().catch(function(){});cb(_msal,null);}).catch(function(e){cb(null,'MSAL init: '+e.message);});
+      }catch(e){cb(null,'MSAL error: '+e.message);}
+    });
+  }
+  function _getToken(cb){
+    _init(function(inst,err){
+      if(!inst){cb(null,err||'MSAL no disponible');return;}
+      var accts=inst.getAllAccounts();
+      var req={scopes:_scopes};
+      if(accts.length>0){req.account=accts[0];}
+      inst.acquireTokenSilent(req).then(function(r){cb(r.accessToken,null);}).catch(function(e){
+        cb(null,'Sesión expirada. Haz clic en el botón "☁ SP" para iniciar sesión.');
+      });
+    });
+  }
+  window.spLogin=function(){
+    _init(function(inst,err){
+      if(!inst){alert('Error MSAL: '+(err||'desconocido'));return;}
+      var btn=document.getElementById('spLoginBtn');
+      var req={scopes:_scopes,prompt:'consent'};
+      inst.acquireTokenPopup(req).then(function(r){
+        if(btn){btn.textContent='☁ '+r.account.username.split('@')[0];btn.style.background='#16a34a';}
+      }).catch(function(e){alert('Error login: '+e.message);});
+    });
+  };
+  // Show SP button only on localhost
+  (function showBtn(){
+    var btn=document.getElementById('spLoginBtn');
+    if(btn){btn.style.display='inline-flex';}
+    else{setTimeout(showBtn,200);}
+  })();
+  window._spUploadFromPopup=function(arr,fn,done){
+    _getToken(function(token,err){
+      if(!token){done(false,err);return;}
+      var enc='u!'+btoa(_share).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+      var headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+      // Step 1: resolve shared folder to get driveId and itemId
+      fetch('https://graph.microsoft.com/v1.0/shares/'+enc+'/driveItem?$select=id,parentReference',{headers:headers})
+        .then(function(r){return r.json();})
+        .then(function(item){
+          if(!item.id){done(false,'No se pudo resolver la carpeta: '+(item.error&&item.error.message||JSON.stringify(item)));return;}
+          var driveId=item.parentReference&&item.parentReference.driveId;
+          if(!driveId){done(false,'No se encontró driveId en la carpeta compartida');return;}
+          // Step 2: upload file into that folder
+          var uploadUrl='https://graph.microsoft.com/v1.0/drives/'+driveId+'/items/'+item.id+':/'+encodeURIComponent(fn)+':/content';
+          var buf=new Uint8Array(arr);
+          fetch(uploadUrl,{method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:buf})
+            .then(function(r){if(r.ok){done(true,null);}else{r.text().then(function(t){done(false,t);});}})
+            .catch(function(e){done(false,e.message);});
+        })
+        .catch(function(e){done(false,'Error resolviendo carpeta: '+e.message);});
+    });
+  };
 })();
 </script>
 </body>
