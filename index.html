@@ -44,6 +44,46 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:1
 .hci{font-size:20px;margin-bottom:5px}.hct{color:#e2e8f0;font-size:11px;font-weight:600;line-height:1.3}.hcs{color:#64748b;font-size:10px;margin-top:3px}
 .hup{background:#1e293b;border:2px dashed #334155;border-radius:12px;padding:16px 36px;text-align:center;color:#64748b;width:560px}
 .hup-icon{font-size:24px;margin-bottom:5px}.hup p{font-size:11px}.hup span{color:#1d4ed8;font-weight:600}
+/* INSTRUCTIVO MODAL */
+#inst-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:flex-start;justify-content:center;padding:20px}
+#inst-bg.open{display:flex}
+#inst-card{background:#f8fafc;width:100%;max-width:920px;max-height:calc(100vh - 40px);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+#inst-hdr{background:#1e3a5f;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#inst-hdr h2{color:#fff;font-size:17px;font-weight:700;margin:0}
+#inst-hdr p{color:#93c5fd;font-size:11px;margin:2px 0 0}
+#inst-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#inst-close:hover{background:rgba(255,255,255,.25)}
+#inst-nav{display:flex;gap:4px;padding:12px 20px;background:#1e3a5f;border-top:1px solid rgba(255,255,255,.1);flex-wrap:wrap;flex-shrink:0}
+#inst-nav button{padding:6px 12px;border:none;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;background:rgba(255,255,255,.12);color:#bfdbfe;font-family:inherit;transition:all .15s}
+#inst-nav button.ia{background:#2563eb;color:#fff}
+#inst-nav button:hover{background:rgba(255,255,255,.22);color:#fff}
+#inst-body{overflow-y:auto;padding:28px;flex:1}
+.isec{display:none}.isec.ia{display:block}
+.isec h3{font-size:15px;font-weight:700;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:8px;margin-bottom:16px}
+.isec h4{font-size:13px;font-weight:700;color:#1d4ed8;margin:18px 0 8px}
+.isec p,.isec li{font-size:12.5px;color:#374151;line-height:1.7;margin-bottom:6px}
+.isec ul,.isec ol{padding-left:20px;margin-bottom:10px}
+.iscreen{background:#1e293b;border-radius:10px;padding:14px 18px;margin:14px 0;border-left:4px solid #2563eb}
+.iscreen-row{display:flex;align-items:center;gap:8px;margin:5px 0}
+.iscreen-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.iscreen-lbl{color:#cbd5e1;font-size:11px}
+.iscreen-val{color:#f1f5f9;font-size:11px;font-weight:600}
+.itip{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin:12px 0;display:flex;gap:8px}
+.itip-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.itip p{font-size:12px;color:#92400e;margin:0}
+.iwarn{background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin:12px 0;display:flex;gap:8px}
+.iwarn p{font-size:12px;color:#991b1b;margin:0}
+.istep{display:flex;gap:12px;align-items:flex-start;margin:8px 0}
+.istep-n{background:#1d4ed8;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+.istep p{font-size:12.5px;color:#374151;margin:0;line-height:1.6}
+.ibadge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;vertical-align:middle}
+.ibadge-blue{background:#dbeafe;color:#1d4ed8}
+.ibadge-green{background:#dcfce7;color:#15803d}
+.ibadge-red{background:#fee2e2;color:#dc2626}
+.ibadge-purple{background:#f3e8ff;color:#7c3aed}
+.ibadge-gray{background:#f1f5f9;color:#475569}
+.hcard-inst{background:#1e293b;border:1px solid #16a34a;border-radius:12px;padding:14px;cursor:pointer;transition:all .2s}
+.hcard-inst:hover{border-color:#22c55e;background:#14532d;transform:translateY(-2px);box-shadow:0 6px 20px rgba(22,163,74,.3)}
 /* INFO BAR */
 .ib{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:7px 12px;margin-bottom:12px;font-size:11px;color:#64748b}
 .idot{width:7px;height:7px;border-radius:50%;background:#16a34a}
@@ -326,8 +366,268 @@ body.dark .g-rank-card{background:#111b2b!important}
     <div class="hcard" onclick="nav('p6')"><div class="hci">🏗️</div><div class="hct">Proyectos PMO</div><div class="hcs" id="hc6">cargando…</div></div>
     <div class="hcard" onclick="nav('p1')"><div class="hci">📊</div><div class="hct">Gerencial / KPIs<br>Manuel</div><div class="hcs">Vista ejecutiva</div></div>
   </div>
+  <div class="hcard-inst" onclick="abrirInstructivo()" style="width:560px;display:flex;align-items:center;gap:14px;padding:14px 20px">
+    <div style="font-size:28px">📖</div>
+    <div><div style="color:#e2e8f0;font-size:12px;font-weight:700">Instructivo del Dashboard</div><div style="color:#4ade80;font-size:10px;margin-top:2px">Guía completa para supervisores — hoja por hoja</div></div>
+    <div style="margin-left:auto;background:#16a34a;color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:12px">VER GUÍA</div>
+  </div>
 
 </div>
+
+<!-- MODAL INSTRUCTIVO -->
+<div id="inst-bg" onclick="if(event.target===this)cerrarInstructivo()">
+<div id="inst-card">
+  <div id="inst-hdr">
+    <div><h2>📖 Instructivo — Dashboard Seguimiento Compras 2026</h2><p>Guía de uso para supervisores · FRIOPACKING S.A. · Versión 1.0 · Junio 2026</p></div>
+    <button id="inst-close" onclick="cerrarInstructivo()">✕</button>
+  </div>
+  <div id="inst-nav">
+    <button class="ia" onclick="instNav(0)">🏠 Inicio</button>
+    <button onclick="instNav(1)">📂 Importar &amp; Guardar</button>
+    <button onclick="instNav(2)">📋 OC Pendientes</button>
+    <button onclick="instNav(3)">🔴 Sin OC — Cotización</button>
+    <button onclick="instNav(4)">📥 Exportar Excel</button>
+    <button onclick="instNav(5)">📦 Compras Directas</button>
+    <button onclick="instNav(6)">⚡ Req. sin Pedido</button>
+    <button onclick="instNav(7)">🏗️ Proyectos PMO</button>
+    <button onclick="instNav(8)">📊 Gerencial / KPIs</button>
+    <button onclick="instNav(9)">🔍 Consultas</button>
+  </div>
+  <div id="inst-body">
+
+    <!-- 0 INICIO -->
+    <div class="isec ia" id="isec0">
+      <h3>🏠 Pantalla de Inicio</h3>
+      <p>La pantalla de inicio es el punto de entrada al dashboard. Muestra accesos directos a cada módulo y el estado general de los datos cargados.</p>
+      <div class="iscreen">
+        <div class="iscreen-row"><span class="iscreen-dot" style="background:#60a5fa"></span><span class="iscreen-lbl">Logo Friopacking</span><span class="iscreen-val">+ Título "Seguimiento Compras 2026"</span></div>
+        <div class="iscreen-row"><span class="iscreen-dot" style="background:#34d399"></span><span class="iscreen-lbl">6 tarjetas de módulos</span><span class="iscreen-val">Haz clic para ir directamente a cada sección</span></div>
+        <div class="iscreen-row"><span class="iscreen-dot" style="background:#fbbf24"></span><span class="iscreen-lbl">Zona de importación</span><span class="iscreen-val">Arrastra o importa los archivos Excel aquí</span></div>
+      </div>
+      <h4>Tarjetas disponibles</h4>
+      <ul>
+        <li><span class="ibadge ibadge-blue">📋 OC Pendientes</span> — Órdenes de compra con requerimiento asignado</li>
+        <li><span class="ibadge ibadge-red">🔴 Sin OC</span> — Pedidos en proceso de cotización sin OC aún</li>
+        <li><span class="ibadge ibadge-gray">📦 Compras Directas</span> — Compras sin requerimiento formal (archivo externo)</li>
+        <li><span class="ibadge ibadge-gray">⚡ Req. sin Pedido</span> — Requerimientos sin pedido (Comodín — Javier)</li>
+        <li><span class="ibadge ibadge-gray">🏗️ Proyectos PMO</span> — Seguimiento de proyectos activos</li>
+        <li><span class="ibadge ibadge-purple">📊 Gerencial / KPIs</span> — Vista ejecutiva para gerencia (Manuel)</li>
+      </ul>
+      <div class="itip"><span class="itip-icon">💡</span><p>Al abrir el dashboard por primera vez, los contadores de cada tarjeta aparecen como "cargando…" hasta que importes los archivos Excel con el botón <strong>IMPORTAR</strong>.</p></div>
+    </div>
+
+    <!-- 1 IMPORTAR & GUARDAR -->
+    <div class="isec" id="isec1">
+      <h3>📂 Importar datos y Guardar</h3>
+      <p>Estos dos botones en la barra superior controlan la carga y sincronización de todos los datos del dashboard.</p>
+      <h4>📂 Botón IMPORTAR</h4>
+      <p>Carga los datos desde los archivos Excel fuente. Al hacer clic, el sistema pedirá dos archivos:</p>
+      <ul>
+        <li><strong>MAESTRO.xlsx</strong> — Contiene todas las órdenes de compra y requerimientos del sistema SAP</li>
+        <li><strong>PedidoSinReq.xlsx</strong> — Requerimientos sin pedido asignado</li>
+      </ul>
+      <div class="istep"><div class="istep-n">1</div><p>Haz clic en <strong>📂 IMPORTAR</strong> en la esquina superior derecha</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Selecciona primero el archivo <strong>MAESTRO.xlsx</strong> cuando el navegador lo solicite</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>Luego selecciona <strong>PedidoSinReq.xlsx</strong></p></div>
+      <div class="istep"><div class="istep-n">4</div><p>El dashboard actualizará automáticamente todos los módulos con los datos nuevos</p></div>
+      <div class="itip"><span class="itip-icon">💡</span><p>Importa los archivos cada vez que necesites ver datos actualizados. Los datos se cargan en memoria local — no se envían a ningún servidor.</p></div>
+      <h4>💾 Botón GUARDAR</h4>
+      <p>Guarda el estado actual del dashboard y sincroniza los cambios con los demás usuarios del equipo.</p>
+      <div class="iwarn"><p>⚠️ <strong>Importante:</strong> Haz clic en GUARDAR después de realizar cualquier modificación (cambio de estado, notas, etc.) para que los demás usuarios vean los cambios actualizados.</p></div>
+    </div>
+
+    <!-- 2 OC PENDIENTES -->
+    <div class="isec" id="isec2">
+      <h3>📋 OC Pendientes con Requerimiento</h3>
+      <p>Muestra todas las Órdenes de Compra que ya tienen un requerimiento SAP asignado. Es el módulo principal de seguimiento de compras.</p>
+      <h4>Columnas de la tabla</h4>
+      <ul>
+        <li><strong>N° OC</strong> — Número de orden de compra SAP</li>
+        <li><strong>Fecha OC</strong> — Fecha de emisión de la orden</li>
+        <li><strong>Resp. Pedido</strong> — Responsable del pedido en compras</li>
+        <li><strong>Responsable / Solicitante</strong> — Persona que solicitó el ítem</li>
+        <li><strong>ID Proyecto / Proyecto</strong> — Proyecto asociado</li>
+        <li><strong>Código / Descripción</strong> — Código SAP y descripción del material</li>
+        <li><strong>Cant. / Unidad</strong> — Cantidad y unidad de medida</li>
+        <li><strong>Requerimiento / Fecha Req.</strong> — N° de requerimiento SAP y fecha</li>
+        <li><strong>Estado</strong> — Estado actual de la OC <span class="ibadge ibadge-green">Entregado</span> <span class="ibadge ibadge-blue">En tránsito</span> <span class="ibadge ibadge-red">Pendiente</span></li>
+        <li><strong>N° Pedido</strong> — Número de pedido interno</li>
+      </ul>
+      <h4>Filtros disponibles</h4>
+      <ul>
+        <li><strong>Resp. Pedido</strong> — Filtra por responsable de compras</li>
+        <li><strong>Responsable / Solicitante</strong> — Filtra por quien solicitó</li>
+        <li><strong>Estado</strong> — Filtra por estado de la OC</li>
+        <li><strong>Buscador</strong> — Busca por texto libre en cualquier campo</li>
+      </ul>
+      <h4>Botón Visual</h4>
+      <p>Abre una ventana emergente con el listado formateado, lista para imprimir o guardar como PDF. Útil para compartir con proveedores o gerencia.</p>
+      <div class="istep"><div class="istep-n">1</div><p>Aplica los filtros que necesites para acotar la vista</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Haz clic en <strong>Visual</strong> para abrir la vista de impresión</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>En la ventana emergente, usa Ctrl+P (o Cmd+P en Mac) para imprimir o guardar PDF</p></div>
+    </div>
+
+    <!-- 3 SIN OC COTIZACION -->
+    <div class="isec" id="isec3">
+      <h3>🔴 Sin OC — Cotización</h3>
+      <p>Pedidos que aún no tienen una Orden de Compra asignada y se encuentran en proceso de cotización con proveedores. Aquí se gestiona el cuadro comparativo de precios.</p>
+      <h4>Acciones principales</h4>
+      <ul>
+        <li><strong>Seleccionar todos</strong> — Marca todos los ítems visibles para exportar</li>
+        <li><strong>Checkbox individual</strong> — Selecciona ítems específicos haciendo clic en cada fila</li>
+        <li><strong>📥 Exportar Excel</strong> — Genera el cuadro comparativo de cotizaciones (ver sección siguiente)</li>
+        <li><strong>📋 Consolidar selección</strong> — Consolida los ítems seleccionados en un resumen</li>
+      </ul>
+      <h4>Filtros</h4>
+      <p>Mismos filtros que OC Pendientes: Resp. Pedido, Responsable/Solicitante, Estado y buscador de texto libre.</p>
+      <div class="itip"><span class="itip-icon">💡</span><p>Selecciona solo los ítems del mismo proveedor o proyecto antes de exportar para generar un cuadro comparativo más limpio y específico.</p></div>
+    </div>
+
+    <!-- 4 EXPORTAR EXCEL -->
+    <div class="isec" id="isec4">
+      <h3>📥 Exportar Cuadro Comparativo de Cotizaciones</h3>
+      <p>El modal de exportación permite generar un cuadro comparativo de precios en Excel para hasta 3 proveedores. Tiene dos modos de trabajo:</p>
+
+      <h4>📋 Modo Manual</h4>
+      <p>Genera una plantilla Excel vacía que puedes llenar directamente en Excel con los precios de cada proveedor.</p>
+      <div class="istep"><div class="istep-n">1</div><p>Selecciona los ítems a cotizar en la tabla (o usa "Seleccionar todos")</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Haz clic en <strong>📥 Exportar Excel</strong></p></div>
+      <div class="istep"><div class="istep-n">3</div><p>En el modal, ve a la pestaña <strong>Modo Manual</strong></p></div>
+      <div class="istep"><div class="istep-n">4</div><p>Ingresa el <strong>TC</strong> (Tipo de Cambio S/ × US$, ej: 3.75)</p></div>
+      <div class="istep"><div class="istep-n">5</div><p>Escribe los nombres de los 3 proveedores (Proveedor 1, 2, 3)</p></div>
+      <div class="istep"><div class="istep-n">6</div><p>Haz clic en <strong>Generar Plantilla Vacía</strong> — se descargará el Excel</p></div>
+      <div class="istep"><div class="istep-n">7</div><p>Abre el Excel, habilita la edición y llena los precios manualmente</p></div>
+      <div class="iwarn"><p>⚠️ Al abrir el Excel en una PC nueva, puede aparecer el aviso de "Vista protegida". Haz clic en <strong>Habilitar edición</strong> para que las fórmulas funcionen correctamente.</p></div>
+
+      <h4>📄 Adjuntar PDFs de Proveedores</h4>
+      <p>Sube el PDF de cotización de cada proveedor y el sistema detecta los precios automáticamente usando inteligencia de texto.</p>
+      <div class="istep"><div class="istep-n">1</div><p>En el modal, ve a la pestaña <strong>Adjuntar PDFs</strong></p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Ingresa el <strong>TC</strong> y los nombres de los proveedores</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>Haz clic en <strong>Adjuntar PDF</strong> para cada proveedor y selecciona el archivo</p></div>
+      <div class="istep"><div class="istep-n">4</div><p>El sistema lee el PDF y llena automáticamente los precios en la tabla</p></div>
+      <div class="istep"><div class="istep-n">5</div><p>Las celdas con <strong>borde verde</strong> fueron detectadas automáticamente — verifica que sean correctas</p></div>
+      <div class="istep"><div class="istep-n">6</div><p>Corrige o completa los precios que el sistema no haya detectado</p></div>
+      <div class="istep"><div class="istep-n">7</div><p>Haz clic en <strong>Generar Comparativo Llenado</strong></p></div>
+      <div class="itip"><span class="itip-icon">💡</span><p>La detección automática funciona mejor cuando las descripciones del PDF del proveedor son similares a las del requerimiento SAP. Si un precio no se detecta, ingrésalo manualmente.</p></div>
+
+      <h4>Estructura del Excel generado</h4>
+      <ul>
+        <li>Encabezado con logo FRIOPACKING, fecha, proyecto y TC</li>
+        <li>Columnas por proveedor: <strong>P.U. S/</strong>, <strong>P.U. US$</strong>, <strong>V.Tot S/</strong>, <strong>V.Tot US$</strong></li>
+        <li>Fórmulas automáticas S/ ↔ US$ usando el TC ingresado</li>
+        <li>Columna <strong>★ Mejor SKU</strong> — marca el proveedor más económico por ítem</li>
+        <li>Fila <strong>Mejor Total</strong> — suma total por proveedor</li>
+        <li>Sección de <strong>Observaciones</strong>, <strong>Crédito</strong>, <strong>Lead Time</strong>, <strong>Entrega en Planta</strong></li>
+      </ul>
+    </div>
+
+    <!-- 5 COMPRAS DIRECTAS -->
+    <div class="isec" id="isec5">
+      <h3>📦 Compras Directas</h3>
+      <p>Módulo para el seguimiento de compras realizadas sin un requerimiento formal en SAP. Corresponde a un archivo externo independiente.</p>
+      <h4>Características</h4>
+      <ul>
+        <li>Gestiona compras urgentes o menores que no pasan por el proceso de requerimiento SAP estándar</li>
+        <li>Los datos provienen de un archivo Excel externo que se carga por separado</li>
+        <li>Visible también en la vista <strong>Gerencial / KPIs</strong> cuando se selecciona "Compras Directas" o "Ambas" en el filtro de origen</li>
+      </ul>
+      <div class="itip"><span class="itip-icon">💡</span><p>Para ver los datos de Compras Directas en el módulo Gerencial, cambia el filtro <strong>Origen</strong> a "Compras Directas (Sin Req.)" o "Ambas".</p></div>
+    </div>
+
+    <!-- 6 REQ SIN PEDIDO -->
+    <div class="isec" id="isec6">
+      <h3>⚡ Req. sin Pedido — Comodín (Javier)</h3>
+      <p>Muestra los requerimientos SAP que aún no tienen un pedido/OC asignado. Esta sección es administrada principalmente por Javier y está fuera del flujo regular de compras.</p>
+      <h4>Uso</h4>
+      <ul>
+        <li>Identificar requerimientos "huérfanos" sin acción de compra</li>
+        <li>Hacer seguimiento de ítems pendientes de asignación</li>
+        <li>Los datos se cargan desde el archivo <strong>PedidoSinReq.xlsx</strong> en la importación</li>
+      </ul>
+      <div class="iwarn"><p>⚠️ Los ítems en esta sección no aparecen en OC Pendientes ni en Sin OC hasta que se les asigne un pedido en SAP y se reimporte el MAESTRO.xlsx.</p></div>
+    </div>
+
+    <!-- 7 PROYECTOS PMO -->
+    <div class="isec" id="isec7">
+      <h3>🏗️ Proyectos PMO</h3>
+      <p>Vista de seguimiento de los proyectos activos de la empresa con mapa georreferenciado y estado de avance.</p>
+      <h4>Elementos de la vista</h4>
+      <ul>
+        <li><strong>Mapa interactivo</strong> — Muestra la ubicación de cada proyecto en el Perú. Haz clic en un pin para ver detalles</li>
+        <li><strong>Tabla de proyectos</strong> — Lista con nombre, estado, supervisor, zona, fechas de inicio y fin</li>
+        <li><strong>Contador de proyectos</strong> — Número total de proyectos activos (mostrado en la tarjeta del Inicio)</li>
+      </ul>
+      <h4>Información por proyecto</h4>
+      <ul>
+        <li>Nombre del proyecto</li>
+        <li>Estado: <span class="ibadge ibadge-green">Activo</span> <span class="ibadge ibadge-blue">En progreso</span> <span class="ibadge ibadge-red">Detenido</span></li>
+        <li>Supervisor responsable</li>
+        <li>Zona y distrito</li>
+        <li>Fecha de inicio y fin estimado</li>
+      </ul>
+      <div class="itip"><span class="itip-icon">💡</span><p>Los datos del mapa se actualizan automáticamente al importar el MAESTRO.xlsx que incluya la hoja de proyectos PMO.</p></div>
+    </div>
+
+    <!-- 8 GERENCIAL -->
+    <div class="isec" id="isec8">
+      <h3>📊 Gerencial / KPIs — Vista Ejecutiva (Manuel)</h3>
+      <p>Panel de indicadores clave de desempeño (KPIs) diseñado para la gerencia. Consolida datos de compras con gráficos y métricas de alto nivel.</p>
+      <h4>Filtros disponibles</h4>
+      <ul>
+        <li><strong>Origen</strong> — Con Requerimiento (Maestro) / Compras Directas / Ambas</li>
+        <li><strong>Usuario Compras</strong> — Filtra por responsable de compras específico</li>
+        <li><strong>Tipo OC</strong> — 0001 Nacionales / 0002 Importaciones</li>
+        <li><strong>Mes OC</strong> — Filtra por mes de emisión de la orden</li>
+      </ul>
+      <h4>KPIs mostrados</h4>
+      <ul>
+        <li>Total de órdenes de compra del período</li>
+        <li>Monto total comprometido (S/ y US$)</li>
+        <li>Órdenes por estado (Entregado / En tránsito / Pendiente)</li>
+        <li>Distribución por comprador</li>
+        <li>Distribución por tipo de OC (Nacionales vs. Importaciones)</li>
+      </ul>
+      <h4>Gráficos</h4>
+      <ul>
+        <li>Gráfico de dona — Distribución de estados</li>
+        <li>Barras horizontales — Top compradores por volumen</li>
+        <li>Barras verticales — OC por mes</li>
+        <li>Ranking de proyectos — Top proyectos por monto</li>
+      </ul>
+      <div class="itip"><span class="itip-icon">💡</span><p>Para una vista completa, selecciona "Ambas" en el filtro Origen para incluir tanto las OC con requerimiento como las Compras Directas.</p></div>
+    </div>
+
+    <!-- 9 CONSULTAS -->
+    <div class="isec" id="isec9">
+      <h3>🔍 Consultas</h3>
+      <p>Módulo de búsqueda avanzada para consultas cruzadas entre todos los datos del dashboard.</p>
+      <h4>Usos principales</h4>
+      <ul>
+        <li>Buscar un ítem específico por código SAP o descripción en todos los módulos a la vez</li>
+        <li>Ver el historial de un requerimiento desde su creación hasta la OC</li>
+        <li>Consultar el estado de un pedido específico</li>
+        <li>Verificar si un ítem ya tiene OC o sigue en cotización</li>
+      </ul>
+      <div class="itip"><span class="itip-icon">💡</span><p>Usa el buscador de Consultas cuando un supervisor pregunte por un ítem específico y no sepas en qué módulo buscarlo — esta vista cruza todos los datos.</p></div>
+      <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px">
+        <p>Dashboard Seguimiento Compras 2026 — FRIOPACKING S.A.</p>
+        <p>Versión 1.0 · Junio 2026 · Elaborado por Melissa Sihuairo</p>
+        <p style="margin-top:8px;font-size:10px">Para soporte técnico contactar al administrador del sistema</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+function abrirInstructivo(){document.getElementById('inst-bg').classList.add('open');}
+function cerrarInstructivo(){document.getElementById('inst-bg').classList.remove('open');}
+function instNav(n){
+  document.querySelectorAll('.isec').forEach(function(s,i){s.classList.toggle('ia',i===n);});
+  document.querySelectorAll('#inst-nav button').forEach(function(b,i){b.classList.toggle('ia',i===n);});
+}
+</script>
 <!-- P1 Gerencial KPIs Manuel -->
 <div class="pg" id="pp1">
   <div class="ib"><span class="thtt">📊 Gerencial / KPIs — Manuel</span>
@@ -3966,9 +4266,16 @@ function importMaestro(wb){
       });
     }
     
+    const VALID_ESTADOS_PMO=new Set(['en progreso','por iniciar','con obs','pendiente valorización','pendiente valorizacion','cerrado','activo','en curso']);
     projData=praw.slice(phdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&c!=='')).map(r=>{
       const nombre=pg(r,'Proyectos').trim();
       if(!nombre)return null;
+      // Skip summary/financial rows by name
+      if(/^(supervisor|valor|factur|total|subtotal|igv|monto)/i.test(nombre))return null;
+      const estadoRaw=(pg(r,'Estado')||'').trim().toLowerCase();
+      // Require a valid PMO state; rows with no state and no supervisor are also summary rows
+      if(!estadoRaw&&!pg(r,'SUPERVISOR')&&!pg(r,'ZONA'))return null;
+      if(estadoRaw&&!VALID_ESTADOS_PMO.has(estadoRaw))return null;
       // Merge with existing project to preserve dates/GPS already parsed
       const prev=D.proj.find(p=>p.nombre===nombre)||{};
       const newInicio=pgd(r,'Fecha de inicio')||pgd(r,'Fecha Inicio')||pgd(r,'FechaInicio')||pgd(r,'Inicio');
