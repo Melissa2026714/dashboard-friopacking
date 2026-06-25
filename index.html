@@ -4094,8 +4094,10 @@ function importConsultas(wb){
   const iPROD =(()=>{const idx=hdrs.findIndex(h=>h.includes('PRODUCTO')&&(h.includes('COD')||h.match(/PRODUCTO\s*C/)));return idx>=0?idx:gi('IDPROD','CODIGO')})();
   // Descripción producto
   const iDESC =(()=>{const idx=hdrs.findIndex(h=>h.includes('PRODUCTO')&&(h.includes('DES')||h.includes('NOMBRE')));return idx>=0?idx:gi('DESCRIPCION','DESC')})();
-  // Precio unitario: prioriza ME unitario, luego MN unitario, luego PREC o TOTAL
-  const iPREC =gi('PRECIO M.E. UNIT','PRECIO M.N. UNIT','PRECIO M.E UNIT','PRECIO M.N UNIT','PREC UNIT','PRECIO UNIT','VALOR UNIT','VALOR_UNIT','P.U.','PU ','PREC','VALOR','TOTAL','IMPORTE');
+  // Precio unitario MN (soles) y ME (moneda extranjera) — se elige según moneda de la fila
+  const iPRECMN=gi('PRECIO M.N. UNIT','PRECIO M.N UNIT','PRECIO MN UNIT');
+  const iPRECME=gi('PRECIO M.E. UNIT','PRECIO M.E UNIT','PRECIO ME UNIT');
+  const iPREC  =gi('PREC UNIT','PRECIO UNIT','VALOR UNIT','VALOR_UNIT','P.U.','PU ','PREC','VALOR','TOTAL','IMPORTE');
   // Responsable
   const iCREA =gi('RESPON','RESP_DOC','CREADOO_POR','CREADO_POR','RESPONSABLE');
   const iEST  =gi('ESTAD','ESTADO','EST_DOC','STATUS');
@@ -4129,7 +4131,16 @@ function importConsultas(wb){
       moneda:   fmtMon(gv(r,iMONE)),
       codigo:   gv(r,iPROD),
       desc:     gv(r,iDESC),
-      valor:    gv(r,iPREC),
+      valor:    (()=>{
+        const mon=fmtMon(gv(r,iMONE));
+        const esMN=(mon==='S/'||mon.toLowerCase().includes('sol'));
+        const vMN=iPRECMN>=0?String(r[iPRECMN]||'').trim():'';
+        const vME=iPRECME>=0?String(r[iPRECME]||'').trim():'';
+        const vFB=iPREC>=0?String(r[iPREC]||'').trim():'';
+        const noVal=(v)=>!v||v==='0'||v==='0.00'||v==='0,00';
+        if(esMN){return(!noVal(vMN)?vMN:(!noVal(vME)?vME:vFB));}
+        else{return(!noVal(vME)?vME:(!noVal(vMN)?vMN:vFB));}
+      })(),
       resp:     gv(r,iCREA),
       estado:   gv(r,iEST),
     }));
