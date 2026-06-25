@@ -45,7 +45,7 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:1
 .hup{background:#1e293b;border:2px dashed #334155;border-radius:12px;padding:16px 36px;text-align:center;color:#64748b;width:560px}
 .hup-icon{font-size:24px;margin-bottom:5px}.hup p{font-size:11px}.hup span{color:#1d4ed8;font-weight:600}
 /* INSTRUCTIVO MODAL */
-#inst-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:flex-start;justify-content:center;padding:20px}
+#inst-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:20px}
 #inst-bg.open{display:flex}
 #inst-card{background:#f8fafc;width:100%;max-width:920px;max-height:calc(100vh - 40px);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 #inst-hdr{background:#1e3a5f;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -139,7 +139,7 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:1
 .ttbl thead th{text-align:left;padding:7px 9px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;border-bottom:1px solid #e2e8f0;white-space:nowrap}
 .ttbl tbody tr{border-bottom:1px solid #f8fafc;cursor:pointer;transition:background .1s}
 .ttbl tbody tr:hover{background:#f8fafc}
-.ttbl tbody td{padding:7px 9px;color:#475569;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.ttbl tbody td{padding:7px 9px;color:#475569;white-space:nowrap}
 .ttbl thead th:last-child{padding-right:28px}.ttbl tbody td:last-child{padding-right:28px}
 /* Badges */
 .bp{background:#fee2e2;color:#dc2626;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600}
@@ -951,18 +951,20 @@ function instNav(n){
     <span id="f5cnt" style="margin-left:8px;font-size:12px;color:#64748b"></span>
   </div>
   <!-- Table -->
-  <div style="overflow-x:auto;margin-top:12px">
-    <table class="tbl" style="table-layout:fixed;width:100%">
+  <div class="tw" style="margin-top:12px">
+    <table class="ttbl">
       <thead><tr>
-        <th style="width:90px;white-space:nowrap">FECHA</th>
-        <th style="width:160px">RESPONSABLE</th>
-        <th style="width:120px;white-space:nowrap">ID PROYECTO</th>
-        <th style="width:180px">PROYECTO</th>
-        <th style="width:110px;white-space:nowrap">CÓDIGO</th>
-        <th>DESCRIPCIÓN PRODUCTO</th>
-        <th style="width:55px;white-space:nowrap;text-align:right">CANT.</th>
-        <th style="width:120px;white-space:nowrap">REQ.</th>
-        <th style="width:90px;white-space:nowrap">ESTADO</th>
+        <th style="white-space:nowrap">FECHA</th>
+        <th>RESPONSABLE</th>
+        <th style="white-space:nowrap">ID PROYECTO</th>
+        <th style="min-width:200px">PROYECTO</th>
+        <th style="white-space:nowrap">CÓDIGO</th>
+        <th style="min-width:280px">DESCRIPCIÓN PRODUCTO</th>
+        <th style="text-align:right;white-space:nowrap">CANT.</th>
+        <th style="white-space:nowrap">UNIDAD</th>
+        <th style="white-space:nowrap">REQ.</th>
+        <th style="white-space:nowrap">F. REQ.</th>
+        <th style="white-space:nowrap">ESTADO</th>
       </tr></thead>
       <tbody id="tb5"></tbody>
     </table>
@@ -1225,9 +1227,9 @@ function renderP2Table(){
       <td>${badgeOC(r.estado)}</td>
       <td><span style="font-size:10px;font-weight:600;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px">${r.ucomp||'—'}</span></td>
       <td title="${r.prov}">${r.prov}</td>
-      <td><div class="avrow">${avHtml(r.resp)}<span style="overflow:hidden;text-overflow:ellipsis;max-width:120px">${r.resp}</span></div></td>
+      <td><div class="avrow">${avHtml(r.resp)}<span>${r.resp}</span></div></td>
       <td style="font-size:10px;color:#0891b2;font-weight:600">${r.idproy||'—'}</td>
-      <td title="${r.proy}">${r.proy}</td>
+      <td style="white-space:normal;min-width:160px" title="${r.proy}">${r.proy}</td>
       <td style="white-space:nowrap">${
         (r.peds && r.peds.length > 1)
           ? r.peds.map(p => `<span style="display:inline-block;margin:1px 2px;font-size:10px;background:#f1f5f9;color:#334155;padding:1px 5px;border-radius:4px">${p}</span>`).join('')
@@ -1296,35 +1298,63 @@ function enviarCorreoOC(oc){
 function verCorreoFormateadoOC(oc){
   var items=SKUS[oc]||SKUS_P4[oc]||[];
   if(!items.length){alert('No se encontraron ítems para esta OC.');return;}
-  var ocRow=D.oc?D.oc.find(function(o){return o.oc===oc;}):null;
-  items=items.map(function(r){return r.unid?r:Object.assign({},r,{unid:ocRow?(ocRow.unid||''):''});});
+  var ocRows=D.oc?D.oc.filter(function(o){return o.oc===oc;}):[];
+  items=items.map(function(r){
+    if(r.unid)return r;
+    var match=ocRows.find(function(o){return o.cod===r.cod;})||ocRows[0];
+    return Object.assign({},r,{unid:match?(match.unid||''):''});
+  });
   var prov=items[0].prov||'';
   var idproy=items[0].idproy||'';
   var proy=items[0].proy||'';
   var foc=items[0].foc||'';
+  var emailProv=(ocRows[0]&&ocRows[0].emailProv)||'';
   var asunto='Orden de Compra N° '+oc+' — FRIOPACKING S.A. // '+prov+(idproy?' // '+idproy:'')+(proy?' // '+proy:'');
-  var L=[];
-  L.push('Estimado proveedor,');L.push('');
-  L.push('Reciba un cordial saludo de parte del Area de Compras de FRIOPACKING S.A.');L.push('');
-  L.push('Por medio del presente, les comunicamos que hemos generado la Orden de Compra N° '+oc+', con los siguientes articulos:');L.push('');
+  var CC_OC='msihuairo@friopacking.pe;ccheca@friopacking.pe;mlujan@friopacking.pe;plinares@friopacking.pe;jaltamirano@friopacking.pe;jpomez@friopacking.pe;kalbujar@grupofriopacking.pe;jcenteno@friopacking.pe;mcondori@grupofriopacking.pe';
+  // Descripción para plantilla Recojo
+  var descRecojo=items.length===1?items[0].prod:'los artículos detallados en la presente Orden de Compra';
+  // Build table rows HTML
+  var tablaRows='';
   items.forEach(function(r,idx){
-    L.push('  '+(idx+1)+'. ['+r.cod+'] '+r.prod);
-    L.push('     Cantidad ordenada: '+r.cantOrd+(r.unid?' '+r.unid:''));
-    L.push('');
+    var bg=idx%2===0?'#ffffff':'#f0f9ff';
+    tablaRows+='<tr style="background:'+bg+'">'
+      +'<td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;color:#64748b;font-size:13px;width:32px">'+(idx+1)+'</td>'
+      +'<td style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:600;font-size:13px;white-space:nowrap">'+r.cod+'</td>'
+      +'<td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;min-width:280px">'+r.prod+'</td>'
+      +'<td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;font-weight:700;font-size:13px;width:55px">'+r.cantOrd+'</td>'
+      +'<td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;width:65px">'+(r.unid||'—')+'</td>'
+      +'</tr>';
   });
-  L.push('Les solicitamos confirmar la recepcion de la presente orden e indicar el plazo estimado de entrega.');L.push('');
-  L.push('Quedamos a su disposicion para cualquier consulta adicional.');L.push('');
-  L.push('Atentamente,');
-  var cuerpo=L.join('\r\n');
-  var mailtoUrl='mailto:?subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(cuerpo);
-  var w=window.open('','_blank','width=820,height=720,scrollbars=yes,resizable=yes');
+  var w=window.open('','_blank','width=860,height=820,scrollbars=yes,resizable=yes');
   var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>OC '+oc+'</title><style>';
-  h+='body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:32px;max-width:780px;margin:0 auto}';
+  h+='*{box-sizing:border-box;margin:0;padding:0}';
+  h+='body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;background:#f1f5f9;padding:0}';
+  h+='.topbar{background:#0f172a;padding:10px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}';
+  h+='.logo-top{background:#166534;color:#fff;font-weight:800;font-size:12px;width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center}';
+  h+='.brand-top{color:#e2e8f0;font-size:13px;font-weight:700}';
+  h+='.btn-s{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;transition:opacity .15s}';
+  h+='.btn-s:disabled{opacity:.4;cursor:not-allowed}';
+  h+='.btn-img{background:linear-gradient(135deg,#7c3aed,#a855f7)}';
+  h+='.btn-ml{background:linear-gradient(135deg,#0369a1,#0891b2)}';
+  h+='.btn-pdf{background:linear-gradient(135deg,#dc2626,#ef4444)}';
+  h+='.inner{max-width:760px;margin:20px auto;padding:0 16px 40px}';
+  /* Selector modalidad */
+  h+='.mod-box{background:#fff;border:2px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:20px}';
+  h+='.mod-title{font-size:13px;font-weight:700;color:#0f172a;margin-bottom:12px}';
+  h+='.mod-opts{display:flex;gap:16px;flex-wrap:wrap}';
+  h+='.mod-opt{display:flex;align-items:center;gap:8px;padding:10px 18px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#475569;transition:all .15s}';
+  h+='.mod-opt:hover{border-color:#0369a1;color:#0369a1}';
+  h+='.mod-opt.sel{border-color:#0369a1;background:#eff6ff;color:#0369a1}';
+  h+='.mod-opt input{display:none}';
+  h+='.cc-info{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-top:12px;font-size:11px;color:#0369a1}';
+  h+='.cc-info b{display:block;margin-bottom:4px}';
+  /* Correo preview */
+  h+='.mail-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}';
   h+='.logo{font-size:20px;font-weight:800;color:#0369a1;letter-spacing:1px}';
   h+='.sublogo{font-size:11px;color:#64748b;margin-bottom:24px}';
   h+='.subject-box{background:#f0f9ff;border-left:4px solid #0369a1;padding:10px 16px;font-size:12px;color:#0369a1;font-weight:600;margin-bottom:20px;border-radius:0 6px 6px 0}';
   h+='.oc-hdr{background:#0369a1;color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;margin-top:20px}';
-  h+='.oc-meta{background:#e0f2fe;padding:8px 16px;font-size:12px;color:#0c4a6e;border-left:1px solid #bae6fd;border-right:1px solid #bae6fd;border-bottom:1px solid #bae6fd;border-radius:0 0 4px 4px;margin-bottom:12px}';
+  h+='.oc-meta{background:#e0f2fe;padding:8px 16px;font-size:12px;color:#0c4a6e;border:1px solid #bae6fd;border-top:none;border-radius:0 0 4px 4px;margin-bottom:12px}';
   h+='table{width:100%;border-collapse:collapse;margin:0}';
   h+='thead tr{background:#e0f2fe}';
   h+='th{padding:8px 12px;text-align:left;font-size:11px;color:#0369a1;font-weight:700;border:1px solid #bae6fd}';
@@ -1333,49 +1363,138 @@ function verCorreoFormateadoOC(oc){
   h+='.num{text-align:center;color:#64748b;font-size:11px}';
   h+='.cod{color:#0369a1;font-weight:600}';
   h+='.cant{text-align:center;font-weight:700;color:#0f172a}';
-  h+='.footer-mail{margin-top:28px;padding-top:16px;border-top:2px solid #e2e8f0;font-size:12px;color:#475569}';
-  h+='.footer-firma{font-weight:700;color:#0369a1;font-size:13px}';
-  h+='.btn-s{display:inline-block;margin:6px 4px;padding:10px 22px;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif}';
-  h+='.btn-img{background:linear-gradient(135deg,#7c3aed,#a855f7)}';
-  h+='.btn-ml{background:linear-gradient(135deg,#0369a1,#0891b2)}';
-  h+='.btn-pdf{background:linear-gradient(135deg,#dc2626,#ef4444)}';
-  h+='.toolbar{margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap}';
+  h+='.body-txt{padding:24px 28px;font-size:14px;line-height:1.85;color:#1a1a1a;font-family:Arial,sans-serif}';
+  h+='.body-txt p{margin-bottom:16px}';
+  h+='.body-txt ul{list-style-type:disc;padding-left:24px;margin-bottom:16px}';
+  h+='.body-txt ol{padding-left:24px;margin-bottom:16px}';
+  h+='.body-txt li{margin-bottom:6px}';
+  h+='.footer-firma{font-weight:700;color:#0369a1}';
   h+='.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;display:none}';
-  h+='@media print{.toolbar,.toast{display:none!important}@page{margin:15mm}}';
+  h+='@media print{.topbar,.toast,.mod-box{display:none!important}@page{margin:15mm}}';
   h+='</style><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script></head><body>';
   h+='<div class="toast" id="toast">✅ Imagen copiada — pega con Ctrl+V en Outlook</div>';
-  h+='<div class="toolbar">';
-  h+='<button class="btn-s btn-img" onclick="copiarImagen()">📷 Copiar como imagen</button>';
-  h+='<button class="btn-s btn-ml" onclick=\'window.location.href="'+mailtoUrl.replace(/'/g,"%27")+'"\'>✉ Abrir Outlook</button>';
-  h+='<button class="btn-s btn-pdf" onclick="window.print()">🖨 Guardar PDF</button>';
+  // Top bar con botones
+  h+='<div class="topbar"><div class="logo-top">FP</div><div class="brand-top">OC '+oc+' &nbsp;&mdash;&nbsp; '+prov+'</div>';
+  h+='<div style="margin-left:auto;display:flex;gap:8px">';
+  h+='<button class="btn-s btn-img" onclick="copiarImagen()">&#128247; Copiar imagen</button>';
+  h+='<button class="btn-s btn-ml" id="btn-outlook" disabled onclick="abrirOutlook()">&#9993; Abrir Outlook</button>';
+  h+='<button class="btn-s btn-pdf" onclick="window.print()">&#128424; Guardar PDF</button>';
+  h+='</div></div>';
+  h+='<div class="inner">';
+  // Selector de modalidad
+  h+='<div class="mod-box">';
+  h+='<div class="mod-title">¿Modalidad de entrega?</div>';
+  h+='<div class="mod-opts">';
+  h+='<label class="mod-opt" id="opt-planta" onclick="selMod(\'planta\')"><input type="radio" name="mod" value="planta"> 📦 Entrega en planta — Lurín</label>';
+  h+='<label class="mod-opt" id="opt-recojo" onclick="selMod(\'recojo\')"><input type="radio" name="mod" value="recojo"> 🚚 Recojo por cuenta de Friopacking</label>';
   h+='</div>';
-  h+='<div id="contenido-correo">';
+  h+='<div class="cc-info"><b>CC (precargado automáticamente):</b>'+CC_OC.replace(/;/g,' &nbsp;·&nbsp; ')+'</div>';
+  h+='</div>';
+  // Contenido del correo
+  h+='<div class="mail-wrap"><div id="contenido-correo" style="padding:24px">';
   h+='<div class="logo">FRIOPACKING S.A.</div>';
   h+='<div class="sublogo">Área de Compras &nbsp;|&nbsp; Orden de Compra</div>';
   h+='<div class="subject-box">Asunto: '+asunto+'</div>';
-  h+='<p>Estimado proveedor,</p>';
-  h+='<p>Por medio del presente, les comunicamos que hemos generado la siguiente Orden de Compra y les solicitamos confirmar la recepción de la misma:</p>';
   h+='<div class="oc-hdr">Orden de Compra N° '+oc+'</div>';
   h+='<div class="oc-meta"><strong>Proveedor:</strong> '+prov;
   if(foc)h+='&nbsp;&nbsp;&nbsp;<strong>Fecha OC:</strong> '+foc;
   if(idproy)h+='&nbsp;&nbsp;&nbsp;<strong>ID Proyecto:</strong> '+idproy;
   if(proy)h+='&nbsp;&nbsp;&nbsp;<strong>Proyecto:</strong> '+proy;
   h+='</div>';
-  h+='<table><thead><tr><th class="num">#</th><th>Código</th><th>Descripción del Artículo</th><th class="cant">Cant. Ordenada</th><th>Unidad</th></tr></thead><tbody>';
-  items.forEach(function(r,idx){
-    h+='<tr><td class="num">'+(idx+1)+'</td><td class="cod">'+r.cod+'</td><td>'+r.prod+'</td><td class="cant">'+r.cantOrd+'</td><td>'+(r.unid||'—')+'</td></tr>';
-  });
-  h+='</tbody></table>';
-  h+='<div class="footer-mail"><p>Les solicitamos confirmar la recepción de la presente orden e indicar el plazo estimado de entrega.</p>';
-  h+='<p>Atentamente,<br><span class="footer-firma">Área de Compras &mdash; FRIOPACKING S.A.</span></p></div></div>';
+  var tablaHtmlBody='<table style="border-collapse:collapse;margin:16px 0;font-family:Calibri,Arial,sans-serif"><thead><tr style="background:#e0f2fe"><th style="padding:9px 12px;text-align:center;color:#0369a1;font-weight:700;border:1px solid #bae6fd;font-size:13px;width:32px">#</th><th style="padding:9px 12px;text-align:left;color:#0369a1;font-weight:700;border:1px solid #bae6fd;font-size:13px;white-space:nowrap">Código</th><th style="padding:9px 12px;text-align:left;color:#0369a1;font-weight:700;border:1px solid #bae6fd;font-size:13px;min-width:280px">Descripción del Artículo</th><th style="padding:9px 12px;text-align:center;color:#0369a1;font-weight:700;border:1px solid #bae6fd;font-size:13px;width:55px">Cant.</th><th style="padding:9px 12px;text-align:left;color:#0369a1;font-weight:700;border:1px solid #bae6fd;font-size:13px;width:65px">Unidad</th></tr></thead><tbody>'+tablaRows+'</tbody></table>';
+  h+='<div class="body-txt" id="mail-body"><p style="color:#94a3b8;font-style:italic">Seleccione una modalidad de entrega para ver el cuerpo del correo.</p></div>';
+  h+='</div></div></div>';
+  // Script
   h+='<script>';
+  h+='var _oc='+JSON.stringify(oc)+';';
+  h+='var _asunto='+JSON.stringify(asunto)+';';
+  h+='var _cc='+JSON.stringify(CC_OC)+';';
+  h+='var _to='+JSON.stringify(emailProv)+';';
+  h+='var _tablaHtml='+JSON.stringify(tablaHtmlBody)+';';
+  h+='var _cuerpoPlanta='+JSON.stringify(
+    'Estimados, buen día:\n\n'+
+    'Adjunto la Orden de Compra '+oc+'. Agradeceremos confirmar la fecha de entrega del producto.\n\n'+
+    'Para el ingreso al almacén de Lurín, es indispensable cumplir con la CARTILLA SSOMA y enviar previamente toda la documentación a los siguientes correos:\n\n'+
+    '  • seguridadlurin@friopacking.pe\n'+
+    '  • kbuleje@friopacking.pe\n'+
+    '  • kalbujar@friopacking.pe\n'+
+    '  • ccheca@friopacking.pe\n'+
+    '  • jcenteno@friopacking.pe\n'+
+    '  • plinares@friopacking.pe\n\n'+
+    'Importante: No se permitirá el ingreso al almacén si la documentación no ha sido enviada y validada con anticipación.\n\n'+
+    '📍 Ubicación: Calle Los Frutales S/N – Ref. Av. San Pedro, altura de Ekonodrywall – Lurín, Lima.\n\n'+
+    'Al momento de la entrega, el transportista deberá presentar en físico:\n\n'+
+    '  • Factura correspondiente a los productos entregados.\n'+
+    '  • Guía de remisión correspondiente.\n\n'+
+    'Estos documentos son indispensables para realizar la recepción de la mercancía.\n\n'+
+    'Asimismo, para temas de provisión, enviar a los siguientes correos:\n\n'+
+    '  • provision@friopacking.pe\n'+
+    '  • agalindo@friopacking.pe\n'+
+    '  • dochante@grupofriopacking.pe\n\n'+
+    'Quedo atento a su confirmación.\nSaludos cordiales,\nÁrea de Compras — FRIOPACKING S.A.'
+  )+';';
+  h+='var _cuerpoRecojo='+JSON.stringify(
+    'Estimados, buen día:\n\n'+
+    'Adjunto la Orden de Compra '+oc+' correspondiente a la adquisición de '+descRecojo+'.\n\n'+
+    'Debido a que la modalidad de atención para este pedido será RECOJO por nuestra cuenta, agradeceremos que nos indiquen lo siguiente:\n\n'+
+    '  1. Fecha y hora confirmada en la que el producto estará listo para ser retirado.\n'+
+    '  2. Dirección exacta y horarios de atención de su almacén de despacho.\n'+
+    '  3. Requisitos de ingreso para nuestra unidad y conductor (si solicitan EPPs específicos, SCTR, o documentos impresos como copias de la OC).\n\n'+
+    'Una vez que nos confirmen la disponibilidad de la mercancía, les estaremos enviando los datos del transportista y la placa del vehículo para la respectiva autorización de ingreso.\n\n'+
+    'Quedamos atentos a su pronta confirmación y a la respectiva aceptación de la OC.\n\nSaludos cordiales,\nÁrea de Compras — FRIOPACKING S.A.'
+  )+';';
+  h+='var _htmlPlanta=\'<p>Estimados, buen día:</p>'+
+    '<p>Adjunto la Orden de Compra <strong>'+oc+'</strong>. Agradeceremos confirmar la fecha de entrega del producto.</p>\'+_tablaHtml+\''+
+    '<p>Para el ingreso al almacén de Lurín, es indispensable cumplir con la <strong>CARTILLA SSOMA</strong> y enviar previamente toda la documentación a los siguientes correos:</p>'+
+    '<ul><li>seguridadlurin@friopacking.pe</li><li>kbuleje@friopacking.pe</li><li>kalbujar@friopacking.pe</li><li>ccheca@friopacking.pe</li><li>jcenteno@friopacking.pe</li><li>plinares@friopacking.pe</li></ul>'+
+    '<p><strong>Importante:</strong> No se permitirá el ingreso al almacén si la documentación no ha sido enviada y validada con anticipación.</p>'+
+    '<p>📍 <strong>Ubicación:</strong> Calle Los Frutales S/N – Ref. Av. San Pedro, altura de Ekonodrywall – Lurín, Lima.</p>'+
+    '<p>Al momento de la entrega, el transportista deberá presentar en físico:</p>'+
+    '<ul><li>Factura correspondiente a los productos entregados.</li><li>Guía de remisión correspondiente.</li></ul>'+
+    '<p>Estos documentos son indispensables para realizar la recepción de la mercancía.</p>'+
+    '<p>Asimismo, para temas de provisión, enviar a los siguientes correos:</p>'+
+    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li></ul>'+
+    '<p>Quedo atento a su confirmación.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>\';';
+  h+='var _htmlRecojo=\'<p>Estimados, buen día:</p>'+
+    '<p>Adjunto la Orden de Compra <strong>'+oc+'</strong> correspondiente a la adquisición de '+descRecojo+'.</p>\'+_tablaHtml+\''+
+    '<p>Debido a que la modalidad de atención para este pedido será <strong>RECOJO por nuestra cuenta</strong>, agradeceremos que nos indiquen lo siguiente:</p>'+
+    '<ol><li>Fecha y hora confirmada en la que el producto estará listo para ser retirado.</li>'+
+    '<li>Dirección exacta y horarios de atención de su almacén de despacho.</li>'+
+    '<li>Requisitos de ingreso para nuestra unidad y conductor (si solicitan EPPs específicos, SCTR, o documentos impresos como copias de la OC).</li></ol>'+
+    '<p>Una vez que nos confirmen la disponibilidad de la mercancía, les estaremos enviando los datos del transportista y la placa del vehículo para la respectiva autorización de ingreso.</p>'+
+    '<p>Quedamos atentos a su pronta confirmación y a la respectiva aceptación de la OC.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>\';';
+  h+='var _modActual=null;';
+  h+='function selMod(m){';
+  h+='  _modActual=m;';
+  h+='  document.getElementById("opt-planta").className="mod-opt"+(m==="planta"?" sel":"");';
+  h+='  document.getElementById("opt-recojo").className="mod-opt"+(m==="recojo"?" sel":"");';
+  h+='  document.getElementById("mail-body").innerHTML=m==="planta"?_htmlPlanta:_htmlRecojo;';
+  h+='  document.getElementById("btn-outlook").disabled=false;';
+  h+='}';
+  h+='function abrirOutlook(){';
+  h+='  if(!_modActual)return;';
+  h+='  var htmlBody=_modActual==="planta"?_htmlPlanta:_htmlRecojo;';
+  h+='  var fullHtml=\'<div style="font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:2;color:#1e293b;max-width:740px">\'+htmlBody+\'</div>\';';
+  h+='  function abrirMail(){';
+  h+='    var url="mailto:"+encodeURIComponent(_to)+"?subject="+encodeURIComponent(_asunto)+"&cc="+encodeURIComponent(_cc);';
+  h+='    var a=document.createElement("a");a.href=url;document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);},200);';
+  h+='  }';
+  h+='  if(navigator.clipboard&&window.ClipboardItem){';
+  h+='    var blob=new Blob([fullHtml],{type:"text/html"});';
+  h+='    var item=new ClipboardItem({"text/html":blob});';
+  h+='    navigator.clipboard.write([item]).then(function(){';
+  h+='      showToast("📋 Correo copiado — pega con Ctrl+V en el cuerpo de Outlook");';
+  h+='      setTimeout(abrirMail,600);';
+  h+='    },function(){abrirMail();});';
+  h+='  }else{abrirMail();}';
+  h+='}';
   h+='function copiarImagen(){var el=document.getElementById("contenido-correo");';
   h+='html2canvas(el,{scale:2,backgroundColor:"#ffffff"}).then(function(canvas){';
   h+='canvas.toBlob(function(blob){try{var item=new ClipboardItem({"image/png":blob});';
-  h+='navigator.clipboard.write([item]).then(function(){showToast();},function(){fallback(canvas);});}catch(e){fallback(canvas);}';
+  h+='navigator.clipboard.write([item]).then(function(){showToast("✅ Imagen copiada — pega con Ctrl+V en Outlook");},function(){fallback(canvas);});}catch(e){fallback(canvas);}';
   h+='},"image/png");});}';
   h+='function fallback(canvas){var a=document.createElement("a");a.download="correo-oc.png";a.href=canvas.toDataURL("image/png");a.click();}';
-  h+='function showToast(){var t=document.getElementById("toast");t.style.display="block";setTimeout(function(){t.style.display="none";},3000);}';
+  h+='function showToast(msg){var t=document.getElementById("toast");t.textContent=msg||"✅ Listo";t.style.display="block";setTimeout(function(){t.style.display="none";},4000);}';
   h+='<\/script></body></html>';
   w.document.write(h);w.document.close();w.focus();
 }
@@ -1603,9 +1722,9 @@ function renderP3Table(){
     <td><strong>${r.ped}</strong></td>
     <td>${r.fecha||'—'}</td>
     <td style="font-size:11px;color:#334155">${r.respPed||'—'}</td>
-    <td><div class="avrow">${avHtml(r.resp)}<span style="max-width:110px;overflow:hidden;text-overflow:ellipsis">${r.resp}</span></div></td>
+    <td><div class="avrow">${avHtml(r.resp)}<span>${r.resp}</span></div></td>
     <td style="font-size:10px;color:#0891b2;font-weight:600">${r.idproy||'—'}</td>
-    <td title="${r.proy}">${r.proy}</td>
+    <td style="white-space:normal;min-width:160px" title="${r.proy}">${r.proy}</td>
     <td><span class="cl">${r.cod}</span></td>
     <td style="max-width:320px;word-wrap:break-word;white-space:normal">${r.prod}</td>
     <td>${r.cant}</td>
@@ -2067,50 +2186,169 @@ function exportP3HTML(){
   S+='  setTimeout(function(){w.print();},400);';
   S+='}';
   S+='function closeConsolidar(){document.getElementById("modal-bg").classList.remove("open");}';
+  S+='var _CC_COT="msihuairo@friopacking.pe;ccheca@friopacking.pe;plinares@friopacking.pe;jaltamirano@friopacking.pe;jpomez@friopacking.pe";';
   S+='function enviarCorreo(){';
   S+='  var items=DATA.filter(function(r){return sel.has(r.i);});';
   S+='  if(!items.length){alert("No hay pedidos seleccionados.");return;}';
   S+='  var grupos={};';
   S+='  items.forEach(function(r){var k=r.ped||"Sin pedido";if(!grupos[k])grupos[k]=[];grupos[k].push(r);});';
   S+='  var pedidos=Object.keys(grupos);';
-  S+='  var sep=" // ";';
-  S+='  var asuntoParts=["Solicitud de Cotizacion - FRIOPACKING S.A."];';
+  S+='  var asuntoParts=["Solicitud de Cotización - FRIOPACKING S.A."];';
   S+='  pedidos.forEach(function(ped){';
   S+='    asuntoParts.push(ped);';
-  S+='    var idp=grupos[ped][0].idproy||"";';
-  S+='    var pr=grupos[ped][0].proy||"";';
-  S+='    if(idp)asuntoParts.push(idp);';
-  S+='    if(pr)asuntoParts.push(pr);';
+  S+='    var idp=grupos[ped][0].idproy||"";var pr=grupos[ped][0].proy||"";';
+  S+='    if(idp)asuntoParts.push(idp);if(pr)asuntoParts.push(pr);';
   S+='  });';
-  S+='  var asunto=asuntoParts.join(sep);';
+  S+='  var asunto=asuntoParts.join(" // ");';
+  // Mostrar overlay con campos antes de enviar
+  S+='  var ov=document.getElementById("mail-overlay");';
+  S+='  if(!ov){';
+  S+='    ov=document.createElement("div");ov.id="mail-overlay";';
+  S+='    ov.style.cssText="position:fixed;inset:0;background:rgba(10,20,40,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";';
+  S+='    var card=document.createElement("div");';
+  S+='    card.style.cssText="background:#fff;border-radius:18px;width:580px;max-width:96vw;box-shadow:0 32px 90px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden";';
+  S+='    var ccChips=_CC_COT.split(";").map(function(e){return\'<span style="display:inline-flex;align-items:center;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin:2px 4px 2px 0">\'+e.trim()+\'</span>\';}).join("");';
+  // Header
+  S+='    var h2=\'<div style="background:linear-gradient(135deg,#1e3a5f 0%,#0369a1 100%);padding:22px 28px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0">\';';
+  S+='    h2+=\'<div><div style="color:#fff;font-size:16px;font-weight:700;letter-spacing:.2px">✉ Enviar Solicitud de Cotización</div><div style="color:#bfdbfe;font-size:12px;margin-top:4px">Complete los campos para generar el correo</div></div>\';';
+  S+='    h2+=\'<button onclick="document.getElementById(\\\'mail-overlay\\\').remove()" style="background:rgba(255,255,255,.18);border:none;color:#fff;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0">✕</button></div>\';';
+  // Body
+  S+='    var b2=\'<div style="padding:28px;display:flex;flex-direction:column;gap:18px">\';';
+  // PARA
+  S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Para</div><div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:9px;padding:11px 16px;font-size:13px;color:#15803d;font-weight:700">📧 mlujan@friopacking.pe</div></div>\';';
+  // CCO — chip input multi-proveedor
+  S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Copia Oculta (CCO) — Proveedores <span style="color:#dc2626">*</span><span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:6px;text-transform:none">Escribe el correo y presiona Enter para agregar</span></div><div id="cco-chip-box" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;border:2px solid #e2e8f0;border-radius:9px;padding:8px 12px;min-height:46px;cursor:text;transition:border .2s" onclick="document.getElementById(\\\'cco-input\\\').focus()"><input id="cco-input" type="email" placeholder="correo@proveedor.com" style="border:none;outline:none;font-size:13px;font-family:inherit;flex:1;min-width:180px;padding:3px 0" onkeydown="addCotChip(event)" onblur="addCotChipBlur()"/></div></div>\';';
+  // CC chips
+  S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">CC (precargado)</div><div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px 14px;line-height:2.2">\'+ccChips+\'</div></div>\';';
+  // FECHA
+  S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Fecha Límite de Cotización <span style="color:#dc2626">*</span></div><input id="cot-fecha" type="date" style="width:100%;padding:11px 16px;border:2px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border .2s;cursor:pointer" onfocus="this.style.borderColor=\\\'#0369a1\\\'" onblur="this.style.borderColor=\\\'#e2e8f0\\\'" onchange="chkCotForm()"/></div>\';';
+  // Buttons
+  S+='    b2+=\'<div style="display:flex;gap:12px;justify-content:flex-end;padding-top:4px"><button onclick="document.getElementById(\\\'mail-overlay\\\').remove()" style="padding:11px 26px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:#475569">Cancelar</button><button id="btn-send-cot" disabled onclick="dispararCorreoCot()" style="padding:11px 30px;background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;opacity:.4;display:flex;align-items:center;gap:8px">✉ Abrir Outlook</button></div>\';';
+  S+='    b2+=\'</div>\';';
+  S+='    card.innerHTML=h2+b2;';
+  S+='    ov.appendChild(card);document.body.appendChild(ov);';
+  S+='  }';
+  S+='  window._cotCcoList=[];';
+  S+='  var box=document.getElementById("cco-chip-box");';
+  S+='  if(box){Array.from(box.querySelectorAll("span")).forEach(function(s){s.remove();});document.getElementById("cco-input").value="";}';
+  S+='  document.getElementById("btn-send-cot").disabled=true;document.getElementById("btn-send-cot").style.opacity="0.4";';
+  S+='  ov.style.display="flex";';
+  // Guardar asunto y grupos en variables accesibles para dispararCorreoCot
+  S+='  window._cotAsunto=asunto;window._cotGrupos=grupos;window._cotPedidos=pedidos;';
+  S+='}';
+  S+='window._cotCcoList=[];';
+  S+='function addCotChip(e){';
+  S+='  if(e.key!=="Enter"&&e.key!==","&&e.key!==";")return;';
+  S+='  e.preventDefault();';
+  S+='  var val=document.getElementById("cco-input").value.trim().replace(/[,;]/g,"");';
+  S+='  if(!val||window._cotCcoList.indexOf(val)>=0){document.getElementById("cco-input").value="";return;}';
+  S+='  window._cotCcoList.push(val);';
+  S+='  var chip=document.createElement("span");';
+  S+='  chip.style.cssText="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;font-size:12px;font-weight:600;padding:3px 10px 3px 12px;border-radius:20px;white-space:nowrap";';
+  S+='  chip.innerHTML=\'📧 \'+val+\'<button onclick="removeCotChip(this,\\\'\'+val+\'\\\')" style="background:none;border:none;cursor:pointer;color:#3b82f6;font-size:14px;line-height:1;padding:0 0 0 2px">✕</button>\';';
+  S+='  var box=document.getElementById("cco-chip-box");';
+  S+='  box.insertBefore(chip,document.getElementById("cco-input"));';
+  S+='  document.getElementById("cco-input").value="";';
+  S+='  chkCotForm();';
+  S+='}';
+  S+='function addCotChipBlur(){';
+  S+='  var val=document.getElementById("cco-input").value.trim();';
+  S+='  if(val&&window._cotCcoList.indexOf(val)<0){';
+  S+='    var fakeEv={key:"Enter",preventDefault:function(){}};addCotChip(fakeEv);';
+  S+='  }';
+  S+='}';
+  S+='function removeCotChip(btn,email){';
+  S+='  window._cotCcoList=window._cotCcoList.filter(function(e){return e!==email;});';
+  S+='  btn.parentNode.remove();';
+  S+='  chkCotForm();';
+  S+='}';
+  S+='function chkCotForm(){';
+  S+='  var fecha=document.getElementById("cot-fecha").value.trim();';
+  S+='  var btn=document.getElementById("btn-send-cot");';
+  S+='  var ok=window._cotCcoList.length>0&&fecha;';
+  S+='  btn.disabled=!ok;btn.style.opacity=ok?"1":"0.4";';
+  S+='  var box=document.getElementById("cco-chip-box");';
+  S+='  if(box)box.style.borderColor=window._cotCcoList.length>0?"#0369a1":"#e2e8f0";';
+  S+='}';
+  S+='function dispararCorreoCot(){';
+  S+='  var cco=window._cotCcoList.join(";");';
+  S+='  var fechaRaw=document.getElementById("cot-fecha").value.trim();';
+  S+='  if(!cco||!fechaRaw)return;';
+  S+='  var _dias=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];';
+  S+='  var _meses=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];';
+  S+='  var _dp=fechaRaw.split("-");var _dObj=new Date(_dp[0],_dp[1]-1,_dp[2]);';
+  S+='  var fechaLim=_dias[_dObj.getDay()]+" "+_dp[2]+" de "+_meses[_dObj.getMonth()]+" de "+_dp[0];';
+  S+='  var grupos=window._cotGrupos;var pedidos=window._cotPedidos;var asunto=window._cotAsunto;';
+  // Construir cuerpo texto plano para mailto
   S+='  var L=[];';
-  S+='  L.push("Estimado proveedor,");';
+  S+='  L.push("Estimado Proveedor,");';
   S+='  L.push("");';
-  S+='  L.push("Reciba un cordial saludo de parte del Area de Compras de FRIOPACKING S.A.");';
+  S+='  L.push("Reciba un cordial saludo de parte del equipo de Compras de FRIOPACKING S.A.");';
   S+='  L.push("");';
-  S+='  L.push("Por medio del presente, nos permitimos hacerle llegar nuestra solicitud formal de cotizacion para los articulos detallados a continuacion, los cuales forman parte de nuestro requerimiento de compra:");';
+  S+='  L.push("Por medio del presente correo, nos ponemos en contacto con usted para solicitar su valioso apoyo con la cotización de los materiales detallados en las siguientes solicitudes de pedido:");';
   S+='  L.push("");';
   S+='  pedidos.forEach(function(ped){';
+  S+='    L.push("Pedido N° "+ped+":");';
   S+='    grupos[ped].forEach(function(r,idx){';
   S+='      L.push("  "+(idx+1)+". ["+r.cod+"] "+r.prod);';
   S+='      L.push("     Cantidad requerida: "+r.cant+" "+r.unid);';
-  S+='      L.push("");';
   S+='    });';
+  S+='    L.push("");';
   S+='  });';
-  S+='  L.push("Para su cotizacion, le solicitamos indicar la siguiente informacion:");';
+  S+='  L.push("Para poder avanzar con la evaluación interna y procesar la compra a tiempo, le agradeceremos enviarnos su propuesta comercial detallando los siguientes puntos:");';
   S+='  L.push("");';
-  S+='  L.push("  - Precio unitario (en Soles S/ o Dolares US$, segun aplique)");';
-  S+='  L.push("  - Plazo de entrega");';
-  S+='  L.push("  - Condiciones de pago");';
-  S+='  L.push("  - Vigencia de la cotizacion");';
+  S+='  L.push("  • Estructura de precios: especificar precio unitario e indicar si los valores incluyen o no el IGV.");';
+  S+='  L.push("  • Moneda: indicar la divisa de facturación (soles o dólares).");';
+  S+='  L.push("  • Plazo de entrega: días estimados para la entrega del producto una vez confirmada la Orden de Compra.");';
+  S+='  L.push("  • Condición de pago: indicar la forma de pago solicitada.");';
+  S+='  L.push("  • Vigencia: período de validez de los precios cotizados.");';
   S+='  L.push("");';
-  S+='  L.push("Agradecemos su pronta atencion y quedamos a su disposicion para cualquier");';
-  S+='  L.push("consulta adicional.");';
+  S+='  L.push("Plazo de recepción: le agradeceremos hacernos llegar la cotización a más tardar el "+fechaLim+" hasta las 17:00 horas, de manera que podamos incluir su propuesta en el cuadro comparativo correspondiente.");';
   S+='  L.push("");';
-  S+='  L.push("Atentamente,");';
+  S+='  L.push("Quedamos atentos a sus comentarios y, ante cualquier consulta o duda técnica, estamos a su entera disposición.");';
+  S+='  L.push("");';
+  S+='  L.push("Desde ya, agradecemos el constante soporte que nos brindan como socios estratégicos.");';
+  S+='  L.push("");';
+  S+='  L.push("Saludos cordiales,");';
+  S+='  L.push("Área de Compras — FRIOPACKING S.A.");';
   S+='  var cuerpo=L.join("\\r\\n");';
-  S+='  window.location.href="mailto:?subject="+encodeURIComponent(asunto)+"&body="+encodeURIComponent(cuerpo);';
+  // Construir versión HTML del cuerpo — una tabla por pedido
+  S+='  var tablasTodas="";';
+  S+='  pedidos.forEach(function(ped){';
+  S+='    var rows=grupos[ped];';
+  S+='    var tblRows="";';
+  S+='    rows.forEach(function(r,idx){';
+  S+='      var bg=idx%2===0?"#ffffff":"#f0f9ff";';
+  S+='      tblRows+=\'<tr style="background:\'+bg+\'"><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;color:#64748b;font-size:13px;width:30px">\'+( idx+1)+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:600;font-size:13px;white-space:nowrap">\'+r.cod+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;min-width:240px">\'+r.prod+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;font-weight:700;font-size:13px;width:50px">\'+r.cant+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;width:60px">\'+( r.unid||\'—\')+\'</td></tr>\';';
+  S+='    });';
+  S+='    tablasTodas+=\'<p style="margin:16px 0 6px;font-size:13px;font-weight:700;color:#0369a1">Pedido N° \'+ped+\'</p>\';';
+  S+='    tablasTodas+=\'<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif"><thead><tr style="background:#e0f2fe"><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:30px">#</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;white-space:nowrap">Código</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;min-width:240px">Descripción del Artículo</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:50px">Cant.</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:60px">Unidad</th></tr></thead><tbody>\'+tblRows+\'</tbody></table>\';';
+  S+='  });';
+  S+='  var htmlCot=\'<div style="font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:2;color:#1e293b;max-width:760px">\';';
+  S+='  htmlCot+=\'<p>Estimado Proveedor,</p>\';';
+  S+='  htmlCot+=\'<p>Reciba un cordial saludo de parte del equipo de Compras de <strong>FRIOPACKING S.A.</strong></p>\';';
+  S+='  htmlCot+=\'<p>Por medio del presente correo, nos ponemos en contacto con usted para solicitar su valioso apoyo con la cotización de los materiales detallados en los siguientes pedidos:</p>\';';
+  S+='  htmlCot+=tablasTodas;';
+  S+='  htmlCot+=\'<p style="margin-top:18px">Para poder avanzar con la evaluación interna y procesar la compra a tiempo, le agradeceremos enviarnos su propuesta comercial detallando los siguientes puntos:</p>\';';
+  S+='  htmlCot+=\'<ul><li>Estructura de precios: especificar precio unitario e indicar si los valores incluyen o no el IGV.</li><li>Moneda: indicar la divisa de facturación (soles o dólares).</li><li>Plazo de entrega: días estimados para la entrega del producto una vez confirmada la Orden de Compra.</li><li>Condición de pago: indicar la forma de pago solicitada.</li><li>Vigencia: período de validez de los precios cotizados.</li></ul>\';';
+  S+='  htmlCot+=\'<p>Le agradeceremos hacernos llegar la cotización a más tardar el <strong>\'+fechaLim+\'</strong> hasta las 17:00 horas, de manera que podamos incluir su propuesta en el cuadro comparativo correspondiente.</p>\';';
+  S+='  htmlCot+=\'<p>Quedamos atentos a sus comentarios y, ante cualquier consulta o duda técnica, estamos a su entera disposición.</p>\';';
+  S+='  htmlCot+=\'<p>Desde ya, agradecemos el constante soporte que nos brindan como socios estratégicos.</p>\';';
+  S+='  htmlCot+=\'<p>Saludos cordiales,<br><strong>Área de Compras — FRIOPACKING S.A.</strong></p></div>\';';
+  S+='  function abrirMailCot(){';
+  S+='    var url="mailto:mlujan@friopacking.pe?subject="+encodeURIComponent(asunto)+"&cc="+encodeURIComponent(_CC_COT)+"&bcc="+encodeURIComponent(cco);';
+  S+='    var a=document.createElement("a");a.href=url;document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);},200);';
+  S+='  }';
+  S+='  document.getElementById("mail-overlay").remove();';
+  S+='  if(navigator.clipboard&&window.ClipboardItem){';
+  S+='    var blob=new Blob([htmlCot],{type:"text/html"});';
+  S+='    var item=new ClipboardItem({"text/html":blob});';
+  S+='    navigator.clipboard.write([item]).then(function(){';
+  S+='      setTimeout(abrirMailCot,300);';
+  S+='    },function(){abrirMailCot();});';
+  S+='  }else{abrirMailCot();}';
   S+='}';
+
   S+='function verCorreoFormateado(){';
   S+='  var items=DATA.filter(function(r){return sel.has(r.i);});';
   S+='  if(!items.length){alert("No hay pedidos seleccionados.");return;}';
@@ -2118,7 +2356,7 @@ function exportP3HTML(){
   S+='  items.forEach(function(r){var k=r.ped||"Sin pedido";if(!grupos[k])grupos[k]=[];grupos[k].push(r);});';
   S+='  var pedidos=Object.keys(grupos);';
   S+='  var sep=" // ";';
-  S+='  var asuntoParts=["Solicitud de Cotizacion - FRIOPACKING S.A."];';
+  S+='  var asuntoParts=["Solicitud de Cotización - FRIOPACKING S.A."];';
   S+='  pedidos.forEach(function(ped){';
   S+='    asuntoParts.push(ped);';
   S+='    var idp=grupos[ped][0].idproy||"";var pr=grupos[ped][0].proy||"";';
@@ -2157,30 +2395,30 @@ function exportP3HTML(){
   S+='  h+="<button class=\'btn-send btn-mail2\' onclick=\'window.opener&&window.opener.location?void(0):void(0);window.location.href=\\"mailto:?subject="+encodeURIComponent(asunto)+"\\"\'>✉ Abrir Outlook</button>";';
   S+='  h+="<button class=\'btn-send btn-pdf\' onclick=\'window.print()\'>🖨 Guardar PDF</button>";';
   S+='  h+="</div>";';
-  S+='  h+="<div id=\'contenido-correo\'>";';
+  S+='  h+="<div id=\'contenido-correo\' style=\'font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:2;color:#1e293b;max-width:760px\'>";';
   S+='  h+="<div class=\'logo\'>FRIOPACKING S.A.</div>";';
-  S+='  h+="<div class=\'sublogo\'>Area de Compras &nbsp;|&nbsp; Solicitud de Cotizacion</div>";';
+  S+='  h+="<div class=\'sublogo\'>Área de Compras &nbsp;|&nbsp; Solicitud de Cotización</div>";';
   S+='  h+="<div class=\'subject-box\'>Asunto: "+asunto+"</div>";';
-  S+='  h+="<p>Estimado proveedor,</p>";';
-  S+='  h+="<p>Por medio del presente, le hacemos llegar nuestra solicitud de cotizaci&oacute;n para los siguientes art&iacute;culos:</p>";';
+  S+='  h+="<p>Estimado Proveedor,</p>";';
+  S+='  h+="<p>Reciba un cordial saludo de parte del equipo de Compras de <strong>FRIOPACKING S.A.</strong></p>";';
+  S+='  h+="<p>Por medio del presente correo, nos ponemos en contacto con usted para solicitar su valioso apoyo con la cotización de los materiales detallados en los siguientes pedidos:</p>";';
   S+='  pedidos.forEach(function(ped){';
-  S+='    var proy=grupos[ped][0].proy||"";';
-  S+='    var idproy=grupos[ped][0].idproy||"";';
-  S+='    h+="<div class=\'pedido-hdr\'>N&deg; Pedido: "+ped+"</div>";';
-  S+='    h+="<div class=\'pedido-meta\'>";';
-  S+='    if(idproy)h+="<strong>ID Proyecto:</strong> "+idproy+"&nbsp;&nbsp;&nbsp;";';
-  S+='    if(proy)h+="<strong>Proyecto:</strong> "+proy;';
-  S+='    h+="</div>";';
-  S+='    h+="<table><thead><tr><th class=\'num\'>#</th><th>C&oacute;digo</th><th>Descripci&oacute;n del Art&iacute;culo</th><th>Cant.</th><th>Unidad</th></tr></thead><tbody>";';
-  S+='    grupos[ped].forEach(function(r,idx){';
-  S+='      h+="<tr><td class=\'num\'>"+(idx+1)+"</td><td class=\'cod\'>"+r.cod+"</td><td>"+r.prod+"</td><td class=\'cant\'>"+r.cant+"</td><td>"+r.unid+"</td></tr>";';
+  S+='    var rows=grupos[ped];';
+  S+='    var tblRows="";';
+  S+='    rows.forEach(function(r,idx){';
+  S+='      var bg=idx%2===0?"#ffffff":"#f0f9ff";';
+  S+='      tblRows+="<tr style=\'background:"+bg+"\'><td style=\'padding:9px 12px;border:1px solid #bae6fd;text-align:center;color:#64748b;font-size:13px;width:30px\'>"+(idx+1)+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:600;font-size:13px;white-space:nowrap\'>"+r.cod+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;font-size:13px;min-width:240px\'>"+r.prod+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;text-align:center;font-weight:700;font-size:13px;width:50px\'>"+r.cant+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;font-size:13px;width:60px\'>"+(r.unid||"—")+"</td></tr>";';
   S+='    });';
-  S+='    h+="</tbody></table>";';
+  S+='    h+="<p style=\'margin:16px 0 6px;font-size:13px;font-weight:700;color:#0369a1\'>Pedido N° "+ped+"</p>";';
+  S+='    h+="<table style=\'border-collapse:collapse;font-family:Calibri,Arial,sans-serif\'><thead><tr style=\'background:#e0f2fe\'><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:30px\'>#</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;white-space:nowrap\'>Código</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;min-width:240px\'>Descripción del Artículo</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:50px\'>Cant.</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:60px\'>Unidad</th></tr></thead><tbody>"+tblRows+"</tbody></table>";';
   S+='  });';
-  S+='  h+="<div class=\'footer-mail\'>";';
-  S+='  h+="<p>Quedamos a la espera de su cotizaci&oacute;n indicando <strong>precio unitario, moneda, plazo de entrega y condiciones de pago</strong>.</p>";';
-  S+='  h+="<p>Atentamente,<br><span class=\'footer-firma\'>Area de Compras &mdash; FRIOPACKING S.A.</span></p>";';
-  S+='  h+="</div></div>";';
+  S+='  h+="<p style=\'margin-top:18px\'>Para poder avanzar con la evaluación interna y procesar la compra a tiempo, le agradeceremos enviarnos su propuesta comercial detallando los siguientes puntos:</p>";';
+  S+='  h+="<ul><li>Estructura de precios: especificar precio unitario e indicar si los valores incluyen o no el IGV.</li><li>Moneda: indicar la divisa de facturación (soles o dólares).</li><li>Plazo de entrega: días estimados para la entrega del producto una vez confirmada la Orden de Compra.</li><li>Condición de pago: indicar la forma de pago solicitada.</li><li>Vigencia: período de validez de los precios cotizados.</li></ul>";';
+  S+='  h+="<p>Le agradeceremos hacernos llegar la cotización a más tardar el <strong>[FECHA LÍMITE]</strong> hasta las 17:00 horas, de manera que podamos incluir su propuesta en el cuadro comparativo correspondiente.</p>";';
+  S+='  h+="<p>Quedamos atentos a sus comentarios y, ante cualquier consulta o duda técnica, estamos a su entera disposición.</p>";';
+  S+='  h+="<p>Desde ya, agradecemos el constante soporte que nos brindan como socios estratégicos.</p>";';
+  S+='  h+="<p>Saludos cordiales,<br><strong>Área de Compras — FRIOPACKING S.A.</strong></p>";';
+  S+='  h+="</div>";';
   S+='  h+="<script>";';
   S+='  h+="function copiarImagen(){";';
   S+='  h+="  var el=document.getElementById(\'contenido-correo\');";';
@@ -2339,8 +2577,8 @@ function exportP3HTML(){
   S+='    var bg=i%2===0?"#ffffff":"#f8fafc";';
   S+='    h+=\'<tr style="background:\'+bg+\';border-bottom:1px solid #e2e8f0">\';';
   S+='    h+=\'<td style="color:#94a3b8;padding:11px 6px;text-align:center;font-size:13px;font-weight:700;border-right:1px solid #e2e8f0">\'+(i+1)+\'</td>\';';
-  S+='    h+=\'<td style="color:#64748b;padding:11px 8px;font-size:12px;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="\'+esc(r.cod||"")+\'">\'+esc(r.cod||"—")+\'</td>\';';
-  S+='    h+=\'<td style="color:#1e293b;padding:11px 12px;font-size:14px;font-weight:500;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="\'+esc(r.prod||"")+\'">\'+esc(r.prod||"—")+\'</td>\';';
+  S+='    h+=\'<td style="color:#64748b;padding:11px 8px;font-size:12px;font-family:monospace;white-space:nowrap" title="\'+esc(r.cod||"")+\'">\'+esc(r.cod||"—")+\'</td>\';';
+  S+='    h+=\'<td style="color:#1e293b;padding:11px 12px;font-size:14px;font-weight:500;line-height:1.5;white-space:normal;word-wrap:break-word;min-width:200px" title="\'+esc(r.prod||"")+\'">\'+esc(r.prod||"—")+\'</td>\';';
   S+='    h+=\'<td style="color:#0f172a;padding:11px 6px;text-align:center;font-weight:800;font-size:15px">\'+Number(r.cant||0).toLocaleString()+\'</td>\';';
   S+='    h+=\'<td style="color:#475569;padding:11px 6px;text-align:center;font-size:13px;font-weight:600">\'+esc(r.unid||"")+\'</td>\';';
   S+='    for(var p=0;p<3;p++){';
@@ -2923,22 +3161,23 @@ function openSkuModal(el){
       ds==='today' ? '<span class="dhoy">● '+r.fent+'</span>' :
       ds==='ok'    ? '<span class="dok">'+r.fent+'</span>' : r.fent
     ):'—';
-    return '<tr style="border-bottom:1px solid #f1f5f9;'+(i%2===1?'background:#f8fafc':'')+'">'
-      +'<td style="padding:6px 8px;color:#94a3b8;font-size:11px">'+(i+1)+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px"><span class="cl">'+r.cod+'</span></td>'
-      +'<td style="padding:6px 8px;color:#334155;font-size:11px;max-width:200px">'+r.prod+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+r.foc+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+fentHtml+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+badgeOC2(r.estado)+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px"><span style="font-size:10px;font-weight:600;color:#475569;background:#f1f5f9;padding:1px 5px;border-radius:4px">'+(r.ucomp||'—')+'</span></td>'
-      +'<td style="padding:6px 8px;font-size:11px"><div style="display:flex;align-items:center;gap:4px">'+avHtml2(r.resp)+'<span style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.resp+'</span></div></td>'
-      +'<td style="padding:6px 8px;font-size:10px;color:#0891b2;font-weight:600">'+r.idproy+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+r.req+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px;text-align:right;font-weight:600">'+r.cantOrd+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px;text-align:right;color:#64748b">'+r.cantRec+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700;color:'+(r.cantPend>0?'#16a34a':'#94a3b8')+'">'+r.cantPend+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+r.freq+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+(r.frec||'—')+'</td>'
+    const rowBg=i%2===1?'background:#f8fafc':'background:#fff';
+    return '<tr style="border-bottom:1px solid #f1f5f9;'+rowBg+';transition:background .1s" onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\''+(i%2===1?'#f8fafc':'#fff')+'\'">'
+      +'<td style="padding:8px 10px;color:#94a3b8;font-size:11px;text-align:center;font-weight:500">'+(i+1)+'</td>'
+      +'<td style="padding:8px 10px;white-space:nowrap"><span class="cl" style="font-size:12px">'+r.cod+'</span></td>'
+      +'<td style="padding:8px 10px;color:#1e293b;font-size:12px;font-weight:500;white-space:normal;line-height:1.4;min-width:260px">'+r.prod+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#64748b">'+r.foc+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap">'+fentHtml+'</td>'
+      +'<td style="padding:8px 10px;white-space:nowrap">'+badgeOC2(r.estado)+'</td>'
+      +'<td style="padding:8px 10px;white-space:nowrap"><span style="font-size:10px;font-weight:700;color:#475569;background:#f1f5f9;border:1px solid #e2e8f0;padding:2px 7px;border-radius:5px">'+(r.ucomp||'—')+'</span></td>'
+      +'<td style="padding:8px 10px;white-space:nowrap"><div style="display:flex;align-items:center;gap:5px">'+avHtml2(r.resp)+'<span style="font-size:11px;color:#334155">'+r.resp+'</span></div></td>'
+      +'<td style="padding:8px 10px;white-space:nowrap"><span style="font-size:10px;font-weight:700;color:#0891b2;background:#e0f2fe;padding:2px 7px;border-radius:5px">'+r.idproy+'</span></td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#7c3aed;font-weight:600">'+r.req+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;text-align:right;font-weight:700;color:#1e3a5f">'+r.cantOrd+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;text-align:right;color:#64748b">'+r.cantRec+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;text-align:right;font-weight:700;color:'+(r.cantPend>0?'#16a34a':'#94a3b8')+'">'+r.cantPend+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#64748b">'+r.freq+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#64748b">'+(r.frec||'—')+'</td>'
       +'</tr>';
   }).join('');
   document.getElementById('sku-modal').style.display='flex';
@@ -2960,20 +3199,21 @@ function openSkuModalP4(el){
       ds==='today' ?'<span class="dhoy">● '+r.fent+'</span>':
       ds==='ok'    ?'<span class="dok">'+r.fent+'</span>':r.fent
     ):'—';
-    return '<tr style="border-bottom:1px solid #f1f5f9;'+(i%2===1?'background:#f8fafc':'')+'">'
-      +'<td style="padding:6px 8px;color:#94a3b8;font-size:11px">'+(i+1)+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px"><span class="cl">'+(r.cod||'—')+'</span></td>'
-      +'<td style="padding:6px 8px;color:#334155;font-size:11px;max-width:200px">'+(r.prod||'—')+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+(r.foc||'—')+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+fentHtml+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+badgeOC2(r.estado)+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px"><span style="font-size:10px;font-weight:600;color:#475569;background:#f1f5f9;padding:1px 5px;border-radius:4px">'+(r.ucomp||'—')+'</span></td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+(r.resp||'—')+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+(r.ped||'—')+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px;text-align:right;font-weight:600">'+r.cantOrd+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px;text-align:right;color:#64748b">'+r.cantRec+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700;color:'+(r.cantPend>0?'#16a34a':'#94a3b8')+'">'+r.cantPend+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+(r.frec||'—')+'</td>'
+    const rowBg4=i%2===1?'background:#f8fafc':'background:#fff';
+    return '<tr style="border-bottom:1px solid #f1f5f9;'+rowBg4+'" onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\''+(i%2===1?'#f8fafc':'#fff')+'\'">'
+      +'<td style="padding:8px 10px;color:#94a3b8;font-size:11px;text-align:center;font-weight:500">'+(i+1)+'</td>'
+      +'<td style="padding:8px 10px;white-space:nowrap"><span class="cl" style="font-size:12px">'+(r.cod||'—')+'</span></td>'
+      +'<td style="padding:8px 10px;color:#1e293b;font-size:12px;font-weight:500;white-space:normal;line-height:1.4;min-width:260px">'+(r.prod||'—')+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#64748b">'+(r.foc||'—')+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap">'+fentHtml+'</td>'
+      +'<td style="padding:8px 10px;white-space:nowrap">'+badgeOC2(r.estado)+'</td>'
+      +'<td style="padding:8px 10px;white-space:nowrap"><span style="font-size:10px;font-weight:700;color:#475569;background:#f1f5f9;border:1px solid #e2e8f0;padding:2px 7px;border-radius:5px">'+(r.ucomp||'—')+'</span></td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#334155">'+(r.resp||'—')+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#7c3aed;font-weight:600">'+(r.ped||'—')+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;text-align:right;font-weight:700;color:#1e3a5f">'+r.cantOrd+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;text-align:right;color:#64748b">'+r.cantRec+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;text-align:right;font-weight:700;color:'+(r.cantPend>0?'#16a34a':'#94a3b8')+'">'+r.cantPend+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#64748b">'+(r.frec||'—')+'</td>'
       +'</tr>';
   }).join('');
   document.getElementById('sku-modal').style.display='flex';
@@ -3018,14 +3258,16 @@ function renderP5(){
 function renderP5Table(){
   const sz=50, rows=p5fil.slice(p5pg*sz,(p5pg+1)*sz);
   document.getElementById('tb5').innerHTML=rows.map(r=>`<tr>
-    <td style="white-space:nowrap;font-size:11px">${r.fecha||'—'}</td>
-    <td><div class="avrow">${avHtml(r.resp)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;font-size:11px">${r.resp}</span></div></td>
-    <td style="white-space:nowrap;font-size:10px;color:#0891b2;font-weight:600">${r.idproy||'—'}</td>
-    <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.proy}">${r.proy}</td>
-    <td style="white-space:nowrap"><span class="cl">${r.cod}</span></td>
-    <td style="font-size:11px;word-wrap:break-word;white-space:normal;min-width:200px">${r.prod}</td>
-    <td style="white-space:nowrap;text-align:right;font-weight:600">${r.cant}</td>
-    <td style="white-space:nowrap;font-size:11px">${r.req}</td>
+    <td style="white-space:nowrap;color:#64748b">${r.fecha||'—'}</td>
+    <td><div class="avrow">${avHtml(r.resp)}<span>${r.resp}</span></div></td>
+    <td style="white-space:nowrap"><span style="font-size:10px;font-weight:700;color:#0891b2;background:#e0f2fe;padding:2px 7px;border-radius:5px">${r.idproy||'—'}</span></td>
+    <td style="white-space:normal;font-size:11px;line-height:1.4" title="${r.proy}">${r.proy||'—'}</td>
+    <td style="white-space:nowrap"><span class="cl">${r.cod||'—'}</span></td>
+    <td style="white-space:normal;line-height:1.4;font-size:12px;font-weight:500;color:#1e293b">${r.prod||'—'}</td>
+    <td style="white-space:nowrap;text-align:right;font-weight:700;color:#1e3a5f">${r.cant}</td>
+    <td style="white-space:nowrap;color:#64748b;font-size:11px">${r.unid||'—'}</td>
+    <td style="white-space:nowrap"><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${r.req||'—'}</span></td>
+    <td style="white-space:nowrap;color:#64748b;font-size:11px">${r.freq||'—'}</td>
     <td style="white-space:nowrap">${badgeOC(r.estado)}</td>
   </tr>`).join('');
   const tot=p5fil.length, pages=Math.ceil(tot/sz);
@@ -4034,11 +4276,11 @@ function importMaestro(wb){
       ocMap[cod]={
         oc:cod,foc:gd(r,'FechaOrden'),fapro:gd(r,'FechaAprobacionOC'),fent:gd(r,'ParaFechaOrden'),
         resp:g(r,'NombreResponsable'),estado:'',_estados:[],
-        prov:g(r,'NombreProveedor').slice(0,35),
-        proy:g(r,'NombreProyecto').slice(0,30),idproy:g(r,'IdProyecto'),
+        prov:g(r,'NombreProveedor'),
+        proy:g(r,'NombreProyecto'),idproy:g(r,'IdProyecto'),
         req:g(r,'CodRequerimiento'),freq:gd(r,'FechaRequerimiento')||gd(r,'Fecha Requerimiento')||gd(r,'FechaReq')||gd(r,'Fecha de Requerimiento'),
-        prod:g(r,'Producto').slice(0,50),cod:g(r,'IdProducto'),
-        unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||'',
+        prod:g(r,'Producto'),cod:g(r,'IdProducto'),
+        unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||g(r,'UM')||g(r,'Um')||g(r,'Und')||g(r,'UndMed')||g(r,'Unidad de Medida')||g(r,'UnidMed')||'',
         nItems:0,cantOrd:0,cantRec:0,cantPend:0,
         frec:gd(r,'FechaRecepcion'),fsal:gd(r,'FechaSalida')||gd(r,'FechaSali'),ucomp:g(r,'UsuarioCompras'),
         reqs:[],
@@ -4061,15 +4303,15 @@ function importMaestro(wb){
     // Build SKUS
     if(!skusMap[cod])skusMap[cod]=[];
     skusMap[cod].push({
-      cod:g(r,'IdProducto'),prod:g(r,'Producto').slice(0,60),
+      cod:g(r,'IdProducto'),prod:g(r,'Producto'),
       cantOrd:Math.round(co),cantRec:Math.round(cr),cantPend:Math.max(0,Math.round(co-cr)),
       foc:gd(r,'FechaOrden'),fent:gd(r,'ParaFechaOrden'),
       estado:g(r,'EstadoOrden'),ucomp:g(r,'UsuarioCompras'),
-      prov:g(r,'NombreProveedor').slice(0,35),resp:g(r,'NombreResponsable'),
-      idproy:g(r,'IdProyecto'),proy:g(r,'NombreProyecto').slice(0,30),
+      prov:g(r,'NombreProveedor'),resp:g(r,'NombreResponsable'),
+      idproy:g(r,'IdProyecto'),proy:g(r,'NombreProyecto'),
       req:g(r,'CodRequerimiento'),freq:gd(r,'FechaRequerimiento'),
       frec:gd(r,'FechaRecepcion'),
-      unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||''
+      unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||g(r,'UM')||g(r,'Um')||g(r,'Und')||g(r,'UndMed')||g(r,'Unidad de Medida')||g(r,'UnidMed')||''
     });
   });
 
@@ -4107,7 +4349,7 @@ function importMaestro(wb){
     fecha:gd(r,'FechaPedido'),
     respPed:g(r,'ResponsablePedido'),
     resp:g(r,'NombreResponsable'),
-    idproy:g(r,'IdProyecto'),proy:g(r,'NombreProyecto').slice(0,30),
+    idproy:g(r,'IdProyecto'),proy:g(r,'NombreProyecto'),
     cod:g(r,'IdProducto'),prod:g(r,'Producto'),
     cant:Math.round(gn(r,'Cantidad de pedido')),
     unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||'',
@@ -4133,8 +4375,10 @@ function importMaestro(wb){
     p5Data.push({
       req:g(r,'CodRequerimiento'),fecha:gd(r,'FechaRequerimiento'),
       resp:g(r,'NombreResponsable'),idproy:g(r,'IdProyecto'),
-      proy:g(r,'NombreProyecto').slice(0,30),cod:g(r,'IdProducto'),
+      proy:g(r,'NombreProyecto'),cod:g(r,'IdProducto'),
       prod:g(r,'Producto'),cant:Math.round(gn(r,'CantidadRequerimiento')),
+      unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||g(r,'UM')||g(r,'Um')||g(r,'Und')||g(r,'UndMed')||g(r,'Unidad de Medida')||g(r,'UnidMed')||'',
+      freq:gd(r,'FechaRequerida')||gd(r,'FechaEntrega')||gd(r,'ParaFechaOrden')||gd(r,'Fecha Requerida')||gd(r,'FechaRequerimiento')||'',
       estado:g(r,'EstadoRequerimiento')
     });
   });
@@ -4365,7 +4609,7 @@ function importPedidoSinReq(wb){
         prov:g(r,'NombreProveedor').slice(0,35),ucomp:g(r,'UsuarioCompras'),
         ped:[],fpedido:gd(r,'FechaPedido')||gd(r,'Fecha Pedido')||gd(r,'FechaPed'),
         cod:g(r,'IdProducto')||g(r,'CodigoProducto')||'',
-        prod:(g(r,'Descripción')||g(r,'Producto')||g(r,'Descripcion')||'').slice(0,60),
+        prod:g(r,'Descripción')||g(r,'Producto')||g(r,'Descripcion')||'',
         unid:g(r,'Medida')||g(r,'Unidad')||'',
         cantOrd:0,cantRec:0,cantPend:0,nItems:0,frec:gd(r,'FechaRecepcion')
       };
@@ -4379,12 +4623,13 @@ function importPedidoSinReq(wb){
     if(!skusMap4[cod])skusMap4[cod]=[];
     skusMap4[cod].push({
       cod:g(r,'IdProducto')||g(r,'CodigoProducto')||'',
-      prod:(g(r,'Descripción')||g(r,'Producto')||g(r,'Descripcion')||'').slice(0,60),
+      prod:g(r,'Descripción')||g(r,'Producto')||g(r,'Descripcion')||'',
       cantOrd:Math.round(co),cantRec:Math.round(cr),cantPend:Math.max(0,Math.round(co-cr)),
       foc:gd(r,'FechaOrden'),fent:gd(r,'ParaFechaOrden'),
       estado:g(r,'EstadoOrden'),ucomp:g(r,'UsuarioCompras'),
       prov:g(r,'NombreProveedor').slice(0,35),resp:g(r,'ResponsablePedido'),
-      ped:ped||'',frec:gd(r,'FechaRecepcion')
+      ped:ped||'',frec:gd(r,'FechaRecepcion'),
+      unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||''
     });
   });
   SKUS_P4 = skusMap4;
@@ -4536,34 +4781,36 @@ setInterval(function(){
 }, 500);
 </script>
 
-<div id="sku-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)closeSkuModal()">
-  <div style="background:#fff;border-radius:10px;max-width:1200px;width:98%;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-    <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">
+<div id="sku-modal" style="display:none;position:fixed;inset:0;background:rgba(10,20,40,.6);z-index:9999;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeSkuModal()">
+  <div style="background:#fff;border-radius:14px;width:min(98vw,1400px);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.4)">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1e3a5f,#0369a1);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
       <div>
-        <div style="font-weight:700;font-size:15px;color:#0f172a" id="modal-oc-title"></div>
-        <div style="font-size:11px;color:#64748b;margin-top:2px" id="modal-oc-sub"></div>
+        <div style="color:#fff;font-weight:700;font-size:16px;letter-spacing:.3px" id="modal-oc-title"></div>
+        <div style="color:#93c5fd;font-size:11px;margin-top:4px" id="modal-oc-sub"></div>
       </div>
-      <button onclick="closeSkuModal()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#94a3b8;padding:4px 8px">✕</button>
+      <button onclick="closeSkuModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">✕</button>
     </div>
-    <div style="overflow-y:auto;flex:1;padding:16px 20px">
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <!-- Table -->
+    <div style="overflow:auto;flex:1">
+      <table style="width:max-content;min-width:100%;border-collapse:collapse;font-size:12px">
         <thead>
-          <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;white-space:nowrap">
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">#</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">CÓDIGO</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">DESCRIPCIÓN</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">F. OC</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">F. ENTREGA</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">ESTADO</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">USR. COMP.</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">RESPONSABLE</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">ID PROYECTO</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">REQ.</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600;text-align:right">CANT. ORD.</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600;text-align:right">CANT. ATEND.</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600;text-align:right">CANT. PEND.</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">F. REQ.</th>
-            <th style="padding:7px 8px;color:#475569;font-size:10px;font-weight:600">F. RECEPCIÓN</th>
+          <tr style="background:#f1f5f9;position:sticky;top:0;z-index:2">
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap;text-align:center">#</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">CÓDIGO</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;min-width:260px">DESCRIPCIÓN</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">F. OC</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">F. ENTREGA</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">ESTADO</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">USR. COMP.</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">RESPONSABLE</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">ID PROYECTO</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">REQ.</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap;text-align:right">CANT. ORD.</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap;text-align:right">CANT. ATEND.</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap;text-align:right">CANT. PEND.</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">F. REQ.</th>
+            <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">F. RECEPCIÓN</th>
           </tr>
         </thead>
         <tbody id="modal-sku-body"></tbody>
