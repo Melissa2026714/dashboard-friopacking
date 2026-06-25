@@ -53,10 +53,14 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:1
 #inst-hdr p{color:#93c5fd;font-size:11px;margin:2px 0 0}
 #inst-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 #inst-close:hover{background:rgba(255,255,255,.25)}
-#inst-nav{display:flex;gap:4px;padding:12px 20px;background:#1e3a5f;border-top:1px solid rgba(255,255,255,.1);flex-wrap:wrap;flex-shrink:0}
-#inst-nav button{padding:6px 12px;border:none;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;background:rgba(255,255,255,.12);color:#bfdbfe;font-family:inherit;transition:all .15s}
-#inst-nav button.ia{background:#2563eb;color:#fff}
-#inst-nav button:hover{background:rgba(255,255,255,.22);color:#fff}
+#inst-perf{display:flex;gap:8px;padding:10px 20px 0;background:#1e3a5f;flex-shrink:0}
+.ip-btn{padding:7px 16px;border:2px solid rgba(255,255,255,.2);border-radius:20px 20px 0 0;font-size:11px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.08);color:#93c5fd;font-family:inherit;transition:all .15s;letter-spacing:.3px}
+.ip-btn.ipa{background:#fff;color:#1e3a5f;border-color:#fff}
+.ip-btn:not(.ipa):hover{background:rgba(255,255,255,.18);color:#fff}
+#inst-nav-sol,#inst-nav-comp{display:flex;gap:4px;padding:10px 20px;background:#1e3a5f;border-top:1px solid rgba(255,255,255,.1);flex-wrap:wrap;flex-shrink:0}
+#inst-nav-sol button,#inst-nav-comp button{padding:6px 12px;border:none;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;background:rgba(255,255,255,.12);color:#bfdbfe;font-family:inherit;transition:all .15s}
+#inst-nav-sol button.ia,#inst-nav-comp button.ia{background:#2563eb;color:#fff}
+#inst-nav-sol button:hover,#inst-nav-comp button:hover{background:rgba(255,255,255,.22);color:#fff}
 #inst-body{overflow-y:auto;padding:28px;flex:1}
 .isec{display:none}.isec.ia{display:block}
 .isec h3{font-size:15px;font-weight:700;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:8px;margin-bottom:16px}
@@ -362,7 +366,7 @@ body.dark .g-rank-card{background:#111b2b!important}
     <div class="hcard" onclick="nav('p2')"><div class="hci">📋</div><div class="hct">OC Pendientes<br>con Requerimiento</div><div class="hcs" id="hc2">cargando…</div></div>
     <div class="hcard" onclick="nav('p3')"><div class="hci">🔴</div><div class="hct">Pedidos sin OC<br>En Cotización</div><div class="hcs" id="hc3">cargando…</div></div>
     <div class="hcard" onclick="nav('p4')"><div class="hci">📦</div><div class="hct">Compras<br>Directas</div><div class="hcs">Archivo externo</div></div>
-    <div class="hcard" onclick="nav('p5')"><div class="hci">⚡</div><div class="hct">Req. sin Pedido<br>Comodín — Javier</div><div class="hcs">Sin pedido asignado</div></div>
+    <div class="hcard" onclick="nav('p5')"><div class="hci">⚡</div><div class="hct">Req. sin Pedido<br>Javier</div><div class="hcs">Sin pedido asignado</div></div>
     <div class="hcard" onclick="nav('p6')"><div class="hci">🏗️</div><div class="hct">Proyectos PMO</div><div class="hcs" id="hc6">cargando…</div></div>
     <div class="hcard" onclick="nav('p1')"><div class="hci">📊</div><div class="hct">Gerencial / KPIs<br>Manuel</div><div class="hcs">Vista ejecutiva</div></div>
   </div>
@@ -378,25 +382,35 @@ body.dark .g-rank-card{background:#111b2b!important}
 <div id="inst-bg" onclick="if(event.target===this)cerrarInstructivo()">
 <div id="inst-card">
   <div id="inst-hdr">
-    <div><h2>📖 Instructivo — Dashboard Seguimiento Compras 2026</h2><p>Guía de uso para supervisores · FRIOPACKING S.A. · Versión 1.0 · Junio 2026</p></div>
+    <div><h2>📖 Instructivo — Dashboard Seguimiento Compras 2026</h2><p>Selecciona tu perfil para ver la guía correspondiente · FRIOPACKING S.A. · Versión 2.0 · Junio 2026</p></div>
     <button id="inst-close" onclick="cerrarInstructivo()">✕</button>
   </div>
-  <div id="inst-nav">
-    <button class="ia" onclick="instNav(0)">🏠 Inicio</button>
-    <button onclick="instNav(1)">📂 Importar &amp; Guardar</button>
-    <button onclick="instNav(2)">📋 OC Pendientes</button>
-    <button onclick="instNav(3)">🔴 Sin OC — Cotización</button>
-    <button onclick="instNav(4)">📥 Exportar Excel</button>
-    <button onclick="instNav(5)">📦 Compras Directas</button>
-    <button onclick="instNav(6)">⚡ Req. sin Pedido</button>
-    <button onclick="instNav(7)">🏗️ Proyectos PMO</button>
-    <button onclick="instNav(8)">📊 Gerencial / KPIs</button>
-    <button onclick="instNav(9)">🔍 Consultas</button>
+  <div id="inst-perf">
+    <button class="ip-btn ipa" onclick="setInstPerfil('sol')">👤 Supervisores / Solicitantes</button>
+    <button class="ip-btn" onclick="setInstPerfil('comp')">🛒 Área de Compras</button>
+  </div>
+  <div id="inst-nav-sol">
+    <button class="ia" data-sec="isec-s0" onclick="instNav('isec-s0')">🏠 ¿Qué puedo ver?</button>
+    <button data-sec="isec-s1" onclick="instNav('isec-s1')">📋 Mis Pedidos con OC</button>
+    <button data-sec="isec-s2" onclick="instNav('isec-s2')">🔴 Pedidos en Cotización</button>
+    <button data-sec="isec-s3" onclick="instNav('isec-s3')">🔍 Buscar un ítem</button>
+  </div>
+  <div id="inst-nav-comp" style="display:none">
+    <button class="ia" data-sec="isec0" onclick="instNav('isec0')">🏠 Inicio</button>
+    <button data-sec="isec1" onclick="instNav('isec1')">📂 Importar &amp; Guardar</button>
+    <button data-sec="isec2" onclick="instNav('isec2')">📋 OC Pendientes</button>
+    <button data-sec="isec3" onclick="instNav('isec3')">🔴 Sin OC — Cotización</button>
+    <button data-sec="isec4" onclick="instNav('isec4')">📥 Exportar Excel</button>
+    <button data-sec="isec5" onclick="instNav('isec5')">📦 Compras Directas</button>
+    <button data-sec="isec6" onclick="instNav('isec6')">⚡ Req. sin Pedido</button>
+    <button data-sec="isec7" onclick="instNav('isec7')">🏗️ Proyectos PMO</button>
+    <button data-sec="isec8" onclick="instNav('isec8')">📊 Gerencial / KPIs</button>
+    <button data-sec="isec9" onclick="instNav('isec9')">🔍 Consultas</button>
   </div>
   <div id="inst-body">
 
     <!-- 0 INICIO -->
-    <div class="isec ia" id="isec0">
+    <div class="isec" id="isec0">
       <h3>🏠 Pantalla de Inicio</h3>
       <p>La pantalla de inicio es el punto de entrada al dashboard. Muestra accesos directos a cada módulo y el estado general de los datos cargados.</p>
       <div class="iscreen">
@@ -409,7 +423,7 @@ body.dark .g-rank-card{background:#111b2b!important}
         <li><span class="ibadge ibadge-blue">📋 OC Pendientes</span> — Órdenes de compra con requerimiento asignado</li>
         <li><span class="ibadge ibadge-red">🔴 Sin OC</span> — Pedidos en proceso de cotización sin OC aún</li>
         <li><span class="ibadge ibadge-gray">📦 Compras Directas</span> — Compras sin requerimiento formal (archivo externo)</li>
-        <li><span class="ibadge ibadge-gray">⚡ Req. sin Pedido</span> — Requerimientos sin pedido (Comodín — Javier)</li>
+        <li><span class="ibadge ibadge-gray">⚡ Req. sin Pedido</span> — Requerimientos sin pedido (Javier)</li>
         <li><span class="ibadge ibadge-gray">🏗️ Proyectos PMO</span> — Seguimiento de proyectos activos</li>
         <li><span class="ibadge ibadge-purple">📊 Gerencial / KPIs</span> — Vista ejecutiva para gerencia (Manuel)</li>
       </ul>
@@ -421,36 +435,40 @@ body.dark .g-rank-card{background:#111b2b!important}
       <h3>📂 Importar datos y Guardar</h3>
       <p>Estos dos botones en la barra superior controlan la carga y sincronización de todos los datos del dashboard.</p>
       <h4>📂 Botón IMPORTAR</h4>
-      <p>Carga los datos desde los archivos Excel fuente. Al hacer clic, el sistema pedirá dos archivos:</p>
+      <p>Carga los datos desde los archivos Excel fuente. Al hacer clic, el sistema pedirá tres archivos:</p>
       <ul>
-        <li><strong>MAESTRO.xlsx</strong> — Contiene todas las órdenes de compra y requerimientos del sistema SAP</li>
-        <li><strong>PedidoSinReq.xlsx</strong> — Requerimientos sin pedido asignado</li>
+        <li><strong>MAESTRO.xlsx</strong> — Contiene todas las órdenes de compra y requerimientos del sistema NISIRA</li>
+        <li><strong>PedidoSinReq.xlsx</strong> — Requerimientos sin pedido asignado (sección de Javier)</li>
+        <li><strong>Consulta.xlsx</strong> — Datos del módulo de Consultas</li>
       </ul>
       <div class="istep"><div class="istep-n">1</div><p>Haz clic en <strong>📂 IMPORTAR</strong> en la esquina superior derecha</p></div>
-      <div class="istep"><div class="istep-n">2</div><p>Selecciona primero el archivo <strong>MAESTRO.xlsx</strong> cuando el navegador lo solicite</p></div>
-      <div class="istep"><div class="istep-n">3</div><p>Luego selecciona <strong>PedidoSinReq.xlsx</strong></p></div>
-      <div class="istep"><div class="istep-n">4</div><p>El dashboard actualizará automáticamente todos los módulos con los datos nuevos</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Selecciona el archivo <strong>MAESTRO.xlsx</strong> cuando el navegador lo solicite</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>Selecciona el archivo <strong>PedidoSinReq.xlsx</strong></p></div>
+      <div class="istep"><div class="istep-n">4</div><p>Selecciona el archivo <strong>Consulta.xlsx</strong></p></div>
+      <div class="istep"><div class="istep-n">5</div><p>El dashboard actualizará automáticamente todos los módulos con los datos nuevos</p></div>
       <div class="itip"><span class="itip-icon">💡</span><p>Importa los archivos cada vez que necesites ver datos actualizados. Los datos se cargan en memoria local — no se envían a ningún servidor.</p></div>
       <h4>💾 Botón GUARDAR</h4>
       <p>Guarda el estado actual del dashboard y sincroniza los cambios con los demás usuarios del equipo.</p>
+      <div class="iwarn"><p>⚠️ <strong>Primera vez:</strong> Al guardar por primera vez, el sistema solicitará un <strong>token de acceso</strong>. Ingrésalo y haz clic en Aceptar — a partir de ese momento no volverá a pedirlo en ese equipo.</p></div>
       <div class="iwarn"><p>⚠️ <strong>Importante:</strong> Haz clic en GUARDAR después de realizar cualquier modificación (cambio de estado, notas, etc.) para que los demás usuarios vean los cambios actualizados.</p></div>
     </div>
 
     <!-- 2 OC PENDIENTES -->
     <div class="isec" id="isec2">
       <h3>📋 OC Pendientes con Requerimiento</h3>
-      <p>Muestra todas las Órdenes de Compra que ya tienen un requerimiento SAP asignado. Es el módulo principal de seguimiento de compras.</p>
+      <p>Muestra todas las Órdenes de Compra que ya tienen un requerimiento NISIRA asignado. Es el módulo principal de seguimiento de compras.</p>
       <h4>Columnas de la tabla</h4>
       <ul>
-        <li><strong>N° OC</strong> — Número de orden de compra SAP</li>
+        <li><strong>N° OC</strong> — Número de orden de compra NISIRA</li>
         <li><strong>Fecha OC</strong> — Fecha de emisión de la orden</li>
         <li><strong>Resp. Pedido</strong> — Responsable del pedido en compras</li>
         <li><strong>Responsable / Solicitante</strong> — Persona que solicitó el ítem</li>
         <li><strong>ID Proyecto / Proyecto</strong> — Proyecto asociado</li>
-        <li><strong>Código / Descripción</strong> — Código SAP y descripción del material</li>
+        <li><strong>Código / Descripción</strong> — Código NISIRA y descripción del material</li>
         <li><strong>Cant. / Unidad</strong> — Cantidad y unidad de medida</li>
-        <li><strong>Requerimiento / Fecha Req.</strong> — N° de requerimiento SAP y fecha</li>
-        <li><strong>Estado</strong> — Estado actual de la OC <span class="ibadge ibadge-green">Entregado</span> <span class="ibadge ibadge-blue">En tránsito</span> <span class="ibadge ibadge-red">Pendiente</span></li>
+        <li><strong>Requerimiento / Fecha Req.</strong> — N° de requerimiento NISIRA y fecha</li>
+        <li><strong>Estado</strong> — Estado actual de la OC: <span class="ibadge ibadge-green">Atend. Completo</span> <span class="ibadge ibadge-orange" style="background:#f97316;color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">Atend. Parcial</span> <span class="ibadge ibadge-blue">Pendiente (Aprobado)</span> <span class="ibadge ibadge-red">Pendiente (Sin Aprobar)</span></li>
+        <li><strong>Fecha de Salida</strong> — Si tiene fecha, indica que ese ítem ya fue guiado y salió a obra ese día</li>
         <li><strong>N° Pedido</strong> — Número de pedido interno</li>
       </ul>
       <h4>Filtros disponibles</h4>
@@ -460,27 +478,84 @@ body.dark .g-rank-card{background:#111b2b!important}
         <li><strong>Estado</strong> — Filtra por estado de la OC</li>
         <li><strong>Buscador</strong> — Busca por texto libre en cualquier campo</li>
       </ul>
-      <h4>Botón Visual</h4>
-      <p>Abre una ventana emergente con el listado formateado, lista para imprimir o guardar como PDF. Útil para compartir con proveedores o gerencia.</p>
-      <div class="istep"><div class="istep-n">1</div><p>Aplica los filtros que necesites para acotar la vista</p></div>
-      <div class="istep"><div class="istep-n">2</div><p>Haz clic en <strong>Visual</strong> para abrir la vista de impresión</p></div>
-      <div class="istep"><div class="istep-n">3</div><p>En la ventana emergente, usa Ctrl+P (o Cmd+P en Mac) para imprimir o guardar PDF</p></div>
+      <h4>✉ Enviar correo al proveedor</h4>
+      <p>Cada fila de OC tiene un botón <strong>✉</strong> azul que abre una ventana con el correo ya formateado para enviar al proveedor. Antes de enviarlo se debe seleccionar la modalidad de entrega:</p>
+      <ul>
+        <li><strong>📦 Entrega en planta — Lurín</strong> — el proveedor entrega el material directamente en nuestras instalaciones</li>
+        <li><strong>🚚 Recojo por cuenta de Friopacking</strong> — nosotros recogemos el material en el local del proveedor</li>
+      </ul>
+      <p>Una vez seleccionada la modalidad, el cuerpo del correo se genera automáticamente y se habilitan dos formas de enviarlo:</p>
+
+      <h4>Forma 1 — Abrir Outlook (recomendado)</h4>
+      <div class="istep"><div class="istep-n">1</div><p>Haz clic en el botón <strong>✉</strong> azul de la OC que deseas enviar</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>En la ventana que se abre, selecciona la <strong>modalidad de entrega</strong> (Entrega en planta o Recojo)</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>Haz clic en <strong>✉ Abrir Outlook</strong> — el sistema copia el contenido del correo al portapapeles y abre Outlook automáticamente con el asunto, destinatario y CC ya completados</p></div>
+      <div class="istep"><div class="istep-n">4</div><p>En Outlook, haz clic en el cuerpo del correo y presiona <strong>Ctrl+V</strong> para pegar el contenido formateado</p></div>
+      <div class="istep"><div class="istep-n">5</div><p>Revisa y haz clic en <strong>Enviar</strong></p></div>
+      <div class="istep"><div class="istep-n">6</div><p>Regresa al dashboard y <strong>marca el checkbox ✉</strong> de esa OC en la columna Correo para registrar que ya fue enviado</p></div>
+
+      <h4>Forma 2 — Copiar como imagen</h4>
+      <div class="istep"><div class="istep-n">1</div><p>Haz clic en el botón <strong>✉</strong> azul de la OC y selecciona la modalidad de entrega</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Haz clic en <strong>📷 Copiar imagen</strong> — el sistema captura el correo formateado como imagen y lo copia al portapapeles</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>Abre Outlook manualmente, crea un correo nuevo, haz clic en el cuerpo y presiona <strong>Ctrl+V</strong> para pegar la imagen</p></div>
+      <div class="istep"><div class="istep-n">4</div><p>Completa los campos Para / CC y envía</p></div>
+      <div class="istep"><div class="istep-n">5</div><p>Marca el checkbox ✉ en la tabla para registrar el envío</p></div>
+      <div class="itip"><span class="itip-icon">💡</span><p>También puedes usar <strong>🖨 Guardar PDF</strong> desde esa misma ventana si necesitas guardar o imprimir la OC formateada.</p></div>
+      <div class="iwarn"><p>⚠️ <strong>¡Importante — Trazabilidad!</strong> Sin importar la forma que uses para enviar el correo, siempre debes regresar a la tabla y <strong>marcar el checkbox ✉ de la columna Correo</strong> en esa OC. Esto permite que todo el equipo sepa que el correo ya fue enviado al proveedor.</p></div>
     </div>
 
     <!-- 3 SIN OC COTIZACION -->
+
     <div class="isec" id="isec3">
       <h3>🔴 Sin OC — Cotización</h3>
-      <p>Pedidos que aún no tienen una Orden de Compra asignada y se encuentran en proceso de cotización con proveedores. Aquí se gestiona el cuadro comparativo de precios.</p>
-      <h4>Acciones principales</h4>
+      <p>Muestra todos los pedidos que aún no tienen Orden de Compra asignada. Desde aquí se gestionan las cotizaciones con proveedores y se genera el cuadro comparativo de precios.</p>
+
+      <h4>Filtros disponibles</h4>
       <ul>
-        <li><strong>Seleccionar todos</strong> — Marca todos los ítems visibles para exportar</li>
-        <li><strong>Checkbox individual</strong> — Selecciona ítems específicos haciendo clic en cada fila</li>
-        <li><strong>📥 Exportar Excel</strong> — Genera el cuadro comparativo de cotizaciones (ver sección siguiente)</li>
-        <li><strong>📋 Consolidar selección</strong> — Consolida los ítems seleccionados en un resumen</li>
+        <li><strong>Resp. Pedido</strong> — Filtra por responsable de compras</li>
+        <li><strong>Responsable / Solicitante</strong> — Filtra por quien solicitó el pedido</li>
+        <li><strong>Proyecto</strong> — Filtra por proyecto</li>
+        <li><strong>Buscador libre</strong> — Busca por N° pedido, código, descripción o proyecto</li>
       </ul>
-      <h4>Filtros</h4>
-      <p>Mismos filtros que OC Pendientes: Resp. Pedido, Responsable/Solicitante, Estado y buscador de texto libre.</p>
-      <div class="itip"><span class="itip-icon">💡</span><p>Selecciona solo los ítems del mismo proveedor o proyecto antes de exportar para generar un cuadro comparativo más limpio y específico.</p></div>
+
+      <h4>👁 Botón Visual</h4>
+      <p>Abre una ventana con la vista imprimible de todos los pedidos visibles en la tabla. Útil para revisar o compartir el listado completo en formato PDF.</p>
+
+      <h4>Checkboxes — Selección de pedidos</h4>
+      <p>Cada fila tiene un casillero a la izquierda para seleccionarla. Puedes seleccionar individualmente o usar <strong>Seleccionar todos</strong> para marcar todos los pedidos visibles de una vez. Una vez seleccionados, se habilitan los botones de acción:</p>
+      <ul>
+        <li><strong>📥 Exportar Excel</strong> — Se usa cuando ya cuentas con las cotizaciones de los proveedores y estás listo para armar el cuadro comparativo de precios. El detalle completo de cómo usarlo está en la pestaña <strong>Exportar Excel</strong></li>
+        <li><strong>📋 Consolidar selección</strong> — Abre el resumen consolidado de los pedidos marcados, agrupados por responsable de pedido</li>
+      </ul>
+      <div class="itip"><span class="itip-icon">💡</span><p>Usa los filtros primero para acotar la vista y luego <strong>Seleccionar todos</strong> para trabajar con un grupo específico de pedidos (por proyecto, responsable, etc.).</p></div>
+
+      <h4>📋 Vista Consolidada — qué muestra y qué puedes hacer</h4>
+      <p>Al hacer clic en <strong>Consolidar selección</strong> se abre una ventana con todos los pedidos seleccionados, agrupados por Responsable de Pedido, con código, descripción, cantidad, unidad y estado de cada ítem. En la parte inferior aparecen 4 botones:</p>
+      <ul>
+        <li><strong>🗑 Limpiar selección</strong> — Desmarca todos los pedidos y cierra el consolidado</li>
+        <li><strong>✉ Enviar por correo</strong> — Inicia el flujo para enviar la solicitud de cotización a los proveedores (ver detalle abajo)</li>
+        <li><strong>👁 Ver correo formateado</strong> — Muestra una vista previa del correo tal como lo recibirá el proveedor, sin enviarlo</li>
+        <li><strong>🖨 Imprimir / Guardar PDF</strong> — Imprime o guarda el consolidado como PDF</li>
+      </ul>
+
+      <h4>✉ Enviar solicitud de cotización por correo — paso a paso</h4>
+      <div class="istep"><div class="istep-n">1</div><p>Selecciona los pedidos a cotizar con los casilleros y haz clic en <strong>Consolidar selección</strong></p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Revisa el consolidado y haz clic en <strong>✉ Enviar por correo</strong></p></div>
+      <div class="istep"><div class="istep-n">3</div><p>Se abre el formulario de cotización: ingresa los <strong>correos de los proveedores</strong> en el campo CCO (puedes agregar varios presionando Enter o coma después de cada uno)</p></div>
+      <div class="istep"><div class="istep-n">4</div><p>Selecciona la <strong>Fecha Límite de Cotización</strong> usando el calendario</p></div>
+      <div class="istep"><div class="istep-n">5</div><p>Haz clic en <strong>Enviar</strong> — el sistema copia el contenido del correo al portapapeles y abre Outlook automáticamente con el asunto y destinatarios completados</p></div>
+      <div class="istep"><div class="istep-n">6</div><p>En Outlook, haz clic en el <strong>cuerpo del correo</strong> y presiona <strong>Ctrl+V</strong> para pegar el contenido formateado con las tablas de pedidos</p></div>
+      <div class="istep"><div class="istep-n">7</div><p>Revisa que todo esté correcto y haz clic en <strong>Enviar</strong> en Outlook</p></div>
+      <div class="iwarn"><p>⚠️ El paso de <strong>Ctrl+V</strong> en Outlook es obligatorio — el sistema abre Outlook con los destinatarios listos pero el cuerpo del correo debe pegarse manualmente para que se vea con el formato de tablas correcto.</p></div>
+      <div class="itip"><span class="itip-icon">💡</span><p>Si deseas previsualizar el correo antes de enviarlo, usa <strong>👁 Ver correo formateado</strong> en el consolidado para ver exactamente cómo lo recibirá el proveedor.</p></div>
+
+      <h4>☑ Marcar como "En Cotización" — columna COTIZ. (paso obligatorio)</h4>
+      <p>La columna <strong>COTIZ.</strong> (fondo verde, extremo derecho del Visual) es el mecanismo que <strong>actualiza el Estado</strong> de cada pedido en la tabla principal de Sin OC. Cuando marcas ese checkbox y guardas, el estado del pedido cambia automáticamente de <span style="background:#fee2e2;color:#b91c1c;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700">Pendiente</span> a <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700">En cotización</span>. Así los supervisores y todo el equipo pueden ver en tiempo real qué pedidos ya están siendo gestionados.</p>
+      <div class="istep"><div class="istep-n">1</div><p>Envía el correo de cotización al proveedor (ver pasos anteriores)</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Abre el <strong>👁 Visual</strong> y marca el checkbox de la columna <strong>COTIZ.</strong> en las filas correspondientes</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>Cierra el Visual y verifica que en la tabla principal el Estado ya muestra <strong>"En cotización"</strong></p></div>
+      <div class="istep"><div class="istep-n">4</div><p>Haz clic en <strong>💾 GUARDAR</strong> en la barra superior para que el cambio quede registrado y todos los usuarios lo vean</p></div>
+      <div class="iwarn"><p>⚠️ <strong>Este paso es la fuente del estado.</strong> La columna Estado en Sin OC se alimenta directamente de este checkbox — si no lo marcas, el pedido seguirá apareciendo como "Pendiente" aunque ya esté siendo cotizado. Si no das GUARDAR, el cambio se pierde al cerrar el dashboard.</p></div>
     </div>
 
     <!-- 4 EXPORTAR EXCEL -->
@@ -508,7 +583,7 @@ body.dark .g-rank-card{background:#111b2b!important}
       <div class="istep"><div class="istep-n">5</div><p>Las celdas con <strong>borde verde</strong> fueron detectadas automáticamente — verifica que sean correctas</p></div>
       <div class="istep"><div class="istep-n">6</div><p>Corrige o completa los precios que el sistema no haya detectado</p></div>
       <div class="istep"><div class="istep-n">7</div><p>Haz clic en <strong>Generar Comparativo Llenado</strong></p></div>
-      <div class="itip"><span class="itip-icon">💡</span><p>La detección automática funciona mejor cuando las descripciones del PDF del proveedor son similares a las del requerimiento SAP. Si un precio no se detecta, ingrésalo manualmente.</p></div>
+      <div class="itip"><span class="itip-icon">💡</span><p>La detección automática funciona mejor cuando las descripciones del PDF del proveedor son similares a las del requerimiento NISIRA. Si un precio no se detecta, ingrésalo manualmente.</p></div>
 
       <h4>Estructura del Excel generado</h4>
       <ul>
@@ -524,10 +599,10 @@ body.dark .g-rank-card{background:#111b2b!important}
     <!-- 5 COMPRAS DIRECTAS -->
     <div class="isec" id="isec5">
       <h3>📦 Compras Directas</h3>
-      <p>Módulo para el seguimiento de compras realizadas sin un requerimiento formal en SAP. Corresponde a un archivo externo independiente.</p>
+      <p>Módulo para el seguimiento de compras realizadas sin un requerimiento formal en NISIRA. Corresponde a un archivo externo independiente.</p>
       <h4>Características</h4>
       <ul>
-        <li>Gestiona compras urgentes o menores que no pasan por el proceso de requerimiento SAP estándar</li>
+        <li>Gestiona compras urgentes o menores que no pasan por el proceso de requerimiento NISIRA estándar</li>
         <li>Los datos provienen de un archivo Excel externo que se carga por separado</li>
         <li>Visible también en la vista <strong>Gerencial / KPIs</strong> cuando se selecciona "Compras Directas" o "Ambas" en el filtro de origen</li>
       </ul>
@@ -537,14 +612,14 @@ body.dark .g-rank-card{background:#111b2b!important}
     <!-- 6 REQ SIN PEDIDO -->
     <div class="isec" id="isec6">
       <h3>⚡ Req. sin Pedido — Comodín (Javier)</h3>
-      <p>Muestra los requerimientos SAP que aún no tienen un pedido/OC asignado. Esta sección es administrada principalmente por Javier y está fuera del flujo regular de compras.</p>
+      <p>Muestra los requerimientos NISIRA que aún no tienen un pedido/OC asignado. Esta sección es administrada principalmente por Javier y está fuera del flujo regular de compras.</p>
       <h4>Uso</h4>
       <ul>
         <li>Identificar requerimientos "huérfanos" sin acción de compra</li>
         <li>Hacer seguimiento de ítems pendientes de asignación</li>
         <li>Los datos se cargan desde el archivo <strong>PedidoSinReq.xlsx</strong> en la importación</li>
       </ul>
-      <div class="iwarn"><p>⚠️ Los ítems en esta sección no aparecen en OC Pendientes ni en Sin OC hasta que se les asigne un pedido en SAP y se reimporte el MAESTRO.xlsx.</p></div>
+      <div class="iwarn"><p>⚠️ Los ítems en esta sección no aparecen en OC Pendientes ni en Sin OC hasta que se les asigne un pedido en NISIRA y se reimporte el MAESTRO.xlsx.</p></div>
     </div>
 
     <!-- 7 PROYECTOS PMO -->
@@ -603,7 +678,7 @@ body.dark .g-rank-card{background:#111b2b!important}
       <p>Módulo de búsqueda avanzada para consultas cruzadas entre todos los datos del dashboard.</p>
       <h4>Usos principales</h4>
       <ul>
-        <li>Buscar un ítem específico por código SAP o descripción en todos los módulos a la vez</li>
+        <li>Buscar un ítem específico por código NISIRA o descripción en todos los módulos a la vez</li>
         <li>Ver el historial de un requerimiento desde su creación hasta la OC</li>
         <li>Consultar el estado de un pedido específico</li>
         <li>Verificar si un ítem ya tiene OC o sigue en cotización</li>
@@ -611,8 +686,118 @@ body.dark .g-rank-card{background:#111b2b!important}
       <div class="itip"><span class="itip-icon">💡</span><p>Usa el buscador de Consultas cuando un supervisor pregunte por un ítem específico y no sepas en qué módulo buscarlo — esta vista cruza todos los datos.</p></div>
       <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px">
         <p>Dashboard Seguimiento Compras 2026 — FRIOPACKING S.A.</p>
-        <p>Versión 1.0 · Junio 2026 · Elaborado por Melissa Sihuairo</p>
+        <p>Versión 2.0 · Junio 2026 · Elaborado por Melissa Sihuairo</p>
         <p style="margin-top:8px;font-size:10px">Para soporte técnico contactar al administrador del sistema</p>
+      </div>
+    </div>
+
+    <!-- SOLICITANTES S0 -->
+    <div class="isec ia" id="isec-s0">
+      <h3>🏠 ¿Para qué sirve cada página?</h3>
+      <p>Este dashboard te permite consultar en tiempo real el estado de tus requerimientos, pedidos y proyectos. A continuación te explicamos qué encontrarás en cada sección.</p>
+
+      <h4>📋 OC Pendientes</h4>
+      <p>Muestra todos los pedidos que <strong>ya tienen una Orden de Compra (OC) emitida</strong> en NISIRA. Aquí puedes ver si tu material está pendiente de entrega o ya fue recibido en planta. Cuenta con 4 estados:</p>
+      <ul>
+        <li><span class="ibadge ibadge-green">Atend. Completo</span> — Llegó la totalidad de la OC o del SKU al almacén</li>
+        <li><span class="ibadge ibadge-orange" style="background:#f97316;color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">Atend. Parcial</span> — Llegó solo una parte de la OC o de un SKU específico; el saldo sigue pendiente</li>
+        <li><span class="ibadge ibadge-blue">Pendiente (Aprobado)</span> — La OC fue aprobada pero el material aún no llega al almacén</li>
+        <li><span class="ibadge ibadge-red">Pendiente (Sin Aprobar)</span> — La OC aún no ha sido aprobada por gerencia</li>
+      </ul>
+      <p><strong>Columna ✉ Correo</strong> <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#16a34a;border-radius:3px;vertical-align:middle;margin-left:4px"><svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span> — Si el checkbox aparece marcado en verde, significa que el área de compras ya envió el correo al proveedor con la OC. Esto te da visibilidad del proceso sin tener que consultar directamente a compras.</p>
+      <p><strong>Columna F. Salida:</strong> Si un ítem <span class="ibadge ibadge-green">Atend. Completo</span> tiene fecha aquí, significa que ese material ya fue guiado y <strong>salió a obra</strong> ese día (ej: 23/06 = salió el 23 de junio).</p>
+
+      <h4>🔴 Sin OC — Cotización</h4>
+      <p>Muestra los pedidos que <strong>aún no tienen OC</strong>. El área de compras está cotizando con proveedores para seleccionar el más conveniente. Una vez aprobada la cotización, el pedido pasará a OC Pendientes.</p>
+
+      <h4>📦 Compras Directas</h4>
+      <p>Son compras realizadas <strong>sin un requerimiento formal en NISIRA</strong>. En esta sección encontrarás principalmente dos tipos de operaciones:</p>
+      <ul>
+        <li><strong>Compras urgentes o de bajo monto</strong> que se gestionan de forma directa sin pasar por el proceso estándar de requerimiento</li>
+        <li><strong>Importaciones en provisión</strong> — el área de compras registra aquí los pedidos de importación que aún están en proceso de internamiento o que se manejan fuera del flujo regular de NISIRA</li>
+      </ul>
+      <p>Esta sección tiene <strong>gran peso en el seguimiento general</strong> porque concentra un volumen significativo de compras, especialmente todo lo relacionado a importaciones.</p>
+
+      <h4>⚡ Req. sin Pedido</h4>
+      <p>Muestra requerimientos NISIRA que <strong>todavía no tienen un pedido asignado</strong>. Hay varias razones por las que un requerimiento puede estar aquí:</p>
+      <ul>
+        <li>El requerimiento aún no ha sido procesado por <strong>Javier</strong>, quien se encarga de gestionar esta sección</li>
+        <li><strong>Almacén ya cuenta con el stock solicitado</strong> — si el material está disponible en almacén, compras no genera pedido porque no es necesario comprarlo</li>
+        <li>El requerimiento está en revisión o pendiente de aprobación interna</li>
+      </ul>
+      <p>Esta sección la administra principalmente Javier.</p>
+
+      <h4>🏗️ Proyectos PMO</h4>
+      <p>Vista de seguimiento de los <strong>proyectos activos de la empresa</strong> con mapa referencial y estado de avance. Muestra el nombre del proyecto, supervisor, zona, fechas de inicio y fin estimadas.</p>
+
+      <div class="iwarn"><p>⚠️ Los datos se actualizan <strong>2 veces al día: 9:00 AM y 3:00 PM</strong>, de lunes a viernes. Si acabas de crear un requerimiento en NISIRA, aparecerá en la siguiente actualización del día.</p></div>
+    </div>
+
+    <!-- SOLICITANTES S1 -->
+    <div class="isec" id="isec-s1">
+      <h3>📋 Ver mis pedidos con Orden de Compra</h3>
+      <p>La sección <strong>OC Pendientes</strong> muestra todos los pedidos que ya tienen una Orden de Compra emitida en NISIRA. Aquí puedes ver el estado de entrega de tus materiales.</p>
+      <h4>Cómo encontrar tus pedidos</h4>
+      <div class="istep"><div class="istep-n">1</div><p>Haz clic en la tarjeta <strong>📋 OC Pendientes</strong> desde la pantalla de inicio</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Usa el filtro <strong>Responsable / Solicitante</strong> y selecciona tu nombre para ver solo tus ítems</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>También puedes usar el <strong>buscador de texto libre</strong> para buscar por N° de pedido, N° de requerimiento o nombre del material</p></div>
+      <div class="istep"><div class="istep-n">4</div><p>Revisa la columna <strong>Estado</strong> para saber si tu material ya fue entregado, está en tránsito o sigue pendiente</p></div>
+      <h4>Información disponible por ítem</h4>
+      <ul>
+        <li><strong>N° OC</strong> — Número de Orden de Compra en NISIRA</li>
+        <li><strong>N° Pedido</strong> — Número de pedido interno</li>
+        <li><strong>N° Requerimiento</strong> — Tu requerimiento NISIRA de origen</li>
+        <li><strong>Fecha OC</strong> — Cuándo se emitió la orden</li>
+        <li><strong>Proveedor</strong> — A quién se le compró</li>
+        <li><strong>Código / Descripción</strong> — El material solicitado</li>
+        <li><strong>Cantidad / Unidad</strong> — Lo que se pidió</li>
+        <li><strong>Estado</strong> — Situación actual de la entrega</li>
+        <li><strong>ID Proyecto / Proyecto</strong> — El proyecto al que pertenece</li>
+      </ul>
+      <div class="itip"><span class="itip-icon">💡</span><p>Si tienes varios ítems del mismo proyecto, filtra por <strong>ID Proyecto</strong> usando el buscador para ver todos juntos.</p></div>
+    </div>
+
+    <!-- SOLICITANTES S2 -->
+    <div class="isec" id="isec-s2">
+      <h3>🔴 Mis pedidos en cotización (sin OC todavía)</h3>
+      <p>La sección <strong>Sin OC — Cotización</strong> muestra los pedidos que ya tienen requerimiento NISIRA pero todavía <strong>no tienen una Orden de Compra emitida</strong>. El área de compras está en proceso de seleccionar proveedor y negociar precio.</p>
+      <h4>¿Qué significa que mi pedido esté aquí?</h4>
+      <ul>
+        <li>Tu requerimiento fue recibido por compras correctamente</li>
+        <li>Compras está cotizando con proveedores para obtener el mejor precio</li>
+        <li>Una vez aprobada la cotización, se generará la OC y el ítem pasará a <strong>OC Pendientes</strong></li>
+        <li>La columna <strong>Estado</strong> puede indicar <span class="ibadge ibadge-red">En cotización</span> u otros estados intermedios</li>
+      </ul>
+      <h4>Cómo ver tus ítems en cotización</h4>
+      <div class="istep"><div class="istep-n">1</div><p>Haz clic en la tarjeta <strong>🔴 Sin OC — Cotización</strong> desde la pantalla de inicio</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Usa el filtro <strong>Responsable / Solicitante</strong> con tu nombre</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>Revisa la columna <strong>N° Pedido</strong> o busca por <strong>Proyecto</strong> o descripción del material</p></div>
+      <div class="iwarn"><p>⚠️ Si tu pedido lleva varios días en cotización y es urgente, comunícate directamente con el área de compras — esta pantalla es de consulta, no de gestión.</p></div>
+      <div class="itip"><span class="itip-icon">💡</span><p>Los datos se actualizan cada vez que el área de compras importa el archivo MAESTRO.xlsx, generalmente de lunes a viernes. Si acabas de crear un requerimiento en NISIRA, puede tomar un día en aparecer aquí.</p></div>
+    </div>
+
+    <!-- SOLICITANTES S3 -->
+    <div class="isec" id="isec-s3">
+      <h3>🔍 Buscar un ítem o requerimiento específico</h3>
+      <p>Puedes buscar cualquier ítem usando el <strong>buscador de texto libre</strong> disponible en cada sección. Es la forma más rápida de ubicar un pedido, requerimiento o material específico.</p>
+      <h4>Qué puedes buscar</h4>
+      <ul>
+        <li>N° de pedido interno (ej: <code>P-2026-0123</code>)</li>
+        <li>N° de requerimiento NISIRA (ej: <code>REQ-4500</code>)</li>
+        <li>Código o descripción del material (ej: <code>VÁLVULA</code>, <code>CABLE 16MM</code>)</li>
+        <li>Nombre del proyecto (ej: <code>PLANTA LIMA</code>)</li>
+        <li>Nombre del proveedor</li>
+      </ul>
+      <h4>Cómo buscar</h4>
+      <div class="istep"><div class="istep-n">1</div><p>Ve a <strong>OC Pendientes</strong> o <strong>Sin OC — Cotización</strong> según corresponda</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Escribe en el campo de búsqueda (parte superior de la tabla) cualquier dato que recuerdes del ítem</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>La tabla filtra automáticamente mientras escribes — no necesitas presionar Enter</p></div>
+      <div class="istep"><div class="istep-n">4</div><p>Para ver solo tus ítems, combina la búsqueda con el filtro <strong>Responsable / Solicitante</strong></p></div>
+      <div class="itip"><span class="itip-icon">💡</span><p>Si no encuentras tu pedido en <strong>OC Pendientes</strong>, búscalo también en <strong>Sin OC — Cotización</strong>. Si tampoco aparece ahí, puede ser un requerimiento reciente o estar pendiente de asignación en NISIRA.</p></div>
+      <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px">
+        <p>Dashboard Seguimiento Compras 2026 — FRIOPACKING S.A.</p>
+        <p>Instructivo para Supervisores y Solicitantes · Versión 2.0 · Junio 2026</p>
+        <p style="margin-top:8px;font-size:10px">Para soporte técnico contactar al área de compras</p>
       </div>
     </div>
 
@@ -621,11 +806,22 @@ body.dark .g-rank-card{background:#111b2b!important}
 </div>
 
 <script>
+var _instPerfil='sol';
 function abrirInstructivo(){document.getElementById('inst-bg').classList.add('open');}
 function cerrarInstructivo(){document.getElementById('inst-bg').classList.remove('open');}
-function instNav(n){
-  document.querySelectorAll('.isec').forEach(function(s,i){s.classList.toggle('ia',i===n);});
-  document.querySelectorAll('#inst-nav button').forEach(function(b,i){b.classList.toggle('ia',i===n);});
+function setInstPerfil(p){
+  _instPerfil=p;
+  document.getElementById('inst-nav-sol').style.display=p==='sol'?'flex':'none';
+  document.getElementById('inst-nav-comp').style.display=p==='comp'?'flex':'none';
+  document.querySelectorAll('#inst-perf .ip-btn').forEach(function(b,i){b.classList.toggle('ipa',(i===0&&p==='sol')||(i===1&&p==='comp'));});
+  instNav(p==='sol'?'isec-s0':'isec0');
+}
+function instNav(id){
+  document.querySelectorAll('.isec').forEach(function(s){s.classList.remove('ia');});
+  var navId=_instPerfil==='sol'?'inst-nav-sol':'inst-nav-comp';
+  document.querySelectorAll('#'+navId+' button').forEach(function(b){b.classList.remove('ia');});
+  var sec=document.getElementById(id);if(sec)sec.classList.add('ia');
+  var btn=document.querySelector('#'+navId+' button[data-sec="'+id+'"]');if(btn)btn.classList.add('ia');
 }
 </script>
 <!-- P1 Gerencial KPIs Manuel -->
@@ -1731,7 +1927,7 @@ function renderP3Table(){
     <td style="text-align:center;font-size:11px;color:#64748b">${r.unid||'—'}</td>
     <td>${r.req}</td>
     <td style="font-size:11px;color:#475569">${r.freq||'—'}</td>
-    <td>${badgeReq(r.estado)}</td>
+    <td>${(()=>{var k=(r.ped||'')+'_'+(r.cod||'');return(D.cotMeta&&D.cotMeta[k])?'<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">En cotización</span>':badgeReq(r.estado);})()}</td>
   </tr>`).join('');
   const tot=p3fil.length, pages=Math.ceil(tot/sz);
   document.getElementById('p3info').textContent=`Mostrando ${p3pg*sz+1}–${Math.min((p3pg+1)*sz,tot)} de ${tot}`;
@@ -2312,17 +2508,27 @@ function exportP3HTML(){
   S+='  L.push("Saludos cordiales,");';
   S+='  L.push("Área de Compras — FRIOPACKING S.A.");';
   S+='  var cuerpo=L.join("\\r\\n");';
-  // Construir versión HTML del cuerpo — una tabla por pedido
-  S+='  var tablasTodas="";';
+  // Construir versión HTML del cuerpo — agrupado por proyecto, luego por pedido
+  S+='  var gruposProy={};';
   S+='  pedidos.forEach(function(ped){';
-  S+='    var rows=grupos[ped];';
-  S+='    var tblRows="";';
-  S+='    rows.forEach(function(r,idx){';
-  S+='      var bg=idx%2===0?"#ffffff":"#f0f9ff";';
-  S+='      tblRows+=\'<tr style="background:\'+bg+\'"><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;color:#64748b;font-size:13px;width:30px">\'+( idx+1)+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:600;font-size:13px;white-space:nowrap">\'+r.cod+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;min-width:240px">\'+r.prod+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;font-weight:700;font-size:13px;width:50px">\'+r.cant+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;width:60px">\'+( r.unid||\'—\')+\'</td></tr>\';';
+  S+='    var idp=grupos[ped][0].idproy||"";var pr=grupos[ped][0].proy||"Sin Proyecto";';
+  S+='    var pk=(idp?idp+" — ":"")+pr;';
+  S+='    if(!gruposProy[pk])gruposProy[pk]=[];';
+  S+='    gruposProy[pk].push(ped);';
+  S+='  });';
+  S+='  var tablasTodas="";';
+  S+='  var THEAD=\'<thead><tr style="background:#e0f2fe"><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:30px">#</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;white-space:nowrap">Código</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;min-width:240px">Descripción del Artículo</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:50px">Cant.</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:60px">Unidad</th></tr></thead>\';';
+  S+='  Object.keys(gruposProy).forEach(function(pk){';
+  S+='    tablasTodas+=\'<div style="margin:20px 0 8px"><span style="font-size:14px;font-weight:800;color:#1e3a5f;border-bottom:2px solid #0369a1;padding-bottom:4px">🏗 Proyecto: \'+pk+\'</span></div>\';';
+  S+='    gruposProy[pk].forEach(function(ped){';
+  S+='      var rows=grupos[ped];var tblRows="";';
+  S+='      rows.forEach(function(r,idx){';
+  S+='        var bg=idx%2===0?"#ffffff":"#f0f9ff";';
+  S+='        tblRows+=\'<tr style="background:\'+bg+\'"><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;color:#64748b;font-size:13px;width:30px">\'+( idx+1)+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:600;font-size:13px;white-space:nowrap">\'+r.cod+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;min-width:240px">\'+r.prod+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;font-weight:700;font-size:13px;width:50px">\'+r.cant+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;width:60px">\'+( r.unid||\'—\')+\'</td></tr>\';';
+  S+='      });';
+  S+='      tablasTodas+=\'<p style="margin:12px 0 4px;font-size:12px;font-weight:700;color:#0369a1">Pedido N° \'+ped+\'</p>\';';
+  S+='      tablasTodas+=\'<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-bottom:8px">\'+THEAD+\'<tbody>\'+tblRows+\'</tbody></table>\';';
   S+='    });';
-  S+='    tablasTodas+=\'<p style="margin:16px 0 6px;font-size:13px;font-weight:700;color:#0369a1">Pedido N° \'+ped+\'</p>\';';
-  S+='    tablasTodas+=\'<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif"><thead><tr style="background:#e0f2fe"><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:30px">#</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;white-space:nowrap">Código</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;min-width:240px">Descripción del Artículo</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:50px">Cant.</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:60px">Unidad</th></tr></thead><tbody>\'+tblRows+\'</tbody></table>\';';
   S+='  });';
   S+='  var htmlCot=\'<div style="font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:2;color:#1e293b;max-width:760px">\';';
   S+='  htmlCot+=\'<p>Estimado Proveedor,</p>\';';
@@ -2402,15 +2608,25 @@ function exportP3HTML(){
   S+='  h+="<p>Estimado Proveedor,</p>";';
   S+='  h+="<p>Reciba un cordial saludo de parte del equipo de Compras de <strong>FRIOPACKING S.A.</strong></p>";';
   S+='  h+="<p>Por medio del presente correo, nos ponemos en contacto con usted para solicitar su valioso apoyo con la cotización de los materiales detallados en los siguientes pedidos:</p>";';
+  S+='  var gruposProy2={};';
   S+='  pedidos.forEach(function(ped){';
-  S+='    var rows=grupos[ped];';
-  S+='    var tblRows="";';
-  S+='    rows.forEach(function(r,idx){';
-  S+='      var bg=idx%2===0?"#ffffff":"#f0f9ff";';
-  S+='      tblRows+="<tr style=\'background:"+bg+"\'><td style=\'padding:9px 12px;border:1px solid #bae6fd;text-align:center;color:#64748b;font-size:13px;width:30px\'>"+(idx+1)+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:600;font-size:13px;white-space:nowrap\'>"+r.cod+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;font-size:13px;min-width:240px\'>"+r.prod+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;text-align:center;font-weight:700;font-size:13px;width:50px\'>"+r.cant+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;font-size:13px;width:60px\'>"+(r.unid||"—")+"</td></tr>";';
+  S+='    var idp=grupos[ped][0].idproy||"";var pr=grupos[ped][0].proy||"Sin Proyecto";';
+  S+='    var pk=(idp?idp+" — ":"")+pr;';
+  S+='    if(!gruposProy2[pk])gruposProy2[pk]=[];';
+  S+='    gruposProy2[pk].push(ped);';
+  S+='  });';
+  S+='  var THEAD2="<thead><tr style=\'background:#e0f2fe\'><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:30px\'>#</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;white-space:nowrap\'>Código</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;min-width:240px\'>Descripción del Artículo</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:50px\'>Cant.</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:60px\'>Unidad</th></tr></thead>";';
+  S+='  Object.keys(gruposProy2).forEach(function(pk){';
+  S+='    h+="<div style=\'margin:20px 0 8px\'><span style=\'font-size:14px;font-weight:800;color:#1e3a5f;border-bottom:2px solid #0369a1;padding-bottom:4px\'>🏗 Proyecto: "+pk+"</span></div>";';
+  S+='    gruposProy2[pk].forEach(function(ped){';
+  S+='      var rows=grupos[ped];var tblRows="";';
+  S+='      rows.forEach(function(r,idx){';
+  S+='        var bg=idx%2===0?"#ffffff":"#f0f9ff";';
+  S+='        tblRows+="<tr style=\'background:"+bg+"\'><td style=\'padding:9px 12px;border:1px solid #bae6fd;text-align:center;color:#64748b;font-size:13px;width:30px\'>"+(idx+1)+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:600;font-size:13px;white-space:nowrap\'>"+r.cod+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;font-size:13px;min-width:240px\'>"+r.prod+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;text-align:center;font-weight:700;font-size:13px;width:50px\'>"+r.cant+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;font-size:13px;width:60px\'>"+(r.unid||"—")+"</td></tr>";';
+  S+='      });';
+  S+='      h+="<p style=\'margin:12px 0 4px;font-size:12px;font-weight:700;color:#0369a1\'>Pedido N° "+ped+"</p>";';
+  S+='      h+="<table style=\'border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-bottom:8px\'>"+THEAD2+"<tbody>"+tblRows+"</tbody></table>";';
   S+='    });';
-  S+='    h+="<p style=\'margin:16px 0 6px;font-size:13px;font-weight:700;color:#0369a1\'>Pedido N° "+ped+"</p>";';
-  S+='    h+="<table style=\'border-collapse:collapse;font-family:Calibri,Arial,sans-serif\'><thead><tr style=\'background:#e0f2fe\'><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:30px\'>#</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;white-space:nowrap\'>Código</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;min-width:240px\'>Descripción del Artículo</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:50px\'>Cant.</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:60px\'>Unidad</th></tr></thead><tbody>"+tblRows+"</tbody></table>";';
   S+='  });';
   S+='  h+="<p style=\'margin-top:18px\'>Para poder avanzar con la evaluación interna y procesar la compra a tiempo, le agradeceremos enviarnos su propuesta comercial detallando los siguientes puntos:</p>";';
   S+='  h+="<ul><li>Estructura de precios: especificar precio unitario e indicar si los valores incluyen o no el IGV.</li><li>Moneda: indicar la divisa de facturación (soles o dólares).</li><li>Plazo de entrega: días estimados para la entrega del producto una vez confirmada la Orden de Compra.</li><li>Condición de pago: indicar la forma de pago solicitada.</li><li>Vigencia: período de validez de los precios cotizados.</li></ul>";';
@@ -2454,7 +2670,22 @@ function exportP3HTML(){
   S+='  if(!it.length){alert("No hay ítems para exportar.");return;}';
   S+='  window._exportIt=it;construirTablaPrecio(it);';
   S+='  document.getElementById("me-bg").style.display="flex";';
+  S+='  var lbl=document.getElementById("tc-fuente");';
+  S+='  if(lbl)lbl.textContent="Actualizando TC...";';
+  S+='  fetch("https://open.er-api.com/v6/latest/USD")';
+  S+='    .then(function(r){return r.json();})';
+  S+='    .then(function(d){';
+  S+='      if(d.rates&&d.rates.PEN){';
+  S+='        var tc=Math.round(d.rates.PEN*1000)/1000;';
+  S+='        var e1=document.getElementById("me-tc");var e2=document.getElementById("me-tc2");';
+  S+='        if(e1)e1.value=tc;if(e2)e2.value=tc;';
+  S+='        var today=new Date();var dd=today.getDate().toString().padStart(2,"0");var mm=(today.getMonth()+1).toString().padStart(2,"0");var yy=today.getFullYear();';
+  S+='        if(lbl)lbl.textContent="TC del "+dd+"/"+mm+"/"+yy+" (SBS/BCRP referencial)";';
+  S+='      }';
+  S+='    })';
+  S+='    .catch(function(){if(lbl)lbl.textContent="No se pudo obtener TC automático";});';
   S+='}';
+
   S+='function cerrarModalExport(){document.getElementById("me-bg").style.display="none";}';
   S+='function switchTabExport(n){';
   S+='  ["me-c1","me-c2"].forEach(function(id,i){document.getElementById(id).style.display=(i+1===n)?"block":"none";});';
@@ -2629,7 +2860,7 @@ function exportP3HTML(){
   S+='<p style="color:#475569;font-size:14px;margin:0 0 22px">Genera el cuadro comparativo con los ítems seleccionados. Abre el Excel descargado e ingresa los precios de cada proveedor directamente en el archivo.</p>';
   S+='<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:26px">';
   S+='<div><label style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">TC S/ × US$</label>';
-  S+='<input id="me-tc" type="number" value="3.75" step="0.01" min="1" style="width:110px;padding:10px 12px;background:#fff;border:2px solid #d97706;border-radius:8px;color:#92400e;font-size:16px;font-weight:700"></div>';
+  S+='<input id="me-tc" type="number" value="3.75" step="0.01" min="1" style="width:110px;padding:10px 12px;background:#fff;border:2px solid #d97706;border-radius:8px;color:#92400e;font-size:16px;font-weight:700"><span id="tc-fuente" style="display:block;font-size:10px;color:#94a3b8;margin-top:3px">Actualizando...</span></div>';
   S+='<div><label style="font-size:12px;color:#1d4ed8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor 1</label>';
   S+='<input id="me-n1" type="text" placeholder="PROVEEDOR 1" style="width:210px;padding:10px 12px;background:#fff;border:2px solid #1d4ed8;border-radius:8px;color:#1e293b;font-size:14px"></div>';
   S+='<div><label style="font-size:12px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor 2</label>';
