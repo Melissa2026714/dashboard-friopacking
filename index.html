@@ -1639,8 +1639,9 @@ function verCorreoFormateadoOC(oc){
     'Una vez que nos confirmen la disponibilidad de la mercancía, les estaremos enviando los datos del transportista y la placa del vehículo para la respectiva autorización de ingreso.\n\n'+
     'Quedamos atentos a su pronta confirmación y a la respectiva aceptación de la OC.\n\nSaludos cordiales,\nÁrea de Compras — FRIOPACKING S.A.'
   )+';';
-  h+='var _htmlPlanta=\'<p>Estimados, buen día:</p>'+
-    '<p>Adjunto la Orden de Compra <strong>'+oc+'</strong>. Agradeceremos confirmar la fecha de entrega del producto.</p>\'+_tablaHtml+\''+
+  var _hPlanta='<p>Estimados, buen día:</p>'+
+    '<p>Adjunto la Orden de Compra <strong>'+oc+'</strong>. Agradeceremos confirmar la fecha de entrega del producto.</p>'+
+    tablaHtmlBody+
     '<p>Para el ingreso al almacén de Lurín, es indispensable cumplir con la <strong>CARTILLA SSOMA</strong> y enviar previamente toda la documentación a los siguientes correos:</p>'+
     '<ul><li>seguridadlurin@friopacking.pe</li><li>kbuleje@friopacking.pe</li><li>kalbujar@friopacking.pe</li><li>ccheca@friopacking.pe</li><li>jcenteno@friopacking.pe</li><li>plinares@friopacking.pe</li></ul>'+
     '<p><strong>Importante:</strong> No se permitirá el ingreso al almacén si la documentación no ha sido enviada y validada con anticipación.</p>'+
@@ -1650,15 +1651,18 @@ function verCorreoFormateadoOC(oc){
     '<p>Estos documentos son indispensables para realizar la recepción de la mercancía.</p>'+
     '<p>Asimismo, para temas de provisión, enviar a los siguientes correos:</p>'+
     '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li></ul>'+
-    '<p>Quedo atento a su confirmación.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>\';';
-  h+='var _htmlRecojo=\'<p>Estimados, buen día:</p>'+
-    '<p>Adjunto la Orden de Compra <strong>'+oc+'</strong> correspondiente a la adquisición de '+descRecojo+'.</p>\'+_tablaHtml+\''+
+    '<p>Quedo atento a su confirmación.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>';
+  var _hRecojo='<p>Estimados, buen día:</p>'+
+    '<p>Adjunto la Orden de Compra <strong>'+oc+'</strong> correspondiente a la adquisición de '+descRecojo+'.</p>'+
+    tablaHtmlBody+
     '<p>Debido a que la modalidad de atención para este pedido será <strong>RECOJO por nuestra cuenta</strong>, agradeceremos que nos indiquen lo siguiente:</p>'+
     '<ol><li>Fecha y hora confirmada en la que el producto estará listo para ser retirado.</li>'+
     '<li>Dirección exacta y horarios de atención de su almacén de despacho.</li>'+
     '<li>Requisitos de ingreso para nuestra unidad y conductor (si solicitan EPPs específicos, SCTR, o documentos impresos como copias de la OC).</li></ol>'+
     '<p>Una vez que nos confirmen la disponibilidad de la mercancía, les estaremos enviando los datos del transportista y la placa del vehículo para la respectiva autorización de ingreso.</p>'+
-    '<p>Quedamos atentos a su pronta confirmación y a la respectiva aceptación de la OC.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>\';';
+    '<p>Quedamos atentos a su pronta confirmación y a la respectiva aceptación de la OC.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>';
+  h+='var _htmlPlanta='+JSON.stringify(_hPlanta)+';';
+  h+='var _htmlRecojo='+JSON.stringify(_hRecojo)+';';
   h+='var _modActual=null;';
   h+='function selMod(m){';
   h+='  _modActual=m;';
