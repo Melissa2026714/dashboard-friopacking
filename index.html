@@ -2178,6 +2178,28 @@ function _popupExport(opts,popupWin,doneCb){
       document.body.appendChild(a);a.click();document.body.removeChild(a);
       setTimeout(function(){URL.revokeObjectURL(u);},5000);
       doneCb();
+      // Subida automática a SharePoint via servidor local
+      (function(){
+        var reader=new FileReader();
+        reader.onloadend=function(){
+          var b64=reader.result.split(',')[1];
+          fetch('http://127.0.0.1:5100/upload-cotizacion',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            signal:AbortSignal.timeout(15000),
+            body:JSON.stringify({filename:fn,content:b64})
+          }).then(function(r){return r.json();}).then(function(d){
+            if(d.ok){
+              showToast('☁️ Guardado en SharePoint: '+fn);
+            }else{
+              console.warn('[SharePoint] Error:',d.error);
+            }
+          }).catch(function(e){
+            console.warn('[SharePoint] Servidor no disponible:',e.message);
+          });
+        };
+        reader.readAsDataURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+      })();
     }).catch(function(e){
       alert('Error al generar Excel: '+e.message);
       doneCb();
