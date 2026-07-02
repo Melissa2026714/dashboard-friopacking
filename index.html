@@ -1140,7 +1140,14 @@ function instNav(id){
   </div>
   <!-- Filters -->
   <div class="flt">
-    <select class="fsel" id="f5resp" onchange="renderP5()"><option value="">Responsable: Todos</option></select>
+    <div class="msel-wrap" id="f5respWrap">
+      <div class="msel-btn" id="f5respBtn" onclick="toggleMsel('f5respDrop','f5respBtn')"><span id="f5respLbl">Responsable: Todos</span></div>
+      <div class="msel-drop" id="f5respDrop"></div>
+    </div>
+    <div class="msel-wrap" id="f5estWrap">
+      <div class="msel-btn" id="f5estBtn" onclick="toggleMsel('f5estDrop','f5estBtn')"><span id="f5estLbl">Estado: Todos</span></div>
+      <div class="msel-drop" id="f5estDrop"></div>
+    </div>
     <select class="fsel" id="f5proj" onchange="renderP5()"><option value="">Proyecto: Todos</option></select>
     <input class="fsrch" id="f5q" oninput="renderP5()" placeholder="Buscar req. / código / descripción / proyecto…">
     <button class="cbtn" onclick="clearF5()">✕ Limpiar</button>
@@ -1732,7 +1739,7 @@ function verCorreoFormateadoOC(oc){
   h+='  fetch(_MAILER_URL+"/ping",{method:"GET",signal:AbortSignal.timeout(1500)})';
   h+='    .then(function(){';
   h+='      return fetch(_MAILER_URL+"/send-oc",{method:"POST",headers:{"Content-Type":"application/json"},';
-  h+='        body:JSON.stringify({to:_to,cc:_cc,subject:_asunto,htmlBody:htmlBody,autoSend:false})});';
+  h+='        body:JSON.stringify({to:_to,cc:_cc,subject:_asunto,htmlBody:htmlBody,autoSend:false,modality:_modActual})});';
   h+='    })';
   h+='    .then(function(r){return r.json();})';
   h+='    .then(function(d){';
@@ -2178,28 +2185,6 @@ function _popupExport(opts,popupWin,doneCb){
       document.body.appendChild(a);a.click();document.body.removeChild(a);
       setTimeout(function(){URL.revokeObjectURL(u);},5000);
       doneCb();
-      // Subida automática a SharePoint via servidor local
-      (function(){
-        var reader=new FileReader();
-        reader.onloadend=function(){
-          var b64=reader.result.split(',')[1];
-          fetch('http://127.0.0.1:5100/upload-cotizacion',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            signal:AbortSignal.timeout(15000),
-            body:JSON.stringify({filename:fn,content:b64})
-          }).then(function(r){return r.json();}).then(function(d){
-            if(d.ok){
-              showToast('☁️ Guardado en SharePoint: '+fn);
-            }else{
-              console.warn('[SharePoint] Error:',d.error);
-            }
-          }).catch(function(e){
-            console.warn('[SharePoint] Servidor no disponible:',e.message);
-          });
-        };
-        reader.readAsDataURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
-      })();
     }).catch(function(e){
       alert('Error al generar Excel: '+e.message);
       doneCb();
@@ -2837,13 +2822,32 @@ function exportP3HTML(){
   S+='    var a=document.createElement("a");a.href=url;document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);},200);';
   S+='  }';
   S+='  document.getElementById("mail-overlay").remove();';
-  S+='  if(navigator.clipboard&&window.ClipboardItem){';
-  S+='    var blob=new Blob([htmlCot],{type:"text/html"});';
-  S+='    var item=new ClipboardItem({"text/html":blob});';
-  S+='    navigator.clipboard.write([item]).then(function(){';
-  S+='      setTimeout(abrirMailCot,300);';
-  S+='    },function(){abrirMailCot();});';
-  S+='  }else{abrirMailCot();}';
+  S+='  var _para="mlujan@friopacking.pe";';
+  S+='  var _cc=_CC_COT;';
+  S+='  fetch("http://127.0.0.1:5100/ping",{method:"GET",headers:{"Access-Control-Request-Private-Network":"true"}})';
+  S+='  .then(function(r){return r.json();})';
+  S+='  .then(function(d){';
+  S+='    if(!d.ok)throw new Error("sin servidor");';
+  S+='    return fetch("http://127.0.0.1:5100/send-cot",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:_para,cc:_cc,bcc:cco,subject:asunto,htmlBody:htmlCot})});';
+  S+='  })';
+  S+='  .then(function(r){return r.json();})';
+  S+='  .then(function(d){';
+  S+='    if(d.ok){';
+  S+='      var t=document.createElement("div");';
+  S+='      t.style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 28px;border-radius:8px;font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.4)";';
+  S+='      t.textContent="✅ Correo de cotización abierto en Outlook";';
+  S+='      document.body.appendChild(t);setTimeout(function(){t.remove();},4000);';
+  S+='    }else{throw new Error(d.error||"error");}';
+  S+='  })';
+  S+='  .catch(function(){';
+  S+='    if(navigator.clipboard&&window.ClipboardItem){';
+  S+='      var blob=new Blob([htmlCot],{type:"text/html"});';
+  S+='      var item=new ClipboardItem({"text/html":blob});';
+  S+='      navigator.clipboard.write([item]).then(function(){';
+  S+='        setTimeout(abrirMailCot,300);';
+  S+='      },function(){abrirMailCot();});';
+  S+='    }else{abrirMailCot();}';
+  S+='  });';
   S+='}';
 
   S+='function verCorreoFormateado(){';
@@ -3795,14 +3799,13 @@ function openSkuModalP4(el){
 // ── PAGE 5 ───────────────────────────────────────────────────────
 let p5pg=0, p5fil=[];
 function initP5(){
-  document.getElementById('f5resp').value='';
   document.getElementById('f5proj').value='';
   document.getElementById('f5q').value='';
   const resp5=[...new Set(D.p5reqs.map(r=>r.resp).filter(Boolean))].sort();
+  const est5=[...new Set(D.p5reqs.map(r=>r.estado).filter(Boolean))].sort();
   const proj5=[...new Set(D.p5reqs.map(r=>r.proy).filter(Boolean))].sort();
-  const fr5=document.getElementById('f5resp');
-  fr5.innerHTML='<option value="">Responsable: Todos</option>';
-  resp5.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;fr5.appendChild(o);});
+  buildMsel('f5respDrop','f5respBtn','f5respLbl',resp5,'Responsable: Todos',renderP5);
+  buildMsel('f5estDrop','f5estBtn','f5estLbl',est5,'Estado: Todos',renderP5);
   const fp5=document.getElementById('f5proj');
   fp5.innerHTML='<option value="">Proyecto: Todos</option>';
   proj5.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;fp5.appendChild(o);});
@@ -3812,11 +3815,13 @@ function initP5(){
 }
 function renderP5(){
   p5pg=0;
-  const resp=document.getElementById('f5resp').value;
+  const resps=getMselValues('f5respDrop');
+  const ests=getMselValues('f5estDrop');
   const proj=document.getElementById('f5proj').value;
   const q=document.getElementById('f5q').value.toLowerCase().trim();
   p5fil=D.p5reqs.filter(r=>{
-    if(resp&&r.resp!==resp)return false;
+    if(resps.length&&!resps.includes(r.resp))return false;
+    if(ests.length&&!ests.includes(r.estado))return false;
     if(proj&&r.proy!==proj)return false;
     if(q&&![r.req,r.cod,r.prod,r.proy,r.idproy,r.resp].join(' ').toLowerCase().includes(q))return false;
     return true;
@@ -3848,8 +3853,11 @@ function renderP5Table(){
   renderPag('p5pag',pages,p5pg,p=>{p5pg=p;renderP5Table();});
 }
 function clearF5(){
-  ['f5resp','f5proj'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f5q').value='';renderP5();
+  resetMsel('f5respDrop','f5respBtn','f5respLbl','Responsable: Todos');
+  resetMsel('f5estDrop','f5estBtn','f5estLbl','Estado: Todos');
+  document.getElementById('f5proj').value='';
+  document.getElementById('f5q').value='';
+  renderP5();
 }
 
 // ── PAGE 1 — GERENCIAL KPIs ──────────────────────────────────────────────────
@@ -4948,7 +4956,7 @@ function importMaestro(wb){
   });
 
   // ── 4. Build Req sin Pedido (Page 5) ───────────────────────────────────────
-  const p5Rows=rows.filter(r=>g(r,'EstadoRequerimiento')==='Pendiente');
+  const p5Rows=rows.filter(r=>!!g(r,'EstadoRequerimiento'));
   // Dedup by Req+Product
   const p5Seen=new Set();
   const p5Data=[];
