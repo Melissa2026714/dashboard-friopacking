@@ -1034,15 +1034,20 @@ function instNav(id){
     <select class="fsel" id="f2proj" onchange="renderP2()"><option value="">Proyecto: Todos</option></select>
     <input class="fsrch" id="f2q" oninput="renderP2()" placeholder="Buscar OC / Req. / ID Proyecto / Proveedor / Producto… (busca en todos los requerimientos)" autocomplete="off" name="f2q_search" readonly onfocus="this.removeAttribute('readonly')"/>
     <button class="fclr" onclick="clearF2()">✕ Limpiar</button>
+    <button id="f2reg-btn" onclick="toggleF2Reg()" style="padding:4px 10px;border-radius:6px;border:1px solid #f59e0b;background:#fff;color:#92400e;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">📋 Solo REG.</button>
     <span class="fcnt" id="f2cnt">— registros</span>
   </div>
   <div class="tw">
     <div class="th"><span class="thtt">Detalle de Órdenes de Compra</span>
-      <div class="thr"><button class="thb" id="p2pgsz" onclick="togglePgsz2()">50/pág</button></div></div>
+      <div class="thr">
+        <button class="thb" id="p2regcols-btn" onclick="toggleRegCols()" title="Mostrar/ocultar columnas de Regularización" style="background:#fef3c7;color:#92400e;border-color:#f59e0b">◀ REG.</button>
+        <button class="thb" id="p2pgsz" onclick="togglePgsz2()">50/pág</button>
+      </div></div>
     <table class="ttbl"><thead><tr>
+      <th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">📋 REG.</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">ALMACÉN</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. ALMACÉN</th>
       <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th>ESTADO</th><th>USUARIO COMP.</th>
       <th>PROVEEDOR</th><th>RESPONSABLE</th><th>ID PROYECTO</th><th>PROYECTO</th><th>N° PEDIDO</th><th>F. PEDIDO</th><th>N° REQ.</th><th>F. REQ.</th>
-      <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th><th>F. SALIDA</th>
+      <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th><th>F. TRANSFERENCIA</th><th style="white-space:nowrap;background:#fef2f2;color:#dc2626">F. SALIDA OBRA</th>
     </tr></thead><tbody id="tb2"></tbody></table>
     <div class="pag"><span id="p2info">—</span><div class="pbts" id="p2pag"></div></div>
   </div>
@@ -1236,6 +1241,26 @@ const COLORS = ['#1d4ed8','#7c3aed','#0f766e','#c2410c','#be185d','#0891b2','#16
 function initials(n){const p=n.split(' ');return p.length>1?p[0][0]+p[p.length-1][0]:n.slice(0,2);}
 function avColor(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))%COLORS.length;return COLORS[h];}
 function avHtml(n){if(!n)return '';return `<span class="av" style="background:${avColor(n)}">${initials(n).toUpperCase()}</span>`;}
+// ── POPUP MULTI-PEDIDOS ────────────────────────────────────────────
+function showPedsPopup(evt,pedsStr){
+  evt.stopPropagation();
+  var old=document.getElementById('_peds_popup');if(old)old.remove();
+  var peds=pedsStr.split('|');
+  var d=document.createElement('div');
+  d.id='_peds_popup';
+  d.style.cssText='position:fixed;z-index:9999;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);padding:10px 14px;min-width:180px;max-width:320px';
+  var html='<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">N° Pedidos ('+peds.length+')</div>';
+  peds.forEach(function(p){html+='<div style="font-size:12px;color:#0369a1;font-weight:600;padding:3px 0;border-bottom:1px solid #f1f5f9">'+p+'</div>';});
+  html+='<div style="text-align:right;margin-top:6px"><span onclick="document.getElementById(\'_peds_popup\').remove()" style="font-size:10px;color:#94a3b8;cursor:pointer">✕ cerrar</span></div>';
+  d.innerHTML=html;
+  document.body.appendChild(d);
+  var r=evt.target.getBoundingClientRect();
+  var top=r.bottom+6;var left=r.left;
+  if(left+320>window.innerWidth)left=window.innerWidth-330;
+  if(top+120>window.innerHeight)top=r.top-130;
+  d.style.top=top+'px';d.style.left=left+'px';
+  setTimeout(function(){document.addEventListener('click',function h(){var p=document.getElementById('_peds_popup');if(p)p.remove();document.removeEventListener('click',h);});},50);
+}
 // ── MULTI-SELECT ESTADO ────────────────────────────────────────────
 const _msState={};
 function getMS(id){return _msState[id]?[..._msState[id]]:[];}
@@ -1363,6 +1388,7 @@ function filterP2(){
     if(f.ucomp&&r.ucomp!==f.ucomp)return false;
     if(f.proj&&r.proy!==f.proj)return false;
     if(f.q&&!([r.oc,...(r.reqs||[r.req]),r.prov,r.prod,r.proy,r.idproy].join(' ').toLowerCase().includes(f.q)))return false;
+    if(_f2RegOnly&&!(D.ocMeta[r.oc]&&D.ocMeta[r.oc].reg))return false;
     return true;});
 }
 function renderP2(){
@@ -1417,7 +1443,14 @@ function renderP2Table(){
     ):'—';
     const extra=r.nItems>1?` <span style="color:#94a3b8;font-size:9px">(+${r.nItems-1} ítems)</span>`:'';
     const ocEsc=r.oc.replace(/'/g,"\\'");
+    const ocId=r.oc.replace(/[^a-z0-9]/gi,'_');
+    const rm=D.ocMeta[r.oc]||{};
     return`<tr>
+      <td class="reg-col" style="text-align:center;background:#fffbeb"><input type="checkbox" ${rm.reg?'checked':''} onchange="toggleReg(this,'${r.oc}')" style="width:15px;height:15px;cursor:pointer;accent-color:#d97706" title="Marcar como Regularización"></td>
+      <td class="reg-col" style="text-align:center;background:#fffbeb"><input type="checkbox" ${rm.compras?'checked':''} onchange="toggleRegCheck(this,'${r.oc}','compras','fcompras','fcomp_${ocId}')" style="width:15px;height:15px;cursor:pointer;accent-color:#0369a1" ${rm.reg?'':'disabled title="Marque REG. primero"'}></td>
+      <td class="reg-col" style="text-align:center;background:#fffbeb;font-size:11px;color:#0369a1;font-weight:600;white-space:nowrap" id="fcomp_${ocId}">${rm.fcompras||'—'}</td>
+      <td class="reg-col" style="text-align:center;background:#fffbeb"><input type="checkbox" ${rm.almacen?'checked':''} onchange="toggleRegCheck(this,'${r.oc}','almacen','falmacen','falm_${ocId}')" style="width:15px;height:15px;cursor:pointer;accent-color:#0f766e" ${rm.reg?'':'disabled title="Marque REG. primero"'}></td>
+      <td class="reg-col" style="text-align:center;background:#fffbeb;font-size:11px;color:#0f766e;font-weight:600;white-space:nowrap" id="falm_${ocId}">${rm.falmacen||'—'}</td>
       <td><div style="display:flex;align-items:center;gap:5px"><button onclick="verCorreoFormateadoOC('${ocEsc}')" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="Ver correo formateado para proveedor">✉</button><strong>${r.nItems>1
         ? `<span class="cl" style="cursor:pointer" onclick="openSkuModal(this)" data-oc="${r.oc}" data-proy="${r.proy.replace(/"/g,'&quot;')}" data-prov="${r.prov.replace(/"/g,'&quot;')}" title="Ver ${r.nItems} SKUs">${r.oc} <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:3px;margin-left:3px">${r.nItems} SKU</span></span>`
         : r.oc
@@ -1435,7 +1468,7 @@ function renderP2Table(){
       <td style="white-space:normal;min-width:160px" title="${r.proy}">${r.proy}</td>
       <td style="white-space:nowrap">${
         (r.peds && r.peds.length > 1)
-          ? r.peds.map(p => `<span style="display:inline-block;margin:1px 2px;font-size:10px;background:#f1f5f9;color:#334155;padding:1px 5px;border-radius:4px">${p}</span>`).join('')
+          ? `<span onclick="showPedsPopup(event,'${r.peds.join('|')}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">📋 ${r.peds.length} pedidos ▾</span>`
           : (r.ped || r.peds?.[0] || '—')
       }</td>
       <td style="font-size:11px;color:#475569">${r.fpedido||'—'}</td>
@@ -1449,11 +1482,91 @@ function renderP2Table(){
       <td class="${r.cantPend>0?'cpend':''}">${r.cantPend}</td>
       <td>${r.frec||'—'}</td>
       <td style="font-size:11px;color:#0891b2;font-weight:600">${r.fsal||'—'}</td>
+      <td style="text-align:center;background:#fef2f2;min-width:110px">${(()=>{
+        const fs=rm.fsalida;
+        const ft=r.fsal;
+        if(fs){return`<span style="font-size:11px;color:#15803d;font-weight:600">✔ ${fs}</span>`;}
+        if(!ft){return'<span style="font-size:10px;color:#94a3b8">—</span>';}
+        // calcular días transcurridos desde F. TRANSFERENCIA
+        const p=ft.split('/');const dtrans=new Date(p[2],p[1]-1,p[0]);
+        const hoy=new Date();hoy.setHours(0,0,0,0);
+        const dias=Math.floor((hoy-dtrans)/(1000*60*60*24));
+        const alerta=dias>3;
+        return`<span style="display:inline-flex;align-items:center;gap:4px">`+
+          (alerta?`<span style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700" title="${dias} días sin salida">⚠ ${dias}d</span>`:`<span style="font-size:10px;color:#f59e0b;font-weight:600">${dias}d</span>`)+
+          `<button onclick="ingresarSalida('${r.oc}','${ocId}')" style="background:#dc2626;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:10px;cursor:pointer;white-space:nowrap">Ingresar</button>`+
+          `</span>`;
+      })()}</td>
     </tr>`;
   }).join('');
   const tot=p2fil.length, pages=Math.ceil(tot/p2pgsz);
   document.getElementById('p2info').textContent=`Mostrando ${p2pg*p2pgsz+1}–${Math.min((p2pg+1)*p2pgsz,tot)} de ${tot} OC`;
   renderPag('p2pag',pages,p2pg,p=>{p2pg=p;renderP2Table();});
+  if(_regColsHidden)document.querySelectorAll('.reg-col').forEach(el=>el.style.display='none');
+}
+let _f2RegOnly=false;
+let _regColsHidden=false;
+function toggleRegCols(){
+  _regColsHidden=!_regColsHidden;
+  document.querySelectorAll('.reg-col').forEach(el=>el.style.display=_regColsHidden?'none':'');
+  const btn=document.getElementById('p2regcols-btn');
+  if(btn){btn.textContent=_regColsHidden?'▶ REG.':'◀ REG.';btn.style.background=_regColsHidden?'#f1f5f9':'#fef3c7';btn.style.color=_regColsHidden?'#475569':'#92400e';}
+}
+function toggleF2Reg(){
+  _f2RegOnly=!_f2RegOnly;
+  const btn=document.getElementById('f2reg-btn');
+  if(btn){btn.style.background=_f2RegOnly?'#fef3c7':'#fff';btn.style.borderColor=_f2RegOnly?'#d97706':'#f59e0b';btn.style.fontWeight=_f2RegOnly?'900':'700';}
+  renderP2();
+}
+function _hoy(){const h=new Date();return String(h.getDate()).padStart(2,'0')+'/'+String(h.getMonth()+1).padStart(2,'0')+'/'+h.getFullYear();}
+function toggleReg(cb,oc){
+  if(!D.ocMeta[oc])D.ocMeta[oc]={};
+  D.ocMeta[oc].reg=cb.checked;
+  if(!cb.checked){D.ocMeta[oc].compras=false;D.ocMeta[oc].fcompras='';D.ocMeta[oc].almacen=false;D.ocMeta[oc].falmacen='';}
+  saveLocal();
+  renderP2Table();
+}
+function ingresarSalida(oc,ocId){
+  var old=document.getElementById('_salida_popup');if(old)old.remove();
+  var hoy=new Date();
+  var yyyy=hoy.getFullYear();
+  var mm=String(hoy.getMonth()+1).padStart(2,'0');
+  var dd=String(hoy.getDate()).padStart(2,'0');
+  var d=document.createElement('div');
+  d.id='_salida_popup';
+  d.style.cssText='position:fixed;z-index:9999;background:#fff;border:1px solid #fca5a5;border-radius:10px;box-shadow:0 4px 20px rgba(220,38,38,.2);padding:16px 18px;min-width:240px';
+  d.innerHTML=
+    '<div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📦 F. Salida a Obra — OC '+oc+'</div>'+
+    '<div style="font-size:11px;color:#64748b;margin-bottom:10px">¿Cuándo llegó el material a obra?</div>'+
+    '<input type="date" id="_salida_inp" value="'+yyyy+'-'+mm+'-'+dd+'" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;box-sizing:border-box;margin-bottom:10px">'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+      '<button onclick="document.getElementById(\'_salida_popup\').remove()" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;color:#64748b;font-size:11px;cursor:pointer">Cancelar</button>'+
+      '<button onclick="confirmarSalida(\''+oc+'\',\''+ocId+'\')" style="padding:4px 12px;border:none;border-radius:6px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;cursor:pointer">✔ Confirmar</button>'+
+    '</div>';
+  document.body.appendChild(d);
+  var vw=window.innerWidth,vh=window.innerHeight;
+  d.style.top=Math.min(vh/2-80,vh-200)+'px';
+  d.style.left=Math.min(vw/2-120,vw-260)+'px';
+  setTimeout(function(){document.getElementById('_salida_inp').focus();},50);
+}
+function confirmarSalida(oc,ocId){
+  var inp=document.getElementById('_salida_inp');
+  if(!inp||!inp.value){return;}
+  var parts=inp.value.split('-');
+  var fecha=parts[2]+'/'+parts[1]+'/'+parts[0];
+  if(!D.ocMeta[oc])D.ocMeta[oc]={};
+  D.ocMeta[oc].fsalida=fecha;
+  saveLocal();
+  document.getElementById('_salida_popup').remove();
+  renderP2Table();
+}
+function toggleRegCheck(cb,oc,campo,fcampo,elId){
+  if(!D.ocMeta[oc])D.ocMeta[oc]={};
+  D.ocMeta[oc][campo]=cb.checked;
+  D.ocMeta[oc][fcampo]=cb.checked?_hoy():'';
+  const el=document.getElementById(elId);
+  if(el)el.textContent=D.ocMeta[oc][fcampo]||'—';
+  saveLocal();
 }
 function toggleCorreo(cb,oc){
   if(!D.ocMeta)D.ocMeta={};
@@ -1550,6 +1663,7 @@ function verCorreoFormateadoOC(oc){
   h+='.mod-opt{display:flex;align-items:center;gap:8px;padding:10px 18px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#475569;transition:all .15s}';
   h+='.mod-opt:hover{border-color:#0369a1;color:#0369a1}';
   h+='.mod-opt.sel{border-color:#0369a1;background:#eff6ff;color:#0369a1}';
+  h+='.mod-opt.sel.sel-regul{border-color:#d97706;background:#fef3c7;color:#92400e}';
   h+='.mod-opt input{display:none}';
   h+='.cc-info{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-top:12px;font-size:11px;color:#0369a1}';
   h+='.cc-info b{display:block;margin-bottom:4px}';
@@ -1593,6 +1707,7 @@ function verCorreoFormateadoOC(oc){
   h+='<label class="mod-opt" id="opt-planta" onclick="selMod(\'planta\')"><input type="radio" name="mod" value="planta"> 📦 Entrega en planta — Lurín</label>';
   h+='<label class="mod-opt" id="opt-recojo" onclick="selMod(\'recojo\')"><input type="radio" name="mod" value="recojo"> 🚚 Recojo por cuenta de Friopacking</label>';
   h+='<label class="mod-opt" id="opt-agencia" onclick="selMod(\'agencia\')"><input type="radio" name="mod" value="agencia"> 🚢 Envío por Agencia</label>';
+  h+='<label class="mod-opt" id="opt-regularizacion" onclick="selMod(\'regularizacion\')" style="border-color:#f59e0b;background:#fffbeb"><input type="radio" name="mod" value="regularizacion"> 📋 Regularización con Proveedor</label>';
   h+='</div>';
   h+='<div id="agencia-form" style="display:none;margin-top:12px;padding:14px 16px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd">';
   h+='<div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Datos del envío por agencia</div>';
@@ -1688,8 +1803,17 @@ function verCorreoFormateadoOC(oc){
     '<li>Requisitos de ingreso para nuestra unidad y conductor (si solicitan EPPs específicos, SCTR, o documentos impresos como copias de la OC).</li></ol>'+
     '<p>Una vez que nos confirmen la disponibilidad de la mercancía, les estaremos enviando los datos del transportista y la placa del vehículo para la respectiva autorización de ingreso.</p>'+
     '<p>Quedamos atentos a su pronta confirmación y a la respectiva aceptación de la OC.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>';
+  var _hRegul='<p>Estimados, buen día:</p>'+
+    '<p>Por medio del presente, hacemos entrega formal de la Orden de Compra <strong>'+oc+'</strong> en calidad de <strong>regularización</strong>, correspondiente a los materiales ya suministrados y entregados directamente en obra.</p>'+
+    tablaHtmlBody+
+    '<p>Agradeceremos confirmar la recepción de la presente Orden de Compra y enviarnos los siguientes documentos para completar la regularización:</p>'+
+    '<ul><li>Factura por el monto total de la OC.</li><li>Guía de remisión correspondiente.</li></ul>'+
+    '<p>Asimismo, para temas de provisión, enviar a los siguientes correos:</p>'+
+    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li></ul>'+
+    '<p>Quedamos atentos a cualquier consulta.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>';
   h+='var _htmlPlanta='+JSON.stringify(_hPlanta)+';';
   h+='var _htmlRecojo='+JSON.stringify(_hRecojo)+';';
+  h+='var _htmlRegul='+JSON.stringify(_hRegul)+';';
   h+='var _modActual=null;';
   h+='function getHtmlAgencia(){';
   h+='  var ag=(document.getElementById("ag-nombre")||{value:""}).value.trim()||"(agencia no indicada)";';
@@ -1713,14 +1837,16 @@ function verCorreoFormateadoOC(oc){
   h+='  document.getElementById("opt-planta").className="mod-opt"+(m==="planta"?" sel":"");';
   h+='  document.getElementById("opt-recojo").className="mod-opt"+(m==="recojo"?" sel":"");';
   h+='  document.getElementById("opt-agencia").className="mod-opt"+(m==="agencia"?" sel":"");';
+  h+='  document.getElementById("opt-regularizacion").className="mod-opt"+(m==="regularizacion"?" sel":"")+(m==="regularizacion"?" sel-regul":"");';
   h+='  var af=document.getElementById("agencia-form");if(af)af.style.display=m==="agencia"?"block":"none";';
-  h+='  document.getElementById("mail-body").innerHTML=m==="planta"?_htmlPlanta:(m==="recojo"?_htmlRecojo:getHtmlAgencia());';
+  h+='  var body=m==="planta"?_htmlPlanta:(m==="recojo"?_htmlRecojo:(m==="regularizacion"?_htmlRegul:getHtmlAgencia()));';
+  h+='  document.getElementById("mail-body").innerHTML=body;';
   h+='  document.getElementById("btn-outlook").disabled=false;';
   h+='}';
   h+='var _MAILER_URL="http://127.0.0.1:5100";';
   h+='function abrirOutlook(){';
   h+='  if(!_modActual)return;';
-  h+='  var htmlBody=_modActual==="planta"?_htmlPlanta:(_modActual==="recojo"?_htmlRecojo:getHtmlAgencia());';
+  h+='  var htmlBody=_modActual==="planta"?_htmlPlanta:(_modActual==="recojo"?_htmlRecojo:(_modActual==="regularizacion"?_htmlRegul:getHtmlAgencia()));';
   h+='  var fullHtml=\'<div style="font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:2;color:#1e293b;max-width:740px">\'+htmlBody+\'</div>\';';
   h+='  function abrirMail(){';
   h+='    var url="mailto:"+(_to?encodeURIComponent(_to):"")+"?subject="+encodeURIComponent(_asunto)+"&cc="+encodeURIComponent(_cc);';
@@ -1762,6 +1888,7 @@ function clearF2(){
   clearMS('f2est');clearMS('f2tipo');
   ['f2resp','f2ucomp','f2proj'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f2q').value='';
+  if(_f2RegOnly){_f2RegOnly=false;const b=document.getElementById('f2reg-btn');if(b){b.style.background='#fff';b.style.borderColor='#f59e0b';b.style.fontWeight='700';}}
   renderP2();
 }
 function togglePgsz2(){
@@ -3582,6 +3709,21 @@ async function loadGitHub(){
     if(!r.ok)return false;
     const s=await r.json();
     if(!s||!s.D)return false;
+    // Protección: si GitHub trae menos OC que lo que ya hay en localStorage, no pisarlo
+    const ghOcCount=(s.D&&s.D.oc)?s.D.oc.length:0;
+    try{
+      const localRaw=localStorage.getItem(LS_KEY);
+      if(localRaw){
+        const localS=JSON.parse(localRaw);
+        const localOcCount=(localS&&localS.D&&localS.D.oc)?localS.D.oc.length:0;
+        if(ghOcCount===0&&localOcCount>0){
+          console.warn('[FP] GitHub devolvió 0 OC pero localStorage tiene '+localOcCount+'. Usando localStorage.');
+          showSavedLabel('⚠️ GitHub vacío — usando caché local ('+localOcCount+' OC)','#d97706');
+          return false; // forzar fallback a loadLocal()
+        }
+      }
+    }catch(e2){}
+    if(ghOcCount===0){console.warn('[FP] GitHub devolvió 0 OC — datos no cargados.');return false;}
     Object.assign(D,s.D);
     if(s.SKUS)Object.assign(SKUS,s.SKUS);
     if(s.SKUS_P4)Object.assign(SKUS_P4,s.SKUS_P4);
