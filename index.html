@@ -3682,7 +3682,7 @@ const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.htm
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-06T16:00:00Z-fix-guardar-race';
+const BUILD_ID='2026-07-06T17:00:00Z-fix-guardar-race-v2';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
@@ -3735,31 +3735,34 @@ async function loadGitHub(){
     if(!r.ok)return false;
     const s=await r.json();
     if(!s||!s.D)return false;
-    // Protección: si GitHub trae menos registros que lo que ya hay en localStorage, no pisarlo
     const PROTECTED_KEYS=['oc','p4','p5reqs','proj','sinoc'];
     const ghCounts={};
     PROTECTED_KEYS.forEach(function(k){ghCounts[k]=(s.D&&s.D[k])?s.D[k].length:0;});
     const ghAllEmpty=PROTECTED_KEYS.every(function(k){return ghCounts[k]===0;});
+    if(ghAllEmpty){console.warn('[FP] GitHub devolvió datos vacíos — no se cargan.');return false;}
     try{
       const localRaw=localStorage.getItem(LS_KEY);
       if(localRaw){
         const localS=JSON.parse(localRaw);
-        const worse=PROTECTED_KEYS.filter(function(k){
-          const locN=(localS&&localS.D&&localS.D[k])?localS.D[k].length:0;
-          return locN>0&&ghCounts[k]<locN;
-        });
-        if(worse.length){
-          const detail=worse.map(function(k){
-            const locN=(localS.D[k]||[]).length;
-            return k+': nube '+ghCounts[k]+' vs local '+locN;
-          }).join(', ');
-          console.warn('[FP] GitHub trae menos datos que localStorage ('+detail+'). Usando caché local.');
+        // OC es un registro acumulativo (no debería bajar): si la nube trae menos
+        // OC que el caché local, probablemente alguien subió una versión vieja.
+        const localOcCount=(localS&&localS.D&&localS.D.oc)?localS.D.oc.length:0;
+        if(localOcCount>0&&ghCounts.oc<localOcCount){
+          console.warn('[FP] GitHub trae menos OC ('+ghCounts.oc+') que localStorage ('+localOcCount+'). Usando caché local.');
           showSavedLabel('⚠️ Nube desactualizada — usando caché local','#d97706');
           return false; // forzar fallback a loadLocal()
         }
+        // Las demás secciones sí pueden bajar de forma legítima (ej. p5reqs al
+        // resolverse requerimientos) — solo protegemos si quedaron en cero.
+        PROTECTED_KEYS.filter(function(k){return k!=='oc';}).forEach(function(k){
+          const locN=(localS&&localS.D&&localS.D[k])?localS.D[k].length:0;
+          if(ghCounts[k]===0&&locN>0){
+            console.warn('[FP] GitHub trae "'+k+'" vacío, se conserva la copia local ('+locN+').');
+            s.D[k]=localS.D[k];
+          }
+        });
       }
     }catch(e2){}
-    if(ghAllEmpty){console.warn('[FP] GitHub devolvió datos vacíos — no se cargan.');return false;}
     Object.assign(D,s.D);
     if(s.SKUS)Object.assign(SKUS,s.SKUS);
     if(s.SKUS_P4)Object.assign(SKUS_P4,s.SKUS_P4);
@@ -3789,24 +3792,26 @@ async function saveGitHub(payload){
   const token=localStorage.getItem(GH_TOKEN_KEY);
   if(!token)return false;
   try{
-    // Protección: no sobrescribir la nube con menos datos de los que ya tiene
+    // Protección: no sobrescribir la nube perdiendo información sin avisar
     try{
       const localData=JSON.parse(payload);
       const rCheck=await fetch(GH_RAW+'?t='+Date.now());
       if(rCheck.ok){
         const remote=await rCheck.json();
-        const keys=['oc','p4','p5reqs','proj','sinoc'];
-        const worse=keys.filter(function(k){
+        const locOc=(localData.D&&localData.D.oc)?localData.D.oc.length:0;
+        const remOc=(remote.D&&remote.D.oc)?remote.D.oc.length:0;
+        const warnings=[];
+        // OC es acumulativo: bajar es señal de estar subiendo una versión vieja.
+        if(remOc>0&&locOc<remOc)warnings.push('• oc: tienes '+locOc+' vs '+remOc+' que ya está en la nube');
+        // Las demás secciones pueden bajar de forma legítima (ej. p5reqs al
+        // resolverse requerimientos) — solo avisamos si tu versión las deja en cero.
+        ['p4','p5reqs','proj','sinoc'].forEach(function(k){
           const locN=(localData.D&&localData.D[k])?localData.D[k].length:0;
           const remN=(remote.D&&remote.D[k])?remote.D[k].length:0;
-          return remN>0&&locN<remN;
+          if(remN>0&&locN===0)warnings.push('• '+k+': tu versión lo deja VACÍO pero la nube tiene '+remN);
         });
-        if(worse.length){
-          const detail=worse.map(function(k){
-            const locN=(localData.D[k]||[]).length,remN=(remote.D[k]||[]).length;
-            return '• '+k+': tienes '+locN+' vs '+remN+' que ya está en la nube';
-          }).join('\n');
-          if(!confirm('⚠️ ADVERTENCIA: vas a subir datos con MENOS registros de los que ya hay guardados:\n\n'+detail+'\n\nEsto probablemente borrará información más reciente que otra persona ya guardó.\n\n¿Seguro que quieres continuar de todos modos?')){
+        if(warnings.length){
+          if(!confirm('⚠️ ADVERTENCIA: vas a subir datos que podrían borrar información:\n\n'+warnings.join('\n')+'\n\nEsto probablemente borrará información más reciente que otra persona ya guardó.\n\n¿Seguro que quieres continuar de todos modos?')){
             return false;
           }
         }
