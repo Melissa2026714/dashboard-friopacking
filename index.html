@@ -3709,21 +3709,31 @@ async function loadGitHub(){
     if(!r.ok)return false;
     const s=await r.json();
     if(!s||!s.D)return false;
-    // Protección: si GitHub trae menos OC que lo que ya hay en localStorage, no pisarlo
-    const ghOcCount=(s.D&&s.D.oc)?s.D.oc.length:0;
+    // Protección: si GitHub trae menos registros que lo que ya hay en localStorage, no pisarlo
+    const PROTECTED_KEYS=['oc','p4','p5reqs','proj','sinoc'];
+    const ghCounts={};
+    PROTECTED_KEYS.forEach(function(k){ghCounts[k]=(s.D&&s.D[k])?s.D[k].length:0;});
+    const ghAllEmpty=PROTECTED_KEYS.every(function(k){return ghCounts[k]===0;});
     try{
       const localRaw=localStorage.getItem(LS_KEY);
       if(localRaw){
         const localS=JSON.parse(localRaw);
-        const localOcCount=(localS&&localS.D&&localS.D.oc)?localS.D.oc.length:0;
-        if(ghOcCount===0&&localOcCount>0){
-          console.warn('[FP] GitHub devolvió 0 OC pero localStorage tiene '+localOcCount+'. Usando localStorage.');
-          showSavedLabel('⚠️ GitHub vacío — usando caché local ('+localOcCount+' OC)','#d97706');
+        const worse=PROTECTED_KEYS.filter(function(k){
+          const locN=(localS&&localS.D&&localS.D[k])?localS.D[k].length:0;
+          return locN>0&&ghCounts[k]<locN;
+        });
+        if(worse.length){
+          const detail=worse.map(function(k){
+            const locN=(localS.D[k]||[]).length;
+            return k+': nube '+ghCounts[k]+' vs local '+locN;
+          }).join(', ');
+          console.warn('[FP] GitHub trae menos datos que localStorage ('+detail+'). Usando caché local.');
+          showSavedLabel('⚠️ Nube desactualizada — usando caché local','#d97706');
           return false; // forzar fallback a loadLocal()
         }
       }
     }catch(e2){}
-    if(ghOcCount===0){console.warn('[FP] GitHub devolvió 0 OC — datos no cargados.');return false;}
+    if(ghAllEmpty){console.warn('[FP] GitHub devolvió datos vacíos — no se cargan.');return false;}
     Object.assign(D,s.D);
     if(s.SKUS)Object.assign(SKUS,s.SKUS);
     if(s.SKUS_P4)Object.assign(SKUS_P4,s.SKUS_P4);
@@ -3753,6 +3763,29 @@ async function saveGitHub(payload){
   const token=localStorage.getItem(GH_TOKEN_KEY);
   if(!token)return false;
   try{
+    // Protección: no sobrescribir la nube con menos datos de los que ya tiene
+    try{
+      const localData=JSON.parse(payload);
+      const rCheck=await fetch(GH_RAW+'?t='+Date.now());
+      if(rCheck.ok){
+        const remote=await rCheck.json();
+        const keys=['oc','p4','p5reqs','proj','sinoc'];
+        const worse=keys.filter(function(k){
+          const locN=(localData.D&&localData.D[k])?localData.D[k].length:0;
+          const remN=(remote.D&&remote.D[k])?remote.D[k].length:0;
+          return remN>0&&locN<remN;
+        });
+        if(worse.length){
+          const detail=worse.map(function(k){
+            const locN=(localData.D[k]||[]).length,remN=(remote.D[k]||[]).length;
+            return '• '+k+': tienes '+locN+' vs '+remN+' que ya está en la nube';
+          }).join('\n');
+          if(!confirm('⚠️ ADVERTENCIA: vas a subir datos con MENOS registros de los que ya hay guardados:\n\n'+detail+'\n\nEsto probablemente borrará información más reciente que otra persona ya guardó.\n\n¿Seguro que quieres continuar de todos modos?')){
+            return false;
+          }
+        }
+      }
+    }catch(e2){console.warn('[FP] Chequeo de conflicto antes de guardar falló, se continúa:',e2);}
     let sha='';
     const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
     if(check.ok){const meta=await check.json();sha=meta.sha||'';}
