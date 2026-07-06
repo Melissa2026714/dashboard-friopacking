@@ -11,7 +11,7 @@ echo  NO cierres esta ventana mientras uses el dashboard.
 echo.
 
 set "SCRIPT_DIR=%~dp0"
-set "BASE_DIR=%SCRIPT_DIR%..\app"
+set "BASE_DIR=%SCRIPT_DIR%.."
 set "PORT=8080"
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^

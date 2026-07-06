@@ -2,14 +2,20 @@
 
 Dashboard de seguimiento de Órdenes de Compra, Requerimientos y Proyectos PMO 2026.
 
+Este repositorio también es el que publica el sitio en vivo vía GitHub Pages
+(`melissa2026714.github.io/dashboard-friopacking`) — por eso `index.html` y
+`msal-browser.min.js` se mantienen en la raíz (GitHub Pages solo puede servir
+desde la raíz del repo o desde una carpeta llamada `docs`).
+
 ## Estructura
 
-- `app/` — Aplicación web del dashboard (`index.html` + dependencias). Esta es la fuente local; la versión publicada en línea vive en el repositorio `dashboard-friopacking` (GitHub Pages) y se actualiza subiendo `app/index.html` ahí manualmente.
+- `index.html` / `msal-browser.min.js` — Aplicación web del dashboard (raíz, para que GitHub Pages la sirva directamente).
+- `data.json` / `consultas.json` — Datos compartidos que la app sincroniza con todos los usuarios (se actualizan solos desde el botón GUARDAR del dashboard, no se editan a mano).
 - `data/` — Excel de importación (Reporte Maestro, PedidoSinReq, Consulta). Se cargan desde el botón **IMPORTAR** del dashboard.
 - `tools/` — Utilidades locales para Windows:
-  - `iniciar_dashboard.bat` — levanta un servidor local en `http://localhost:8080` para probar `app/index.html` sin depender de GitHub Pages.
+  - `iniciar_dashboard.bat` — levanta un servidor local en `http://localhost:8080` para probar el dashboard sin depender de GitHub Pages.
   - `iniciar_servidor_correos.bat` / `oc_mailer.py` — servidor local (puerto 5100) que envía OC/cotizaciones por Outlook y sube copias a SharePoint.
-- `docs/` — Documentación de referencia (`generar_resumen_pdf.py` genera el PDF de análisis de gestión de compras).
+- `referencias/` — Documentación de referencia (`generar_resumen_pdf.py` genera el PDF de análisis de gestión de compras).
 
 ## Uso local
 
@@ -18,4 +24,4 @@ Dashboard de seguimiento de Órdenes de Compra, Requerimientos y Proyectos PMO 2
 
 ## Publicación
 
-El dashboard en producción se sirve desde un repositorio separado vía GitHub Pages. Los cambios hechos en `app/index.html` aquí deben subirse manualmente a ese repositorio para reflejarse en el sitio en vivo.
+Los cambios hechos en `index.html` se publican automáticamente vía GitHub Pages al hacer push a `main`. No se necesita ningún paso adicional.
