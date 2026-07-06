@@ -3686,7 +3686,7 @@ const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.htm
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-06T19:00:00Z-add-p5-recepcion-salida-cols';
+const BUILD_ID='2026-07-06T20:00:00Z-fix-reload-cache-bypass';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
@@ -3694,7 +3694,10 @@ function showUpdateBanner(){
   b.id='_updBanner';
   b.style.cssText='position:fixed;top:0;left:0;right:0;background:#d97706;color:#fff;padding:10px 16px;text-align:center;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 2px 8px rgba(0,0,0,.2)';
   b.innerHTML='⚠️ Esta pestaña quedó con una versión antigua del sistema — recárgala antes de importar o guardar para no perder datos de otros usuarios. '
-    +'<button onclick="location.reload()" style="margin-left:10px;background:#fff;color:#d97706;border:none;padding:4px 12px;border-radius:6px;font-weight:700;cursor:pointer">Recargar ahora</button>';
+    // location.reload() normal puede servir la página cacheada por el navegador
+    // (GitHub Pages cachea el HTML hasta 10 min) y seguir mostrando código viejo.
+    // Navegar a una URL con cache-buster fuerza a descargar la versión real más reciente.
+    +'<button onclick="location.href=location.pathname+\'?_v=\'+Date.now()" style="margin-left:10px;background:#fff;color:#d97706;border:none;padding:4px 12px;border-radius:6px;font-weight:700;cursor:pointer">Recargar ahora</button>';
   document.body.prepend(b);
 }
 function checkForUpdate(){
