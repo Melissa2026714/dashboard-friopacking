@@ -3676,6 +3676,32 @@ const GH_TOKEN_KEY='fp_gh_token';
 const GH_CONSULTAS_FILE='consultas.json';
 const GH_CONSULTAS_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_CONSULTAS_FILE;
 const GH_CONSULTAS_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_CONSULTAS_FILE;
+const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.html';
+
+// ── Detección de pestañas desactualizadas (código viejo en memoria) ──────────
+// BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
+// desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
+// GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
+const BUILD_ID='2026-07-06T16:00:00Z-fix-guardar-race';
+let _staleClient=false;
+function showUpdateBanner(){
+  if(document.getElementById('_updBanner'))return;
+  const b=document.createElement('div');
+  b.id='_updBanner';
+  b.style.cssText='position:fixed;top:0;left:0;right:0;background:#d97706;color:#fff;padding:10px 16px;text-align:center;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 2px 8px rgba(0,0,0,.2)';
+  b.innerHTML='⚠️ Esta pestaña quedó con una versión antigua del sistema — recárgala antes de importar o guardar para no perder datos de otros usuarios. '
+    +'<button onclick="location.reload()" style="margin-left:10px;background:#fff;color:#d97706;border:none;padding:4px 12px;border-radius:6px;font-weight:700;cursor:pointer">Recargar ahora</button>';
+  document.body.prepend(b);
+}
+function checkForUpdate(){
+  fetch(GH_INDEX_RAW+'?t='+Date.now()).then(function(r){return r.ok?r.text():null;}).then(function(txt){
+    if(!txt)return;
+    const m=txt.match(/const BUILD_ID='([^']+)'/);
+    if(m&&m[1]&&m[1]!==BUILD_ID){_staleClient=true;showUpdateBanner();}
+  }).catch(function(){});
+}
+setInterval(checkForUpdate,5*60*1000);
+setTimeout(checkForUpdate,3000);
 
 // ── Guardar en localStorage (siempre) ────────────────────────────────────────
 function saveLocal(){
@@ -3817,6 +3843,10 @@ async function saveConsultasGitHub(token){
 
 // ── Botón GUARDAR ─────────────────────────────────────────────────────────────
 async function manualSave(){
+  if(_staleClient){
+    alert('⚠️ Esta pestaña tiene una versión antigua del sistema (quedó abierta desde antes de la última actualización).\n\nPara evitar borrar información reciente de otros usuarios, recarga la página (Ctrl+F5) antes de guardar.');
+    return;
+  }
   const btn=document.getElementById('saveBtn');
   const payload=saveLocal();
   if(payload===false){alert('No hay datos para guardar. Importa primero los archivos Excel.');return;}
