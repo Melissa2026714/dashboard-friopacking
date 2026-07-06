@@ -1173,6 +1173,10 @@ function instNav(id){
         <th style="white-space:nowrap">REQ.</th>
         <th style="white-space:nowrap">F. REQ.</th>
         <th style="white-space:nowrap">ESTADO</th>
+        <th style="white-space:nowrap;background:#fef3c7;color:#92400e">F. RECEPCIÓN</th>
+        <th style="white-space:nowrap;text-align:right;background:#fef3c7;color:#92400e">CANT. RECEP.</th>
+        <th style="white-space:nowrap;background:#fef3c7;color:#92400e">F. SALIDA</th>
+        <th style="white-space:nowrap;text-align:right;background:#fef3c7;color:#92400e">CANT. SALIDA</th>
       </tr></thead>
       <tbody id="tb5"></tbody>
     </table>
@@ -3682,7 +3686,7 @@ const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.htm
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-06T18:00:00Z-fix-quota-exceeded-v3';
+const BUILD_ID='2026-07-06T19:00:00Z-add-p5-recepcion-salida-cols';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
@@ -4064,6 +4068,10 @@ function renderP5Table(){
     <td style="white-space:nowrap"><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${r.req||'—'}</span></td>
     <td style="white-space:nowrap;color:#64748b;font-size:11px">${r.freq||'—'}</td>
     <td style="white-space:nowrap">${badgeOC(r.estado)}</td>
+    <td style="white-space:nowrap;color:#64748b;font-size:11px">${r.fechaRecep||'—'}</td>
+    <td style="white-space:nowrap;text-align:right;color:#1e293b">${r.cantRecep||'—'}</td>
+    <td style="white-space:nowrap;color:#64748b;font-size:11px">${r.fechaSalida||'—'}</td>
+    <td style="white-space:nowrap;text-align:right;color:#1e293b">${r.cantSalida||'—'}</td>
   </tr>`).join('');
   const tot=p5fil.length, pages=Math.ceil(tot/sz);
   document.getElementById('p5info').textContent=`Mostrando ${p5pg*sz+1}–${Math.min((p5pg+1)*sz,tot)} de ${tot}`;
@@ -5188,7 +5196,9 @@ function importMaestro(wb){
       prod:g(r,'Producto'),cant:Math.round(gn(r,'CantidadRequerimiento')),
       unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||g(r,'UM')||g(r,'Um')||g(r,'Und')||g(r,'UndMed')||g(r,'Unidad de Medida')||g(r,'UnidMed')||'',
       freq:gd(r,'FechaRequerida')||gd(r,'FechaEntrega')||gd(r,'ParaFechaOrden')||gd(r,'Fecha Requerida')||gd(r,'FechaRequerimiento')||'',
-      estado:g(r,'EstadoRequerimiento')
+      estado:g(r,'EstadoRequerimiento'),
+      fechaRecep:gd(r,'FechaRecepcion'),cantRecep:Math.round(gn(r,'CantRecepcion'))||'',
+      fechaSalida:gd(r,'FechaSalida'),cantSalida:Math.round(gn(r,'CantSalida'))||''
     });
   });
   p5Data.sort((a,b)=>{
