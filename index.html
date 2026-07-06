@@ -3682,7 +3682,7 @@ const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.htm
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-06T17:00:00Z-fix-guardar-race-v2';
+const BUILD_ID='2026-07-06T18:00:00Z-fix-quota-exceeded-v3';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
@@ -3767,7 +3767,14 @@ async function loadGitHub(){
     if(s.SKUS)Object.assign(SKUS,s.SKUS);
     if(s.SKUS_P4)Object.assign(SKUS_P4,s.SKUS_P4);
     showSavedLabel('☁ '+new Date(s.ts).toLocaleString('es-PE'),'#0ea5e9');
-    localStorage.setItem(LS_KEY,JSON.stringify(s)); // cache local
+    // El caché local es solo un respaldo — si falla (ej. QuotaExceededError porque
+    // data.json ya pesa varios MB y supera el límite de localStorage del navegador)
+    // NO debe tirar los datos que ya se cargaron correctamente en memoria (D).
+    try{
+      localStorage.setItem(LS_KEY,JSON.stringify(s)); // cache local
+    }catch(e3){
+      console.warn('[FP] No se pudo cachear en localStorage (posible límite de tamaño), se continúa igual:',e3);
+    }
     // Cargar consultas.json por separado (puede ser grande)
     fetch(GH_CONSULTAS_RAW+'?t='+Date.now()).then(function(r2){
       if(!r2.ok)return;
