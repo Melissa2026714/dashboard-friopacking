@@ -1866,6 +1866,17 @@ function verCorreoFormateadoOC(oc){
   h+='      },function(){abrirMail();});';
   h+='    }else{abrirMail();}';
   h+='  }';
+  // Si falla el servidor local (win32com, solo funciona con Outlook Classic),
+  // intenta enviar vía Microsoft Graph (funciona con Outlook New, Classic, o sin
+  // Outlook instalado). Solo si eso también falla, cae al copiar+pegar manual.
+  h+='  function tryGraphThenClipboard(){';
+  h+='    if(window.opener&&window.opener.sendMailViaGraph){';
+  h+='      window.opener.sendMailViaGraph(_to,_cc,null,_asunto,fullHtml,function(ok,err){';
+  h+='        if(ok){showToast("✅ Correo enviado (Microsoft 365)");}';
+  h+='        else{fallbackClipboard();}';
+  h+='      });';
+  h+='    }else{fallbackClipboard();}';
+  h+='  }';
   h+='  fetch(_MAILER_URL+"/ping",{method:"GET",signal:AbortSignal.timeout(1500)})';
   h+='    .then(function(){';
   h+='      return fetch(_MAILER_URL+"/send-oc",{method:"POST",headers:{"Content-Type":"application/json"},';
@@ -1874,9 +1885,9 @@ function verCorreoFormateadoOC(oc){
   h+='    .then(function(r){return r.json();})';
   h+='    .then(function(d){';
   h+='      if(d.ok){showToast("✅ Correo abierto en Outlook — revisa y presiona Enviar");}';
-  h+='      else{showToast("⚠️ Error: "+d.error);fallbackClipboard();}';
+  h+='      else{tryGraphThenClipboard();}';
   h+='    })';
-  h+='    .catch(function(){fallbackClipboard();});';
+  h+='    .catch(function(){tryGraphThenClipboard();});';
   h+='}';
   h+='function copiarImagen(){var el=document.getElementById("contenido-correo");';
   h+='html2canvas(el,{scale:2,backgroundColor:"#ffffff"}).then(function(canvas){';
@@ -2971,6 +2982,18 @@ function exportP3HTML(){
   S+='    }else{throw new Error(d.error||"error");}';
   S+='  })';
   S+='  .catch(function(){';
+  S+='    if(window.opener&&window.opener.sendMailViaGraph){';
+  S+='      window.opener.sendMailViaGraph(_para,_cc,cco,asunto,htmlCot,function(ok){';
+  S+='        if(ok){';
+  S+='          var t=document.createElement("div");';
+  S+='          t.style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 28px;border-radius:8px;font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.4)";';
+  S+='          t.textContent="✅ Correo de cotización enviado (Microsoft 365)";';
+  S+='          document.body.appendChild(t);setTimeout(function(){t.remove();},4000);';
+  S+='        }else{fallbackClipboardCot();}';
+  S+='      });';
+  S+='    }else{fallbackClipboardCot();}';
+  S+='  });';
+  S+='  function fallbackClipboardCot(){';
   S+='    if(navigator.clipboard&&window.ClipboardItem){';
   S+='      var blob=new Blob([htmlCot],{type:"text/html"});';
   S+='      var item=new ClipboardItem({"text/html":blob});';
@@ -2978,7 +3001,7 @@ function exportP3HTML(){
   S+='        setTimeout(abrirMailCot,300);';
   S+='      },function(){abrirMailCot();});';
   S+='    }else{abrirMailCot();}';
-  S+='  });';
+  S+='  }';
   S+='}';
 
   S+='function verCorreoFormateado(){';
@@ -5840,6 +5863,80 @@ setInterval(function(){
             .catch(function(e){done(false,e.message);});
         })
         .catch(function(e){done(false,'Error resolviendo carpeta: '+e.message);});
+    });
+  };
+})();
+</script>
+<!-- Envío de correo vía Microsoft Graph — funciona con Outlook New, Classic, o sin
+     Outlook instalado (envía desde la nube, no depende del cliente de correo local).
+     Requiere que el permiso "Mail.Send" esté consentido en Azure AD para esta app.
+     Se usa como respaldo cuando el servidor local (win32com, solo Outlook Classic) falla. -->
+<script>
+(function(){
+  var _msalMail=null;
+  var _cfgMail={auth:{clientId:'4aab5beb-5b53-45a0-81ea-b11f0fa8d50f',authority:'https://login.microsoftonline.com/friopacking.pe',redirectUri:location.origin+location.pathname}};
+  var _scopesMail=['Mail.Send','User.Read'];
+  var _msalUrlsMail=[
+    '/msal-browser.min.js',
+    'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js',
+    'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.js'
+  ];
+  function _loadMsalMail(urls,cb){
+    if(typeof msal!=='undefined'){cb(null);return;}
+    if(!urls.length){cb('No se pudo cargar la librería MSAL');return;}
+    var s=document.createElement('script');
+    s.src=urls[0];
+    s.onload=function(){cb(null);};
+    s.onerror=function(){_loadMsalMail(urls.slice(1),cb);};
+    document.head.appendChild(s);
+  }
+  function _initMail(cb){
+    if(_msalMail){cb(_msalMail,null);return;}
+    _loadMsalMail(_msalUrlsMail,function(err){
+      if(err){cb(null,err);return;}
+      try{
+        _msalMail=new msal.PublicClientApplication(_cfgMail);
+        _msalMail.initialize().then(function(){_msalMail.handleRedirectPromise().catch(function(){});cb(_msalMail,null);}).catch(function(e){cb(null,'MSAL init: '+e.message);});
+      }catch(e){cb(null,'MSAL error: '+e.message);}
+    });
+  }
+  function _getTokenMail(cb){
+    _initMail(function(inst,err){
+      if(!inst){cb(null,err||'MSAL no disponible');return;}
+      var accts=inst.getAllAccounts();
+      var req={scopes:_scopesMail};
+      if(accts.length>0){req.account=accts[0];}
+      inst.acquireTokenSilent(req).then(function(r){cb(r.accessToken,null);}).catch(function(){
+        inst.acquireTokenPopup({scopes:_scopesMail,prompt:'select_account'}).then(function(r){cb(r.accessToken,null);}).catch(function(e){cb(null,'No se pudo iniciar sesión: '+e.message);});
+      });
+    });
+  }
+  function _parseAddrs(s){
+    return (s||'').split(/[;,]/).map(function(x){return x.trim();}).filter(Boolean)
+      .map(function(a){return {emailAddress:{address:a}};});
+  }
+  // to/cc/bcc: string de direcciones separadas por ; o , (puede ser null/vacío)
+  window.sendMailViaGraph=function(to,cc,bcc,subject,htmlBody,done){
+    _getTokenMail(function(token,err){
+      if(!token){done(false,err);return;}
+      var msg={
+        message:{
+          subject:subject||'',
+          body:{contentType:'HTML',content:htmlBody||''},
+          toRecipients:_parseAddrs(to),
+          ccRecipients:_parseAddrs(cc),
+          bccRecipients:_parseAddrs(bcc)
+        },
+        saveToSentItems:true
+      };
+      fetch('https://graph.microsoft.com/v1.0/me/sendMail',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify(msg)
+      }).then(function(r){
+        if(r.status===202){done(true,null);}
+        else{r.text().then(function(t){done(false,t);});}
+      }).catch(function(e){done(false,e.message);});
     });
   };
 })();
