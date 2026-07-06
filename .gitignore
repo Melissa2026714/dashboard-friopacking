@@ -1,0 +1,10 @@
+# Archivos temporales/bloqueo de Excel
+~$*.xlsx
+~$*.xls
+
+# Configuración local del asistente (no es parte del proyecto)
+.claude/
+
+# Archivos temporales de sistema
+Thumbs.db
+.DS_Store
