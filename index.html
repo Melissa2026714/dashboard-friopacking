@@ -1637,6 +1637,12 @@ function verCorreoFormateadoOC(oc){
   if(respSup&&respSup.correo&&!CC_OC.toLowerCase().includes(respSup.correo)){
     CC_OC+=';'+respSup.correo;
   }
+  // Agregar automáticamente eoscco@friopacking.pe si es entrega a Lurín
+  if(D.agenciaLurin){
+    if(!CC_OC.toLowerCase().includes('eoscco@friopacking.pe')){
+      CC_OC+=';eoscco@friopacking.pe';
+    }
+  }
   // Descripción para plantilla Recojo
   var descRecojo=items.length===1?items[0].prod:'los artículos detallados en la presente Orden de Compra';
   // Build table rows HTML
@@ -1851,10 +1857,13 @@ function verCorreoFormateadoOC(oc){
   h+='}';
   h+='function actualizarAgencia(){';
   h+='  autocompletarDNI("ag-n1","ag-d1");autocompletarDNI("ag-n2","ag-d2");autocompletarDNI("ag-n3","ag-d3");';
+  h+='  var agName=(document.getElementById("ag-nombre")||{value:""}).value.toUpperCase();';
+  h+='  window.opener.D.agenciaLurin=agName.includes("LURIN");';
   h+='  if(_modActual==="agencia")document.getElementById("mail-body").innerHTML=getHtmlAgencia();';
   h+='}';
   h+='function selMod(m){';
   h+='  _modActual=m;';
+  h+='  window.opener.D.agenciaLurin=(m==="planta");';
   h+='  document.getElementById("opt-planta").className="mod-opt"+(m==="planta"?" sel":"");';
   h+='  document.getElementById("opt-recojo").className="mod-opt"+(m==="recojo"?" sel":"");';
   h+='  document.getElementById("opt-agencia").className="mod-opt"+(m==="agencia"?" sel":"");';
@@ -3747,7 +3756,7 @@ const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.htm
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-07T12:00:00Z-add-agencias-autocomplete';
+const BUILD_ID='2026-07-07T14:15:00Z-add-lurin-email';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
