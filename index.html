@@ -1676,7 +1676,7 @@ function verCorreoFormateadoOC(oc){
   h+='.mod-box{background:#fff;border:2px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:20px}';
   h+='.mod-title{font-size:13px;font-weight:700;color:#0f172a;margin-bottom:12px}';
   h+='.mod-opts{display:flex;gap:16px;flex-wrap:wrap}';
-  h+='.mod-opt{display:flex;align-items:center;gap:8px;padding:10px 18px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#475569;transition:all .15s}';
+  h+='.mod-opt{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#475569;transition:all .15s;background:none;font-family:inherit}';
   h+='.mod-opt:hover{border-color:#0369a1;color:#0369a1}';
   h+='.mod-opt.sel{border-color:#0369a1;background:#eff6ff;color:#0369a1}';
   h+='.mod-opt.sel.sel-regul{border-color:#d97706;background:#fef3c7;color:#92400e}';
@@ -1720,10 +1720,10 @@ function verCorreoFormateadoOC(oc){
   h+='<div class="mod-box">';
   h+='<div class="mod-title">¿Modalidad de entrega?</div>';
   h+='<div class="mod-opts">';
-  h+='<label class="mod-opt" id="opt-planta" onclick="selMod(\'planta\')"><input type="radio" name="mod" value="planta"> 📦 Entrega en planta — Lurín</label>';
-  h+='<label class="mod-opt" id="opt-recojo" onclick="selMod(\'recojo\')"><input type="radio" name="mod" value="recojo"> 🚚 Recojo por cuenta de Friopacking</label>';
-  h+='<label class="mod-opt" id="opt-agencia" onclick="selMod(\'agencia\')"><input type="radio" name="mod" value="agencia"> 🚢 Envío por Agencia</label>';
-  h+='<label class="mod-opt" id="opt-regularizacion" onclick="selMod(\'regularizacion\')" style="border-color:#f59e0b;background:#fffbeb"><input type="radio" name="mod" value="regularizacion"> 📋 Regularización con Proveedor</label>';
+  h+='<button type="button" class="mod-opt" id="opt-planta" onclick="selMod(\'planta\');return false">📦 Entrega en planta — Lurín</button>';
+  h+='<button type="button" class="mod-opt" id="opt-recojo" onclick="selMod(\'recojo\');return false">🚚 Recojo por cuenta de Friopacking</button>';
+  h+='<button type="button" class="mod-opt" id="opt-agencia" onclick="selMod(\'agencia\');return false">🚢 Envío por Agencia</button>';
+  h+='<button type="button" class="mod-opt" id="opt-regularizacion" onclick="selMod(\'regularizacion\');return false" style="border-color:#f59e0b;background:#fffbeb;color:#92400e">📋 Regularización con Proveedor</button>';
   h+='</div>';
   h+='<div id="agencia-form" style="display:none;margin-top:12px;padding:14px 16px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd">';
   h+='<div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Datos del envío por agencia</div>';
@@ -3756,7 +3756,7 @@ const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.htm
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-07T14:20:00Z-fix-lurin-email';
+const BUILD_ID='2026-07-07T14:25:00Z-fix-modalidad-buttons';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
