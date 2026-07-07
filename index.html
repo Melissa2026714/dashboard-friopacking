@@ -1721,7 +1721,7 @@ function verCorreoFormateadoOC(oc){
   h+='</div>';
   h+='<div id="agencia-form" style="display:none;margin-top:12px;padding:14px 16px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd">';
   h+='<div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Datos del envío por agencia</div>';
-  h+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><label style="font-size:12px;color:#475569;min-width:60px;font-weight:600">Agencia:</label><input id="ag-nombre" type="text" placeholder="Ej: Shalom Huanchaco" style="flex:1;padding:7px 10px;border:1px solid #bae6fd;border-radius:6px;font-size:13px" oninput="actualizarAgencia()"></div>';
+  h+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><label style="font-size:12px;color:#475569;min-width:60px;font-weight:600">Agencia:</label><input id="ag-nombre" type="text" list="dlAgencias" placeholder="Ej: Shalom Huanchaco" style="flex:1;padding:7px 10px;border:1px solid #bae6fd;border-radius:6px;font-size:13px" oninput="actualizarAgencia()"><datalist id="dlAgencias"><option value="Shalom"><option value="Olva Transportes"><option value="CIVA"><option value="Soyuz"><option value="Movil Tours"><option value="Flores"><option value="Tepsa"><option value="Chinchano"><option value="Ittsa"><option value="GH Bus"><option value="Turismo Carmelita"><option value="Peruvian Challenger"></datalist></div>';
   h+='<div style="font-size:11px;color:#475569;margin-bottom:6px;font-weight:600;text-transform:uppercase">Destinatarios (nombre y DNI):</div>';
   h+='<datalist id="dlSupervisores">'+(D.supervisores||[]).map(function(s){return '<option value="'+String(s.nombre).replace(/["']/g,'')+'">';}).join('')+'</datalist>';
   h+='<div style="display:flex;gap:8px;margin-bottom:6px"><input id="ag-n1" type="text" list="dlSupervisores" placeholder="Nombre completo (sugerido o escribe el tuyo)" style="flex:2;padding:7px 10px;border:1px solid #bae6fd;border-radius:6px;font-size:12px" oninput="actualizarAgencia()"><input id="ag-d1" type="text" placeholder="DNI / RUC" style="width:120px;padding:7px 10px;border:1px solid #bae6fd;border-radius:6px;font-size:12px" oninput="actualizarAgencia()"></div>';
@@ -3747,7 +3747,7 @@ const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.htm
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-07T11:30:00Z-mejora-match-proveedores';
+const BUILD_ID='2026-07-07T12:00:00Z-add-agencias-autocomplete';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
