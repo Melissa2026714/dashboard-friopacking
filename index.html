@@ -348,7 +348,7 @@ body.dark .g-rank-card{background:#111b2b!important}
     <button class="tab" onclick="nav('p7')">🔍 Consultas</button>
   </div>
   <div class="nbr">
-    <button class="btn bi" onclick="document.getElementById('fileMAESTRO').click()" title="Importar MAESTRO.xlsx, PedidoSinReq.xlsx y/o DB Supervisores.xlsx">📂 IMPORTAR</button>
+    <button class="btn bi" onclick="document.getElementById('fileMAESTRO').click()" title="Importar MAESTRO.xlsx, PedidoSinReq.xlsx, DB Supervisores.xlsx y/o DB Proveedores.xlsx">📂 IMPORTAR</button>
     <button class="btn" id="saveBtn" onclick="manualSave()" title="Guardar y sincronizar con todos los usuarios" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
     <button id="spLoginBtn" onclick="spLogin()" title="Iniciar sesión para subir a SharePoint" style="display:none;background:#0078d4;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">☁ SP</button>
     <button class="btn" onclick="setupGHToken()" title="Configurar token GitHub (solo admin)" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer">🔑</button>
@@ -1232,7 +1232,7 @@ function instNav(id){
 
 <script>
 // ── DATA ────────────────────────────────────────────────────────
-const D = {"p4":[],"oc":[],"p5reqs":[],"sinoc":[],"proj":[],"supervisores":[],"gerencial":{"summary":{"totalOC":0,"pendientes":0,"atendidoParcial":0,"atendidoCompleto":0,"totalReqs":0,"pendienteReqs":0},"byResponsable":[],"byProject":[]},"ocMeta":{},"cotMeta":{}};
+const D = {"p4":[],"oc":[],"p5reqs":[],"sinoc":[],"proj":[],"supervisores":[],"proveedores":[],"gerencial":{"summary":{"totalOC":0,"pendientes":0,"atendidoParcial":0,"atendidoCompleto":0,"totalReqs":0,"pendienteReqs":0},"byResponsable":[],"byProject":[]},"ocMeta":{},"cotMeta":{}};
 
 
 
@@ -1628,7 +1628,8 @@ function verCorreoFormateadoOC(oc){
   var idproy=items[0].idproy||'';
   var proy=items[0].proy||'';
   var foc=items[0].foc||'';
-  var emailProv=(ocRows[0]&&ocRows[0].emailProv)||'';
+  var provSup=buscarProveedor(ocRows[0]&&ocRows[0].ruc,prov);
+  var emailProv=(ocRows[0]&&ocRows[0].emailProv)||(provSup&&provSup.correo)||'';
   var asunto='Orden de Compra N° '+oc+' — FRIOPACKING S.A. // '+prov+(idproy?' // '+idproy:'')+(proy?' // '+proy:'');
   var CC_OC='msihuairo@friopacking.pe;ccheca@friopacking.pe;mlujan@friopacking.pe;plinares@friopacking.pe;jaltamirano@friopacking.pe;jpomez@friopacking.pe;kalbujar@grupofriopacking.pe;jcenteno@friopacking.pe;mcondori@grupofriopacking.pe';
   // Agregar automáticamente al responsable de la OC si está en la base de Supervisores
@@ -3725,7 +3726,7 @@ const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.htm
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-06T21:00:00Z-add-directorio-supervisores';
+const BUILD_ID='2026-07-07T09:00:00Z-add-directorio-proveedores';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
@@ -4979,6 +4980,9 @@ function handleMultiUpload(input){
         } else if(name.includes('supervisor')){
           importSupervisores(wb);
           results.push('✅ '+file.name+' (Supervisores)');
+        } else if(name.includes('proveedor')){
+          importProveedores(wb);
+          results.push('✅ '+file.name+' (Proveedores)');
         } else {
           importMaestro(wb);
           results.push('✅ '+file.name+' (MAESTRO)');
@@ -5138,7 +5142,7 @@ function importMaestro(wb){
       ocMap[cod]={
         oc:cod,foc:gd(r,'FechaOrden'),fapro:gd(r,'FechaAprobacionOC'),fent:gd(r,'ParaFechaOrden'),
         resp:g(r,'NombreResponsable'),estado:'',_estados:[],
-        prov:g(r,'NombreProveedor'),
+        prov:g(r,'NombreProveedor'),ruc:g(r,'RucProveedor'),
         proy:g(r,'NombreProyecto'),idproy:g(r,'IdProyecto'),
         req:g(r,'CodRequerimiento'),freq:gd(r,'FechaRequerimiento')||gd(r,'Fecha Requerimiento')||gd(r,'FechaReq')||gd(r,'Fecha de Requerimiento'),
         prod:g(r,'Producto'),cod:g(r,'IdProducto'),
@@ -5562,6 +5566,53 @@ function buscarSupervisor(nombre){
     let inter=0;nws.forEach(function(w){if(sws.has(w))inter++;});
     const score=inter/Math.max(nws.size,sws.size);
     if(inter>=2&&score>bestScore){bestScore=score;best=s;}
+  });
+  return (best&&bestScore>=0.5)?best:null;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// IMPORT PROVEEDORES (directorio Nombre/RUC → Correo)
+// ══════════════════════════════════════════════════════════════════════════════
+function importProveedores(wb){
+  const t0=performance.now();
+  const wsName=wb.SheetNames.find(n=>n.toLowerCase().includes('proveedor')&&n.toLowerCase()!=='data')||wb.SheetNames[0];
+  const ws=wb.Sheets[wsName];
+  const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  let hdr=0;
+  for(let i=0;i<Math.min(10,raw.length);i++){
+    const r=raw[i];
+    if(r&&r.some(c=>typeof c==='string'&&/^Nombre$/i.test(String(c).trim()))){hdr=i;break;}
+  }
+  const headers=raw[hdr]||[];
+  const ci={};headers.forEach((h,i)=>{if(h)ci[String(h).trim()]=i;});
+  const g=(row,name)=>{const i=ci[name];return(i!==undefined)?xs(row[i]):'';};
+  const proveedores=raw.slice(hdr+1)
+    .filter(r=>r&&g(r,'Nombre'))
+    .map(r=>({nombre:g(r,'Nombre'),ruc:g(r,'RUC'),correo:g(r,'Email').toLowerCase()}));
+  D.proveedores=proveedores;
+  saveLocal();
+  const t1=performance.now();
+  const conCorreo=proveedores.filter(p=>p.correo).length;
+  alert(`✅ Proveedores importado (${Math.round(t1-t0)}ms)\n\n• ${proveedores.length} proveedores\n• ${conCorreo} con correo registrado`);
+}
+// Busca un proveedor primero por RUC exacto (confiable) y, si no hay match o no
+// hay RUC, por nombre con coincidencia flexible (igual que buscarSupervisor)
+function buscarProveedor(ruc,nombre){
+  if(!D.proveedores||!D.proveedores.length)return null;
+  const rucLimpio=(ruc||'').trim();
+  if(rucLimpio){
+    const porRuc=D.proveedores.find(function(p){return p.ruc&&p.ruc.trim()===rucLimpio;});
+    if(porRuc)return porRuc;
+  }
+  const nws=new Set(_normNombre(nombre).split(' ').filter(Boolean));
+  if(!nws.size)return null;
+  let best=null,bestScore=0;
+  D.proveedores.forEach(function(p){
+    const pws=new Set(_normNombre(p.nombre).split(' ').filter(Boolean));
+    if(!pws.size)return;
+    let inter=0;nws.forEach(function(w){if(pws.has(w))inter++;});
+    const score=inter/Math.max(nws.size,pws.size);
+    if(inter>=2&&score>bestScore){bestScore=score;best=p;}
   });
   return (best&&bestScore>=0.5)?best:null;
 }
