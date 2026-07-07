@@ -3747,7 +3747,7 @@ const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.htm
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-07T10:00:00Z-add-directorios-cotizacion';
+const BUILD_ID='2026-07-07T11:30:00Z-mejora-match-proveedores';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
@@ -5607,17 +5607,24 @@ function importProveedores(wb){
   const headers=raw[hdr]||[];
   const ci={};headers.forEach((h,i)=>{if(h)ci[String(h).trim()]=i;});
   const g=(row,name)=>{const i=ci[name];return(i!==undefined)?xs(row[i]):'';};
+  const totalFilas=raw.slice(hdr+1).filter(r=>r&&g(r,'Nombre')).length;
+  // Solo se guardan los que tienen correo: son los únicos útiles para autocompletar,
+  // y guardar el padrón completo (11 mil+) inflaría data.json que ya está al límite.
   const proveedores=raw.slice(hdr+1)
-    .filter(r=>r&&g(r,'Nombre'))
+    .filter(r=>r&&g(r,'Nombre')&&g(r,'Email'))
     .map(r=>({nombre:g(r,'Nombre'),ruc:g(r,'RUC'),correo:g(r,'Email').toLowerCase()}));
   D.proveedores=proveedores;
   saveLocal();
   const t1=performance.now();
-  const conCorreo=proveedores.filter(p=>p.correo).length;
-  alert(`✅ Proveedores importado (${Math.round(t1-t0)}ms)\n\n• ${proveedores.length} proveedores\n• ${conCorreo} con correo registrado`);
+  alert(`✅ Proveedores importado (${Math.round(t1-t0)}ms)\n\n• ${proveedores.length} proveedores con correo registrado\n• (${totalFilas-proveedores.length} sin correo se omitieron — agrégales correo en el Excel y reimporta)`);
+}
+// Razones sociales genéricas que no sirven para distinguir empresas entre sí
+var _PROV_STOPWORDS={'S':1,'A':1,'C':1,'R':1,'L':1,'SA':1,'SAC':1,'SRL':1,'EIRL':1,'SOCIEDAD':1,'ANONIMA':1,'CERRADA':1,'ABIERTA':1,'EMPRESA':1,'INDIVIDUAL':1,'RESPONSABILIDAD':1,'LIMITADA':1,'COMERCIAL':1,'DEL':1,'DE':1,'LA':1,'EL':1,'Y':1,'PERU':1};
+function _provWords(s){
+  return _normNombre(s).split(' ').filter(function(w){return w&&!_PROV_STOPWORDS[w];});
 }
 // Busca un proveedor primero por RUC exacto (confiable) y, si no hay match o no
-// hay RUC, por nombre con coincidencia flexible (igual que buscarSupervisor)
+// hay RUC, por nombre — comparando solo palabras distintivas (sin S.A.C., etc.)
 function buscarProveedor(ruc,nombre){
   if(!D.proveedores||!D.proveedores.length)return null;
   const rucLimpio=(ruc||'').trim();
@@ -5625,15 +5632,20 @@ function buscarProveedor(ruc,nombre){
     const porRuc=D.proveedores.find(function(p){return p.ruc&&p.ruc.trim()===rucLimpio;});
     if(porRuc)return porRuc;
   }
-  const nws=new Set(_normNombre(nombre).split(' ').filter(Boolean));
-  if(!nws.size)return null;
+  const nw=_provWords(nombre);
+  if(!nw.length)return null;
+  const nws=new Set(nw);
   let best=null,bestScore=0;
   D.proveedores.forEach(function(p){
-    const pws=new Set(_normNombre(p.nombre).split(' ').filter(Boolean));
-    if(!pws.size)return;
+    const pw=_provWords(p.nombre);
+    if(!pw.length)return;
+    const pws=new Set(pw);
     let inter=0;nws.forEach(function(w){if(pws.has(w))inter++;});
+    // Con pocas palabras distintivas se exige coincidencia total para no
+    // confundir empresas de nombre corto; con más, mayoría compartida.
+    const minInter=Math.min(nws.size,pws.size)<2?Math.max(nws.size,pws.size):2;
     const score=inter/Math.max(nws.size,pws.size);
-    if(inter>=2&&score>bestScore){bestScore=score;best=p;}
+    if(inter>=minInter&&score>bestScore){bestScore=score;best=p;}
   });
   return (best&&bestScore>=0.5)?best:null;
 }
