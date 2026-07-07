@@ -1723,7 +1723,7 @@ function verCorreoFormateadoOC(oc){
   h+='<div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Datos del envío por agencia</div>';
   h+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><label style="font-size:12px;color:#475569;min-width:60px;font-weight:600">Agencia:</label><input id="ag-nombre" type="text" placeholder="Ej: Shalom Huanchaco" style="flex:1;padding:7px 10px;border:1px solid #bae6fd;border-radius:6px;font-size:13px" oninput="actualizarAgencia()"></div>';
   h+='<div style="font-size:11px;color:#475569;margin-bottom:6px;font-weight:600;text-transform:uppercase">Destinatarios (nombre y DNI):</div>';
-  h+='<datalist id="dlSupervisores">'+(D.supervisores||[]).map(function(s){return '<option value="'+String(s.nombre).replace(/"/g,'')+'">';}).join('')+'</datalist>';
+  h+='<datalist id="dlSupervisores">'+(D.supervisores||[]).map(function(s){return '<option value="'+String(s.nombre).replace(/["']/g,'')+'">';}).join('')+'</datalist>';
   h+='<div style="display:flex;gap:8px;margin-bottom:6px"><input id="ag-n1" type="text" list="dlSupervisores" placeholder="Nombre completo (sugerido o escribe el tuyo)" style="flex:2;padding:7px 10px;border:1px solid #bae6fd;border-radius:6px;font-size:12px" oninput="actualizarAgencia()"><input id="ag-d1" type="text" placeholder="DNI / RUC" style="width:120px;padding:7px 10px;border:1px solid #bae6fd;border-radius:6px;font-size:12px" oninput="actualizarAgencia()"></div>';
   h+='<div style="display:flex;gap:8px;margin-bottom:6px"><input id="ag-n2" type="text" list="dlSupervisores" placeholder="Nombre completo (opcional)" style="flex:2;padding:7px 10px;border:1px solid #bae6fd;border-radius:6px;font-size:12px" oninput="actualizarAgencia()"><input id="ag-d2" type="text" placeholder="DNI / RUC" style="width:120px;padding:7px 10px;border:1px solid #bae6fd;border-radius:6px;font-size:12px" oninput="actualizarAgencia()"></div>';
   h+='<div style="display:flex;gap:8px;margin-bottom:6px"><input id="ag-n3" type="text" list="dlSupervisores" placeholder="Nombre completo (opcional)" style="flex:2;padding:7px 10px;border:1px solid #bae6fd;border-radius:6px;font-size:12px" oninput="actualizarAgencia()"><input id="ag-d3" type="text" placeholder="DNI / RUC" style="width:120px;padding:7px 10px;border:1px solid #bae6fd;border-radius:6px;font-size:12px" oninput="actualizarAgencia()"></div>';
@@ -2817,10 +2817,23 @@ function exportP3HTML(){
   S+='  setTimeout(function(){w.print();},400);';
   S+='}';
   S+='function closeConsolidar(){document.getElementById("modal-bg").classList.remove("open");}';
-  S+='var _CC_COT="msihuairo@friopacking.pe;ccheca@friopacking.pe;plinares@friopacking.pe;jaltamirano@friopacking.pe;jpomez@friopacking.pe";';
+  S+='var _CC_COT_BASE="msihuairo@friopacking.pe;ccheca@friopacking.pe;plinares@friopacking.pe;jaltamirano@friopacking.pe;jpomez@friopacking.pe";';
+  S+='var _CC_COT=_CC_COT_BASE;';
   S+='function enviarCorreo(){';
   S+='  var items=DATA.filter(function(r){return sel.has(r.i);});';
   S+='  if(!items.length){alert("No hay pedidos seleccionados.");return;}';
+  // Agregar automáticamente a los responsables de los pedidos seleccionados si
+  // están en la base de Supervisores (uno o varios, sin duplicar el CC base)
+  S+='  _CC_COT=_CC_COT_BASE;';
+  S+='  if(window.opener&&window.opener.buscarSupervisor){';
+  S+='    var _respsVistos=[];';
+  S+='    items.forEach(function(r){';
+  S+='      if(!r.resp||_respsVistos.indexOf(r.resp)>=0)return;';
+  S+='      _respsVistos.push(r.resp);';
+  S+='      var sup=window.opener.buscarSupervisor(r.resp);';
+  S+='      if(sup&&sup.correo&&!_CC_COT.toLowerCase().includes(sup.correo))_CC_COT+=";"+sup.correo;';
+  S+='    });';
+  S+='  }';
   S+='  var grupos={};';
   S+='  items.forEach(function(r){var k=r.ped||"Sin pedido";if(!grupos[k])grupos[k]=[];grupos[k].push(r);});';
   S+='  var pedidos=Object.keys(grupos);';
@@ -2848,7 +2861,7 @@ function exportP3HTML(){
   // PARA
   S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Para</div><div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:9px;padding:11px 16px;font-size:13px;color:#15803d;font-weight:700">📧 mlujan@friopacking.pe</div></div>\';';
   // CCO — chip input multi-proveedor
-  S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Copia Oculta (CCO) — Proveedores <span style="color:#dc2626">*</span><span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:6px;text-transform:none">Escribe el correo y presiona Enter para agregar</span></div><div id="cco-chip-box" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;border:2px solid #e2e8f0;border-radius:9px;padding:8px 12px;min-height:46px;cursor:text;transition:border .2s" onclick="document.getElementById(\\\'cco-input\\\').focus()"><input id="cco-input" type="email" placeholder="correo@proveedor.com" style="border:none;outline:none;font-size:13px;font-family:inherit;flex:1;min-width:180px;padding:3px 0" onkeydown="addCotChip(event)" onblur="addCotChipBlur()"/></div></div>\';';
+  S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Copia Oculta (CCO) — Proveedores <span style="color:#dc2626">*</span><span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:6px;text-transform:none">Escribe el nombre (si está registrado) o el correo, y presiona Enter</span></div><div id="cco-chip-box" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;border:2px solid #e2e8f0;border-radius:9px;padding:8px 12px;min-height:46px;cursor:text;transition:border .2s" onclick="document.getElementById(\\\'cco-input\\\').focus()"><input id="cco-input" list="dlProveedoresCot" type="text" placeholder="Nombre del proveedor o correo@proveedor.com" style="border:none;outline:none;font-size:13px;font-family:inherit;flex:1;min-width:180px;padding:3px 0" onkeydown="addCotChip(event)" onblur="addCotChipBlur()"/><datalist id="dlProveedoresCot">'+(D.proveedores||[]).filter(function(p){return p.correo;}).map(function(p){return '<option value="'+String(p.nombre).replace(/["']/g,'')+'">';}).join('')+'</datalist></div></div>\';';
   // CC chips
   S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">CC (precargado)</div><div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px 14px;line-height:2.2">\'+ccChips+\'</div></div>\';';
   // FECHA
@@ -2872,7 +2885,15 @@ function exportP3HTML(){
   S+='  if(e.key!=="Enter"&&e.key!==","&&e.key!==";")return;';
   S+='  e.preventDefault();';
   S+='  var val=document.getElementById("cco-input").value.trim().replace(/[,;]/g,"");';
-  S+='  if(!val||window._cotCcoList.indexOf(val)>=0){document.getElementById("cco-input").value="";return;}';
+  S+='  if(!val){document.getElementById("cco-input").value="";return;}';
+  // Si lo que escribió no es un correo (no tiene @), busca el proveedor por
+  // nombre en la base y usa su correo real; si no está registrado, se deja
+  // tal cual para que lo agreguen manualmente (como ya funcionaba antes)
+  S+='  if(val.indexOf("@")<0&&window.opener&&window.opener.buscarProveedor){';
+  S+='    var provMatch=window.opener.buscarProveedor(null,val);';
+  S+='    if(provMatch&&provMatch.correo)val=provMatch.correo;';
+  S+='  }';
+  S+='  if(window._cotCcoList.indexOf(val)>=0){document.getElementById("cco-input").value="";return;}';
   S+='  window._cotCcoList.push(val);';
   S+='  var chip=document.createElement("span");';
   S+='  chip.style.cssText="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;font-size:12px;font-weight:600;padding:3px 10px 3px 12px;border-radius:20px;white-space:nowrap";';
@@ -3726,7 +3747,7 @@ const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.htm
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-07T09:00:00Z-add-directorio-proveedores';
+const BUILD_ID='2026-07-07T10:00:00Z-add-directorios-cotizacion';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
