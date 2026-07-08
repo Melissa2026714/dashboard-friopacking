@@ -1047,7 +1047,7 @@ function instNav(id){
       <th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">📋 REG.</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">ALMACÉN</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. ALMACÉN</th>
       <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th>ESTADO</th><th>USUARIO COMP.</th>
       <th>PROVEEDOR</th><th>RESPONSABLE</th><th>ID PROYECTO</th><th>PROYECTO</th><th>N° PEDIDO</th><th>F. PEDIDO</th><th>N° REQ.</th><th>F. REQ.</th>
-      <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th><th>F. TRANSFERENCIA</th><th style="white-space:nowrap;background:#fef2f2;color:#dc2626">F. SALIDA OBRA</th>
+      <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th><th>F. TRANSFERENCIA</th><th style="white-space:nowrap;background:#ecfdf5;color:#047857">INGRESO</th><th style="white-space:nowrap;background:#ecfdf5;color:#047857">F. INGRESO OBRA</th>
     </tr></thead><tbody id="tb2"></tbody></table>
     <div class="pag"><span id="p2info">—</span><div class="pbts" id="p2pag"></div></div>
   </div>
@@ -1172,11 +1172,8 @@ function instNav(id){
         <th style="white-space:nowrap">UNIDAD</th>
         <th style="white-space:nowrap">REQ.</th>
         <th style="white-space:nowrap">F. REQ.</th>
+        <th style="white-space:nowrap;text-align:center" title="Verde: enviado/recibido en obra · Ámbar: enviado a pedido · Rojo: en revisión de almacén · Gris: archivado">🚦</th>
         <th style="white-space:nowrap">ESTADO</th>
-        <th style="white-space:nowrap;background:#fef3c7;color:#92400e">F. RECEPCIÓN</th>
-        <th style="white-space:nowrap;text-align:right;background:#fef3c7;color:#92400e">CANT. RECEP.</th>
-        <th style="white-space:nowrap;background:#fef3c7;color:#92400e">F. SALIDA</th>
-        <th style="white-space:nowrap;text-align:right;background:#fef3c7;color:#92400e">CANT. SALIDA</th>
       </tr></thead>
       <tbody id="tb5"></tbody>
     </table>
@@ -1486,21 +1483,8 @@ function renderP2Table(){
       <td class="${r.cantPend>0?'cpend':''}">${r.cantPend}</td>
       <td>${r.frec||'—'}</td>
       <td style="font-size:11px;color:#0891b2;font-weight:600">${r.fsal||'—'}</td>
-      <td style="text-align:center;background:#fef2f2;min-width:110px">${(()=>{
-        const fs=rm.fsalida;
-        const ft=r.fsal;
-        if(fs){return`<span style="font-size:11px;color:#15803d;font-weight:600">✔ ${fs}</span>`;}
-        if(!ft){return'<span style="font-size:10px;color:#94a3b8">—</span>';}
-        // calcular días transcurridos desde F. TRANSFERENCIA
-        const p=ft.split('/');const dtrans=new Date(p[2],p[1]-1,p[0]);
-        const hoy=new Date();hoy.setHours(0,0,0,0);
-        const dias=Math.floor((hoy-dtrans)/(1000*60*60*24));
-        const alerta=dias>3;
-        return`<span style="display:inline-flex;align-items:center;gap:4px">`+
-          (alerta?`<span style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700" title="${dias} días sin salida">⚠ ${dias}d</span>`:`<span style="font-size:10px;color:#f59e0b;font-weight:600">${dias}d</span>`)+
-          `<button onclick="ingresarSalida('${r.oc}','${ocId}')" style="background:#dc2626;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:10px;cursor:pointer;white-space:nowrap">Ingresar</button>`+
-          `</span>`;
-      })()}</td>
+      <td style="text-align:center;background:#ecfdf5;font-weight:700;color:#047857">${r.ingreso||'—'}</td>
+      <td style="text-align:center;background:#ecfdf5;font-size:11px;color:#047857;font-weight:600;white-space:nowrap">${r.fingreso||'—'}</td>
     </tr>`;
   }).join('');
   const tot=p2fil.length, pages=Math.ceil(tot/p2pgsz);
@@ -1528,40 +1512,6 @@ function toggleReg(cb,oc){
   D.ocMeta[oc].reg=cb.checked;
   if(!cb.checked){D.ocMeta[oc].compras=false;D.ocMeta[oc].fcompras='';D.ocMeta[oc].almacen=false;D.ocMeta[oc].falmacen='';}
   saveLocal();
-  renderP2Table();
-}
-function ingresarSalida(oc,ocId){
-  var old=document.getElementById('_salida_popup');if(old)old.remove();
-  var hoy=new Date();
-  var yyyy=hoy.getFullYear();
-  var mm=String(hoy.getMonth()+1).padStart(2,'0');
-  var dd=String(hoy.getDate()).padStart(2,'0');
-  var d=document.createElement('div');
-  d.id='_salida_popup';
-  d.style.cssText='position:fixed;z-index:9999;background:#fff;border:1px solid #fca5a5;border-radius:10px;box-shadow:0 4px 20px rgba(220,38,38,.2);padding:16px 18px;min-width:240px';
-  d.innerHTML=
-    '<div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📦 F. Salida a Obra — OC '+oc+'</div>'+
-    '<div style="font-size:11px;color:#64748b;margin-bottom:10px">¿Cuándo llegó el material a obra?</div>'+
-    '<input type="date" id="_salida_inp" value="'+yyyy+'-'+mm+'-'+dd+'" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;box-sizing:border-box;margin-bottom:10px">'+
-    '<div style="display:flex;gap:8px;justify-content:flex-end">'+
-      '<button onclick="document.getElementById(\'_salida_popup\').remove()" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;color:#64748b;font-size:11px;cursor:pointer">Cancelar</button>'+
-      '<button onclick="confirmarSalida(\''+oc+'\',\''+ocId+'\')" style="padding:4px 12px;border:none;border-radius:6px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;cursor:pointer">✔ Confirmar</button>'+
-    '</div>';
-  document.body.appendChild(d);
-  var vw=window.innerWidth,vh=window.innerHeight;
-  d.style.top=Math.min(vh/2-80,vh-200)+'px';
-  d.style.left=Math.min(vw/2-120,vw-260)+'px';
-  setTimeout(function(){document.getElementById('_salida_inp').focus();},50);
-}
-function confirmarSalida(oc,ocId){
-  var inp=document.getElementById('_salida_inp');
-  if(!inp||!inp.value){return;}
-  var parts=inp.value.split('-');
-  var fecha=parts[2]+'/'+parts[1]+'/'+parts[0];
-  if(!D.ocMeta[oc])D.ocMeta[oc]={};
-  D.ocMeta[oc].fsalida=fecha;
-  saveLocal();
-  document.getElementById('_salida_popup').remove();
   renderP2Table();
 }
 function toggleRegCheck(cb,oc,campo,fcampo,elId){
@@ -4127,6 +4077,13 @@ function renderP5(){
   document.getElementById('k5cant').textContent=p5fil.reduce((s,r)=>s+r.cant,0).toLocaleString();
   renderP5Table();
 }
+function semReq(e){
+  const l=(e||'').toLowerCase();
+  if(l.includes('enviado a obra')||l.includes('recibido en obra'))return{c:'#16a34a',bg:'#f0fdf4',t:'Completado — material en obra'};
+  if(l.includes('pedido'))return{c:'#d97706',bg:'#fffbeb',t:'En proceso — enviado a pedido'};
+  if(l.includes('revisi'))return{c:'#dc2626',bg:'#fef2f2',t:'Pendiente — en revisión de almacén'};
+  return{c:'#94a3b8',bg:'#f1f5f9',t:e||'Sin estado'};
+}
 function renderP5Table(){
   const sz=50, rows=p5fil.slice(p5pg*sz,(p5pg+1)*sz);
   document.getElementById('tb5').innerHTML=rows.map(r=>`<tr>
@@ -4140,11 +4097,8 @@ function renderP5Table(){
     <td style="white-space:nowrap;color:#64748b;font-size:11px">${r.unid||'—'}</td>
     <td style="white-space:nowrap"><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${r.req||'—'}</span></td>
     <td style="white-space:nowrap;color:#64748b;font-size:11px">${r.freq||'—'}</td>
-    <td style="white-space:nowrap">${badgeOC(r.estado)}</td>
-    <td style="white-space:nowrap;color:#64748b;font-size:11px">${r.fechaRecep||'—'}</td>
-    <td style="white-space:nowrap;text-align:right;color:#1e293b">${r.cantRecep||'—'}</td>
-    <td style="white-space:nowrap;color:#64748b;font-size:11px">${r.fechaSalida||'—'}</td>
-    <td style="white-space:nowrap;text-align:right;color:#1e293b">${r.cantSalida||'—'}</td>
+    <td style="text-align:center">${(()=>{const s=semReq(r.estado);return`<span title="${s.t}" style="display:inline-block;width:13px;height:13px;border-radius:50%;background:${s.c};box-shadow:0 0 0 3px ${s.bg}"></span>`;})()}</td>
+    <td style="white-space:nowrap">${(()=>{const s=semReq(r.estado);return r.estado?`<span style="background:${s.bg};color:${s.c};padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;white-space:nowrap">${r.estado}</span>`:'—';})()}</td>
   </tr>`).join('');
   const tot=p5fil.length, pages=Math.ceil(tot/sz);
   document.getElementById('p5info').textContent=`Mostrando ${p5pg*sz+1}–${Math.min((p5pg+1)*sz,tot)} de ${tot}`;
@@ -5179,6 +5133,7 @@ function importMaestro(wb){
         unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||g(r,'UM')||g(r,'Um')||g(r,'Und')||g(r,'UndMed')||g(r,'Unidad de Medida')||g(r,'UnidMed')||'',
         nItems:0,cantOrd:0,cantRec:0,cantPend:0,
         frec:gd(r,'FechaRecepcion'),fsal:gd(r,'FechaSalida')||gd(r,'FechaSali'),ucomp:g(r,'UsuarioCompras'),
+        ingreso:0,fingreso:'',
         reqs:[],
         ped:g(r,'CodPedido'),peds:[],fpedido:gd(r,'FechaPedido')||gd(r,'Fecha Pedido')||gd(r,'FechaPed')
       };
@@ -5187,6 +5142,12 @@ function importMaestro(wb){
     o.nItems++;
     const co=gn(r,'Cantidad de orden'), cr=gn(r,'CantRecepcion');
     o.cantOrd+=co; o.cantRec+=cr;
+    o.ingreso+=gn(r,'Ingreso');
+    const fing=gd(r,'FechaIngreso');
+    if(fing){
+      const dkey=s=>s.split('/').reverse().join('');
+      if(!o.fingreso||dkey(fing)>dkey(o.fingreso))o.fingreso=fing;
+    }
     const itemEst=g(r,'EstadoOrden');
     if(itemEst&&!o._estados.includes(itemEst))o._estados.push(itemEst);
 
@@ -5213,6 +5174,7 @@ function importMaestro(wb){
 
   const ocData=Object.values(ocMap).map(o=>{
     o.cantOrd=Math.round(o.cantOrd);o.cantRec=Math.round(o.cantRec);
+    o.ingreso=Math.round(o.ingreso);
     o.cantPend=Math.max(0,o.cantOrd-o.cantRec);
     // Derive estado from all item estados
     const es=o._estados;
@@ -5275,9 +5237,7 @@ function importMaestro(wb){
       prod:g(r,'Producto'),cant:Math.round(gn(r,'CantidadRequerimiento')),
       unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||g(r,'UM')||g(r,'Um')||g(r,'Und')||g(r,'UndMed')||g(r,'Unidad de Medida')||g(r,'UnidMed')||'',
       freq:gd(r,'FechaRequerida')||gd(r,'FechaEntrega')||gd(r,'ParaFechaOrden')||gd(r,'Fecha Requerida')||gd(r,'FechaRequerimiento')||'',
-      estado:g(r,'EstadoRequerimiento'),
-      fechaRecep:gd(r,'FechaRecepcion'),cantRecep:Math.round(gn(r,'CantRecepcion'))||'',
-      fechaSalida:gd(r,'FechaSalida'),cantSalida:Math.round(gn(r,'CantSalida'))||''
+      estado:g(r,'EstadoRequerimiento')
     });
   });
   p5Data.sort((a,b)=>{
