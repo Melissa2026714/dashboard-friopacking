@@ -1598,15 +1598,14 @@ function verCorreoFormateadoOC(oc){
   // Build table rows HTML
   var tablaRows='';
   items.forEach(function(r,idx){
-    var bg=idx%2===0?'#ffffff':'#eef6ff';
-    var bdC='1px solid #c7d9f0';
-    var tdB='font-family:Calibri,Arial,sans-serif;font-size:14px!important;line-height:16px!important;border:'+bdC+';padding:5px 8px;mso-line-height-rule:exactly';
+    var bg=idx%2===0?'#ffffff':'#f0f9ff';
+    var tdB='font-family:Calibri,Arial,sans-serif;font-size:13px;border:1px solid #bae6fd;padding:9px 12px';
     tablaRows+='<tr style="background:'+bg+'">'
-      +'<td style="'+tdB+';text-align:center;color:#64748b;width:32px">'+(idx+1)+'</td>'
-      +'<td style="'+tdB+';color:#1d4ed8;font-weight:700;white-space:nowrap">'+r.cod+'</td>'
-      +'<td style="'+tdB+';font-weight:500;color:#1e293b">'+r.prod+'</td>'
-      +'<td style="'+tdB+';text-align:center;font-weight:700;color:#0f172a;width:52px">'+r.cantOrd+'</td>'
-      +'<td style="'+tdB+';text-align:center;color:#475569;width:62px">'+(r.unid||'—')+'</td>'
+      +'<td style="'+tdB+';text-align:center;color:#64748b;width:30px">'+(idx+1)+'</td>'
+      +'<td style="'+tdB+';color:#0369a1;font-weight:600;white-space:nowrap">'+r.cod+'</td>'
+      +'<td style="'+tdB+';min-width:240px;color:#1e293b">'+r.prod+'</td>'
+      +'<td style="'+tdB+';text-align:center;font-weight:700;color:#0f172a;width:50px">'+r.cantOrd+'</td>'
+      +'<td style="'+tdB+';text-align:center;color:#475569;width:60px">'+(r.unid||'—')+'</td>'
       +'</tr>';
   });
   var w=window.open('','_blank','width=1380,height=960,scrollbars=yes,resizable=yes');
@@ -1697,14 +1696,19 @@ function verCorreoFormateadoOC(oc){
   if(idproy)h+='&nbsp;&nbsp;&nbsp;<strong>ID Proyecto:</strong> '+idproy;
   if(proy)h+='&nbsp;&nbsp;&nbsp;<strong>Proyecto:</strong> '+proy;
   h+='</div>';
-  var _thStyle='padding:6px 8px;font-weight:700;border:1px solid #0284c7;font-size:14px!important;font-family:Calibri,Arial,sans-serif;color:#fff;text-transform:uppercase;letter-spacing:.3px;line-height:16px!important;mso-line-height-rule:exactly';
-  var tablaHtmlBody='<table style="border-collapse:collapse;margin:16px 0;font-family:Calibri,Arial,sans-serif;width:100%;max-width:960px">'
-    +'<thead><tr style="background:#0369a1">'
-    +'<th style="'+_thStyle+';text-align:center;width:32px">#</th>'
+  var _thStyle='padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;font-family:Calibri,Arial,sans-serif';
+  var _proyHdr=(idproy||proy)
+    ?'<div style="margin:20px 0 8px"><span style="font-size:14px;font-weight:800;color:#1e3a5f;border-bottom:2px solid #0369a1;padding-bottom:4px">🏗 Proyecto: '+[idproy,proy].filter(Boolean).join(' — ')+'</span></div>'
+    :'';
+  var tablaHtmlBody=_proyHdr
+    +'<p style="margin:12px 0 4px;font-size:12px;font-weight:700;color:#0369a1">Orden de Compra N° '+oc+'</p>'
+    +'<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-bottom:8px">'
+    +'<thead><tr style="background:#e0f2fe">'
+    +'<th style="'+_thStyle+';text-align:center;width:30px">#</th>'
     +'<th style="'+_thStyle+';text-align:left;white-space:nowrap">Código</th>'
-    +'<th style="'+_thStyle+';text-align:left">Descripción del Artículo</th>'
-    +'<th style="'+_thStyle+';text-align:center;width:52px">Cant.</th>'
-    +'<th style="'+_thStyle+';text-align:center;width:62px">Unidad</th>'
+    +'<th style="'+_thStyle+';text-align:left;min-width:240px">Descripción del Artículo</th>'
+    +'<th style="'+_thStyle+';text-align:center;width:50px">Cant.</th>'
+    +'<th style="'+_thStyle+';text-align:center;width:60px">Unidad</th>'
     +'</tr></thead>'
     +'<tbody>'+tablaRows+'</tbody></table>';
   h+='<div class="body-txt" id="mail-body"><p style="color:#94a3b8;font-style:italic">Seleccione una modalidad de entrega para ver el cuerpo del correo.</p></div>';
