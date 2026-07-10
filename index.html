@@ -3871,7 +3871,7 @@ async function saveConsultasGitHub(token){
   if(!D.consultas||!D.consultas.length)return true; // nada que guardar
   try{
     // Guardar sin fechaRaw (campo calculado) para reducir tamaño
-    const rows=D.consultas.map(function(r){return{oc:r.oc,fecha:r.fecha,ruc:r.ruc,proveedor:r.proveedor,moneda:r.moneda,codigo:r.codigo,desc:r.desc,valor:r.valor,resp:r.resp,estado:r.estado};});
+    const rows=D.consultas.map(function(r){return{oc:r.oc,fecha:r.fecha,ruc:r.ruc,proveedor:r.proveedor,moneda:r.moneda,codigo:r.codigo,desc:r.desc,cant:r.cant,um:r.um,valor:r.valor,resp:r.resp,estado:r.estado};});
     const cPayload=JSON.stringify({consultas:rows,ts:Date.now()});
     let sha='';
     const check=await fetch(GH_CONSULTAS_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
@@ -4578,6 +4578,9 @@ function importConsultas(wb){
   const iPRECMN=gi('PRECIO M.N. UNIT','PRECIO M.N UNIT','PRECIO MN UNIT');
   const iPRECME=gi('PRECIO M.E. UNIT','PRECIO M.E UNIT','PRECIO ME UNIT');
   const iPREC  =gi('PREC UNIT','PRECIO UNIT','VALOR UNIT','VALOR_UNIT','P.U.','PU ','PREC','VALOR','TOTAL','IMPORTE');
+  // Cantidad y unidad de medida
+  const iCANT =gi('CANTIDAD','CANT');
+  const iUM   =gi('U.M.','UM','UNIDAD','MEDIDA');
   // Responsable
   const iCREA =gi('RESPON','RESP_DOC','CREADOO_POR','CREADO_POR','RESPONSABLE');
   const iEST  =gi('ESTAD','ESTADO','EST_DOC','STATUS');
@@ -4611,6 +4614,8 @@ function importConsultas(wb){
       moneda:   fmtMon(gv(r,iMONE)),
       codigo:   gv(r,iPROD),
       desc:     gv(r,iDESC),
+      cant:     (()=>{const s=gv(r,iCANT);const n=parseFloat(s.replace(',','.'));return isNaN(n)?s:(n%1?n:Math.round(n));})(),
+      um:       gv(r,iUM),
       valor:    (()=>{
         const mon=fmtMon(gv(r,iMONE));
         const esMN=(mon==='S/'||mon.toLowerCase().includes('sol'));
@@ -4661,7 +4666,7 @@ function renderP7(){
   const tb=document.getElementById('tb7');
   if(!tb)return;
   if(!fil.length){
-    tb.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">${data.length?'Sin resultados para la búsqueda.':'Aún no se ha cargado el archivo CONSULTAS.xlsx.<br><br>Use el botón 📂 Importar CONSULTAS.xlsx'}</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">${data.length?'Sin resultados para la búsqueda.':'Aún no se ha cargado el archivo CONSULTAS.xlsx.<br><br>Use el botón 📂 Importar CONSULTAS.xlsx'}</td></tr>`;
     const pi=document.getElementById('p7info');if(pi)pi.textContent='';
     return;
   }
@@ -4671,6 +4676,8 @@ function renderP7(){
     <td style="font-size:11px;color:#64748b;font-family:monospace">${r.ruc||'—'}</td>
     <td>${r.proveedor||'—'}</td>
     <td style="text-align:center">${r.moneda||'—'}</td>
+    <td style="text-align:right;font-weight:700;color:#1e3a5f">${r.cant||'—'}</td>
+    <td style="text-align:center;color:#64748b;font-size:11px">${r.um||'—'}</td>
     <td style="text-align:right;font-weight:700;color:#0f172a">${r.valor||'—'}</td>
     <td style="text-align:center">${r.fecha||'—'}</td>
     <td style="text-align:center">${r.oc||'—'}</td>
@@ -5814,6 +5821,8 @@ setInterval(function(){
       <th>RUC</th>
       <th>PROVEEDOR</th>
       <th>MONEDA</th>
+      <th style="text-align:right">CANT.</th>
+      <th>U.M.</th>
       <th>VALOR UNIT.</th>
       <th>FECHA OC</th>
       <th>N° OC</th>
