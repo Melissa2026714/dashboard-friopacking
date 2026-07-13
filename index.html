@@ -1448,9 +1448,9 @@ function renderP2Table(){
     return`<tr>
       <td class="reg-col" style="text-align:center;background:#fffbeb"><input type="checkbox" ${rm.reg?'checked':''} onchange="toggleReg(this,'${r.oc}')" style="width:15px;height:15px;cursor:pointer;accent-color:#d97706" title="Marcar como Regularización"></td>
       <td class="reg-col" style="text-align:center;background:#fffbeb"><input type="checkbox" ${rm.compras?'checked':''} onchange="toggleRegCheck(this,'${r.oc}','compras','fcompras','fcomp_${ocId}')" style="width:15px;height:15px;cursor:pointer;accent-color:#0369a1" ${rm.reg?'':'disabled title="Marque REG. primero"'}></td>
-      <td class="reg-col" style="text-align:center;background:#fffbeb;font-size:11px;color:#0369a1;font-weight:600;white-space:nowrap" id="fcomp_${ocId}">${rm.fcompras||'—'}</td>
+      <td class="reg-col" onclick="editRegFecha(this,'${r.oc}','compras','fcompras')" title="Clic para corregir la fecha real de Compras" style="text-align:center;background:#fffbeb;font-size:11px;color:#0369a1;font-weight:600;white-space:nowrap;cursor:pointer;text-decoration:underline dotted #0369a1" id="fcomp_${ocId}">${rm.fcompras||'—'}</td>
       <td class="reg-col" style="text-align:center;background:#fffbeb"><input type="checkbox" ${rm.almacen?'checked':''} onchange="toggleRegCheck(this,'${r.oc}','almacen','falmacen','falm_${ocId}')" style="width:15px;height:15px;cursor:pointer;accent-color:#0f766e" ${rm.reg?'':'disabled title="Marque REG. primero"'}></td>
-      <td class="reg-col" style="text-align:center;background:#fffbeb;font-size:11px;color:#0f766e;font-weight:600;white-space:nowrap" id="falm_${ocId}">${rm.falmacen||'—'}</td>
+      <td class="reg-col" onclick="editRegFecha(this,'${r.oc}','almacen','falmacen')" title="Clic para corregir la fecha real de Almacén" style="text-align:center;background:#fffbeb;font-size:11px;color:#0f766e;font-weight:600;white-space:nowrap;cursor:pointer;text-decoration:underline dotted #0f766e" id="falm_${ocId}">${rm.falmacen||'—'}</td>
       <td><div style="display:flex;align-items:center;gap:5px"><button onclick="verCorreoFormateadoOC('${ocEsc}')" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="Ver correo formateado para proveedor">✉</button><strong>${r.nItems>1
         ? `<span class="cl" style="cursor:pointer" onclick="openSkuModal(this)" data-oc="${r.oc}" data-proy="${r.proy.replace(/"/g,'&quot;')}" data-prov="${r.prov.replace(/"/g,'&quot;')}" title="Ver ${r.nItems} SKUs">${r.oc} <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:3px;margin-left:3px">${r.nItems} SKU</span></span>`
         : r.oc
@@ -1519,6 +1519,31 @@ function toggleRegCheck(cb,oc,campo,fcampo,elId){
   D.ocMeta[oc][fcampo]=cb.checked?_hoy():'';
   const el=document.getElementById(elId);
   if(el)el.textContent=D.ocMeta[oc][fcampo]||'—';
+  saveLocal();
+}
+function editRegFecha(cell,oc,campo,fcampo){
+  if(!D.ocMeta)D.ocMeta={};
+  if(!D.ocMeta[oc])D.ocMeta[oc]={};
+  if(!D.ocMeta[oc].reg){alert('Primero marca REG. en esta fila.');return;}
+  const actual=D.ocMeta[oc][fcampo]||'';
+  const v=prompt('Fecha real (dd/mm/aaaa).\nEjemplo: 07/07/2026\nDeja el campo vacío para borrarla.',actual);
+  if(v===null)return; // canceló
+  const t=v.trim();
+  if(t===''){
+    D.ocMeta[oc][fcampo]='';
+    D.ocMeta[oc][campo]=false;
+  } else {
+    const m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(!m){alert('Formato inválido. Usa dd/mm/aaaa, por ejemplo 07/07/2026.');return;}
+    const dd=+m[1],mm=+m[2],yy=+m[3];
+    const dt=new Date(yy,mm-1,dd);
+    if(dt.getFullYear()!==yy||dt.getMonth()!==mm-1||dt.getDate()!==dd){alert('Esa fecha no existe. Revisa el día y el mes.');return;}
+    D.ocMeta[oc][fcampo]=String(dd).padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+yy;
+    D.ocMeta[oc][campo]=true; // registrar una fecha implica que el paso sí se hizo
+  }
+  cell.textContent=D.ocMeta[oc][fcampo]||'—';
+  const row=cell.closest('tr');
+  if(row){const cb=row.querySelector('input[type=checkbox][onchange*="\''+campo+'\'"]');if(cb)cb.checked=!!D.ocMeta[oc][campo];}
   saveLocal();
 }
 function toggleCorreo(cb,oc){
