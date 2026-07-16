@@ -2592,7 +2592,8 @@ function exportP3HTML(){
   S+='<button onclick="toggleAll(true)" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">☑ Seleccionar todos</button>';
   S+='<button class="btn-sec" onclick="deselectAll()" id="btn-desel" style="display:none">☐ Quitar selección</button>';
   S+='<button onclick="abrirModalExport()" style="background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">📥 Exportar Excel</button>';
-  S+='<button class="btn-primary" onclick="openConsolidar()" id="btn-consol">📋 Consolidar selección</button></div>';
+  S+='<button class="btn-primary" onclick="openConsolidar()" id="btn-consol">📋 Consolidar selección</button>';
+  S+='<button id="btn-guardar" onclick="guardarTodo()" title="Guardar y sincronizar con todos los usuarios (sin salir del Visual)" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;box-shadow:0 2px 8px rgba(22,163,74,.35)">💾 GUARDAR</button></div>';
   // Table
   S+='<div class="tw"><div class="tw-hdr"><h2>Detalle de Pedidos en Cotización</h2><span>Generado: '+fechaGen+'</span></div>';
   S+='<div class="tw-wrap"><table id="main-table">';
@@ -2620,6 +2621,14 @@ function exportP3HTML(){
   S+='var sel=new Set();';
   S+='function saveCotiz(cb){try{if(window.opener&&window.opener.toggleCotiz)window.opener.toggleCotiz(cb.dataset.key,cb.checked);}catch(e){}}';
   S+='function toggleAllCotiz(checked){document.querySelectorAll("[data-key]").forEach(function(cb){cb.checked=checked;saveCotiz(cb);});}';
+  S+='function guardarTodo(){';
+  S+='  var b=document.getElementById("btn-guardar");';
+  S+='  if(!window.opener||window.opener.closed||typeof window.opener.manualSave!=="function"){alert("No se puede guardar: vuelve a abrir el Visual desde el dashboard principal.");return;}';
+  S+='  if(b){b.dataset.o=b.innerHTML;b.disabled=true;b.innerHTML="⏳ Guardando…";}';
+  S+='  Promise.resolve(window.opener.manualSave()).then(function(){';
+  S+='    if(b){b.innerHTML="✔ Guardado y sincronizado";b.style.background="#15803d";setTimeout(function(){b.innerHTML=b.dataset.o||"💾 GUARDAR";b.style.background="#16a34a";b.disabled=false;},2600);}';
+  S+='  }).catch(function(){if(b){b.innerHTML=b.dataset.o||"💾 GUARDAR";b.style.background="#16a34a";b.disabled=false;}});';
+  S+='}';
   // SharePoint upload — delega al MSAL de la ventana principal (funciona desde localhost:8080)
   S+='var SP_SHARE="https://friopacking-my.sharepoint.com/:f:/g/personal/plinares_friopacking_pe/IgC3g_rPetACQbbVlGitrWDzAaij5_jYvP9KDELBMlbWXzY?e=hfb3jh";';
   S+='function _spNotif(fn){var nb=document.createElement("div");nb.style.cssText="position:fixed;bottom:20px;right:20px;background:#16A34A;color:#fff;padding:14px 18px;border-radius:10px;font-size:13px;font-family:Arial,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3)";nb.innerHTML="<strong>✓ Subido a SharePoint</strong><br><span style=\'font-size:11px;opacity:0.85\'>"+fn+"</span>";document.body.appendChild(nb);setTimeout(function(){nb.remove();},7000);}';
@@ -3755,6 +3764,18 @@ const GH_CONSULTAS_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_
 const GH_CONSULTAS_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_CONSULTAS_FILE;
 const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/index.html';
 
+// ── Bandera de "consultas recién importadas" ─────────────────────────────────
+// consultas.json (~19 MB) SOLO cambia al importar CONSULTAS.xlsx. Mientras esté
+// en false, el botón GUARDAR sube únicamente data.json (actualización de INFO:
+// cotización, correos, notas, fechas) — mucho más rápido. Al importar consultas
+// se pone en true para que el siguiente GUARDAR sí suba el archivo pesado (DATA).
+let _consultasDirty=false;
+function markConsultasDirty(){
+  _consultasDirty=true;
+  const b=document.getElementById('saveBtn');
+  if(b){b.innerHTML='💾 GUARDAR DATA';b.title='Hay CONSULTAS recién importadas: el próximo GUARDAR subirá data.json + consultas.json (~25 MB) para todos.';}
+}
+
 // ── Detección de pestañas desactualizadas (código viejo en memoria) ──────────
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
@@ -3947,20 +3968,24 @@ async function manualSave(){
     if(confirm('Para compartir con todos necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
     return;
   }
-  if(btn){btn.innerHTML='⏳ Subiendo…';btn.disabled=true;}
+  // ¿Esta corrida sube el archivo pesado? Solo si se importaron consultas nuevas.
+  const subeData=_consultasDirty&&D.consultas&&D.consultas.length;
+  if(btn){btn.innerHTML=subeData?'⏳ Subiendo DATA…':'⏳ Actualizando info…';btn.disabled=true;}
   const ok=await saveGitHub(payload);
-  // Guardar consultas en paralelo si hay datos
-  if(D.consultas&&D.consultas.length){
+  // consultas.json (~19 MB) solo se re-sube tras una importación de consultas
+  let okc=true;
+  if(subeData){
     if(btn)btn.innerHTML='⏳ Subiendo consultas…';
-    await saveConsultasGitHub(token);
+    okc=await saveConsultasGitHub(token);
+    if(okc)_consultasDirty=false;
   }
   if(btn){
-    btn.innerHTML=ok?'✔ GUARDADO':'⚠ Solo local';
+    btn.innerHTML=ok?(subeData?'✔ DATA GUARDADA':'✔ INFO ACTUALIZADA'):'⚠ Solo local';
     btn.style.background=ok?'#15803d':'#d97706';
     btn.disabled=false;
-    setTimeout(()=>{btn.innerHTML='💾 GUARDAR';btn.style.background='#16a34a';},2500);
+    setTimeout(()=>{btn.innerHTML=(_consultasDirty?'💾 GUARDAR DATA':'💾 GUARDAR');btn.style.background='#16a34a';},2500);
   }
-  if(ok)showSavedLabel('☁ '+new Date().toLocaleString('es-PE'),'#0ea5e9');
+  if(ok)showSavedLabel('☁ '+new Date().toLocaleString('es-PE')+(subeData?' · DATA':' · info'),'#0ea5e9');
 }
 
 // ── Configurar token (solo admin) ─────────────────────────────────────────────
@@ -4661,6 +4686,7 @@ function importConsultas(wb){
   _st('k7prov',[...new Set(D.consultas.map(r=>r.proveedor).filter(Boolean))].length);
   _st('k7art',[...new Set(D.consultas.map(r=>r.codigo).filter(Boolean))].length);
   renderP7();
+  markConsultasDirty();
   alert('✅ CONSULTAS.xlsx importado: '+D.consultas.length+' registros');
 }
 function handleConsultasUpload(input){
