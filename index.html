@@ -2601,7 +2601,7 @@ function exportP3HTML(){
   S+='<th>N° Pedido</th><th>F. Pedido</th><th>Resp. Pedido</th><th>Responsable / Solicitante</th>';
   S+='<th>ID Proyecto</th><th>Proyecto</th><th>Código</th><th>Descripción Producto</th>';
   S+='<th>Cant.</th><th>Unidad</th><th>Requerimiento</th><th>Fecha Req.</th><th>Estado</th>';
-  S+='<th style="background:#16a34a;color:#fff;text-align:center;white-space:nowrap"><div style="display:flex;align-items:center;justify-content:center;gap:5px"><input type="checkbox" id="chk-cotiz-all" onchange="toggleAllCotiz(this.checked)" title="Marcar todos los visibles" style="width:14px;height:14px;cursor:pointer;accent-color:#fff"> COTIZ.</div></th>';
+  S+='<th style="background:#16a34a;color:#fff;text-align:center;white-space:nowrap;position:sticky;right:0;z-index:5;box-shadow:-5px 0 8px -3px rgba(0,0,0,.25)"><div style="display:flex;align-items:center;justify-content:center;gap:5px"><input type="checkbox" id="chk-cotiz-all" onchange="toggleAllCotiz(this.checked)" title="Marcar todos los visibles" style="width:14px;height:14px;cursor:pointer;accent-color:#fff"> COTIZ.</div></th>';
   S+='</tr></thead><tbody id="tbody"></tbody></table></div></div>';
   S+='<div class="footer">Documento generado automáticamente &nbsp;&middot;&nbsp; <strong>FRIOPACKING S.A.</strong> &nbsp;&middot;&nbsp; Plataforma de Seguimiento de Compras 2026</div>';
   S+='</div>';
@@ -2735,7 +2735,7 @@ function exportP3HTML(){
   S+='    h+=\'<td style="white-space:nowrap;color:#64748b;font-size:11px">\'+esc(r.freq||"—")+\'</td>\';';
   S+='    h+=\'<td style="text-align:center"><span class="badge" style="background:\'+c+\'20;color:\'+c+\';border-color:\'+c+\'55">\'+esc(r.estado||"—")+\'</span></td>\';';
   S+='    var cotChk=r.cotiz?"checked":"";';
-  S+='    h+=\'<td style="text-align:center;background:#f0fdf4"><input type="checkbox" \'+cotChk+\' data-key="\'+esc(r.key)+\'" onchange="saveCotiz(this)" style="width:15px;height:15px;cursor:pointer;accent-color:#16a34a"></td>\';';
+  S+='    h+=\'<td style="text-align:center;background:#f0fdf4;position:sticky;right:0;z-index:1;box-shadow:-5px 0 8px -3px rgba(0,0,0,.12)"><input type="checkbox" \'+cotChk+\' data-key="\'+esc(r.key)+\'" onchange="saveCotiz(this)" style="width:15px;height:15px;cursor:pointer;accent-color:#16a34a"></td>\';';
   S+='    h+="</tr>";';
   S+='  });';
   S+='  tb.innerHTML=h;';
