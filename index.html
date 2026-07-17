@@ -1418,7 +1418,9 @@ function renderP2(){
   const allEstados=Object.keys(counts).sort((a,b)=>sortOrder(a)-sortOrder(b));
   document.getElementById('kpi2estados').innerHTML=allEstados.map(e=>{
     const cfg=estadoCls(e);
-    return`<div class="kpi ${cfg.cls}" style="flex:1;min-width:0"><div class="klbl">${e}</div><div class="kval">${counts[e]||0}</div><div class="ksub">${cfg.sub}</div></div>`;
+    const isCompleto=e.toLowerCase().includes('completo');
+    const pct=(_f2RegOnly&&isCompleto&&tot>0)?`<span style="display:inline-block;margin-top:4px;background:#d1fae5;color:#065f46;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.02em">${Math.round((counts[e]||0)/tot*100)}% completado</span>`:'';
+    return`<div class="kpi ${cfg.cls}" style="flex:1;min-width:0"><div class="klbl">${e}</div><div class="kval">${counts[e]||0}</div><div class="ksub">${cfg.sub}${pct?'<br>'+pct:''}</div></div>`;
   }).join('');
   const pend=Object.entries(counts).filter(([e])=>!e.toLowerCase().includes('completo')&&!e.toLowerCase().includes('parcial')).reduce((s,[,v])=>s+v,0);
   const parc=Object.entries(counts).filter(([e])=>e.toLowerCase().includes('parcial')).reduce((s,[,v])=>s+v,0);
