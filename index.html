@@ -1492,7 +1492,7 @@ function renderP2Table(){
   if(_regColsHidden)document.querySelectorAll('.reg-col').forEach(el=>el.style.display='none');
 }
 let _f2RegOnly=false;
-let _regColsHidden=false;
+let _regColsHidden=true;
 function toggleRegCols(){
   _regColsHidden=!_regColsHidden;
   document.querySelectorAll('.reg-col').forEach(el=>el.style.display=_regColsHidden?'none':'');
@@ -4015,7 +4015,7 @@ function showSavedLabel(text,color){
 // ── Inicialización: carga GitHub primero, localStorage como fallback ───────────
 (async function init(){
   initP2();initP3();initP6();
-  nav('home');
+  nav('p2');
   const fromGH=await loadGitHub();
   if(!fromGH)loadLocal();
   try{refreshAllPages();}catch(e){}
