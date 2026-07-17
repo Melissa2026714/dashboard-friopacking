@@ -5488,8 +5488,13 @@ function importMaestro(wb){
 
   // Para filas de OC Parcial, heredar el responsable de quien colocó la OC
   const reqRespMap={};
-  ocData.forEach(o=>{if(o.req&&o.ucomp)reqRespMap[o.req]=o.ucomp;});
-  sinOcData.forEach(s=>{if(s.parcial&&reqRespMap[s.req])s.resp=reqRespMap[s.req];});
+  ocData.forEach(o=>{if(o.req)reqRespMap[o.req]={ucomp:o.ucomp,resp:o.resp};});
+  sinOcData.forEach(s=>{
+    if(s.parcial&&reqRespMap[s.req]){
+      s.respPed=reqRespMap[s.req].ucomp||s.respPed; // quien colocó la OC → RESP. PEDIDO
+      s.resp=reqRespMap[s.req].resp||s.resp;         // responsable de la OC → RESPONSABLE/SOLICITANTE
+    }
+  });
 
   // ── 7. Apply to D and SKUS ─────────────────────────────────────────────────
   D.oc=ocData;
