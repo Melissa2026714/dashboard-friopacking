@@ -2172,12 +2172,16 @@ function renderP3Table(){
     <td style="white-space:normal;min-width:160px" title="${r.proy}">${r.proy}</td>
     <td><span class="cl">${r.cod}</span></td>
     <td style="max-width:320px;word-wrap:break-word;white-space:normal">${r.prod}</td>
-    <td>${r.cant}</td>
+    <td>${r.parcial
+      ? `<span style="font-weight:700">${r.cant}</span><br><span style="font-size:10px;color:#92400e">de ${r.cantReq} — ${r.cantOrd} ya en OC</span>`
+      : r.cant}</td>
     <td style="text-align:center;font-size:11px;color:#64748b">${r.unid||'—'}</td>
     <td>${r.req}</td>
     <td style="font-size:11px;color:#475569">${r.freq||'—'}</td>
     <td style="text-align:center">${esEnTransito(r.cod)?'<span style="background:#0891b2;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">SÍ</span>':'<span style="color:#94a3b8;font-size:10px">—</span>'}</td>
-    <td>${(()=>{var k=(r.ped||'')+'_'+(r.cod||'');return(D.cotMeta&&D.cotMeta[k])?'<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">En cotización</span>':badgeReq(r.estado);})()}</td>
+    <td>${r.parcial
+      ? '<span style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">⚠ OC Parcial</span>'
+      : (()=>{var k=(r.ped||'')+'_'+(r.cod||'');return(D.cotMeta&&D.cotMeta[k])?'<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">En cotización</span>':badgeReq(r.estado);})()}</td>
   </tr>`).join('');
   const tot=p3fil.length, pages=Math.ceil(tot/sz);
   document.getElementById('p3info').textContent=`Mostrando ${p3pg*sz+1}–${Math.min((p3pg+1)*sz,tot)} de ${tot}`;
@@ -5469,6 +5473,41 @@ function importMaestro(wb){
   D.oc=ocData;
   D.sinoc=sinOcData;
   D.p5reqs=p5Data;
+
+  // ── Detectar REQs con cobertura parcial de OC ──────────────────────────────
+  // Construir mapa: reqCode → total cantOrd en todas las OCs que lo referencian
+  const reqOrdMap={};
+  ocData.forEach(o=>{
+    const cantOrd=o.cantOrd||0;
+    (o.reqs&&o.reqs.length?o.reqs:[o.req]).filter(Boolean).forEach(rq=>{
+      reqOrdMap[rq]=(reqOrdMap[rq]||0)+cantOrd;
+    });
+  });
+  // Para cada REQ en p5Data con estado "Enviado a pedido" que tenga OC parcial,
+  // inyectarlo en sinoc con cantPend = cantREQ - cantOrd y flag parcial:true
+  const reqEnSinoc=new Set(sinOcData.map(s=>s.req).filter(Boolean));
+  p5Data.forEach(r=>{
+    const ordTotal=reqOrdMap[r.req]||0;
+    if(ordTotal>0 && ordTotal<r.cant && !reqEnSinoc.has(r.req)){
+      D.sinoc.push({
+        ped:'—',
+        fecha:r.fecha,
+        respPed:r.resp,
+        resp:r.resp,
+        idproy:r.idproy,proy:r.proy,
+        cod:r.cod,prod:r.prod,
+        cant:r.cant-ordTotal,      // unidades aún sin OC
+        cantReq:r.cant,            // total original del REQ
+        cantOrd:ordTotal,          // lo ya ordenado
+        unid:r.unid,
+        req:r.req,
+        freq:r.freq,
+        estado:r.estado,
+        parcial:true               // flag para badge visual
+      });
+      reqEnSinoc.add(r.req);
+    }
+  });
   D.gerencial=gerencial;
   D.proj=projData;
   SKUS=skusMap;
