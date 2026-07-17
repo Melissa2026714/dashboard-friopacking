@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Costo EPP y Uniformes por Personal — FrioPacking 2026</title>
+<style>
+/* ── Tokens ── */
+:root {
+  --bg:        #EEF3F7;
+  --surface:   #FFFFFF;
+  --surface2:  #F5F8FB;
+  --border:    #D0DCE8;
+  --navy:      #0D3A5C;
+  --teal:      #1A7A8A;
+  --teal-dim:  #E3F2F4;
+  --text:      #1C2E3D;
+  --muted:     #5C7A90;
+  --positive:  #1E7A4A;
+  --pos-bg:    #E6F4EC;
+  --danger:    #C0392B;
+  --danger-bg: #FDECEA;
+  --cot-bg:    #FFFBDD;
+  --cot-border:#E8C900;
+  --cot-text:  #7A5C00;
+  --cot-badge: #F5C800;
+  --shadow:    0 1px 4px rgba(13,58,92,.08), 0 2px 12px rgba(13,58,92,.05);
+  --radius:    10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #07131F;
+    --surface:   #0F2132;
+    --surface2:  #122740;
+    --border:    #1D3A52;
+    --navy:      #3A9BBD;
+    --teal:      #28B5C8;
+    --teal-dim:  #0D2F38;
+    --text:      #D8E8F2;
+    --muted:     #7A9DB5;
+    --positive:  #4CC984;
+    --pos-bg:    #0D2E1C;
+    --danger:    #F07060;
+    --danger-bg: #2E0F0C;
+    --cot-bg:    #2A2200;
+    --cot-border:#7A6000;
+    --cot-text:  #FFD84D;
+    --cot-badge: #C9A000;
+    --shadow:    0 1px 6px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="light"] {
+  --bg:#EEF3F7;--surface:#FFFFFF;--surface2:#F5F8FB;--border:#D0DCE8;
+  --navy:#0D3A5C;--teal:#1A7A8A;--teal-dim:#E3F2F4;--text:#1C2E3D;
+  --muted:#5C7A90;--positive:#1E7A4A;--pos-bg:#E6F4EC;
+  --danger:#C0392B;--danger-bg:#FDECEA;
+  --cot-bg:#FFFBDD;--cot-border:#E8C900;--cot-text:#7A5C00;--cot-badge:#F5C800;
+  --shadow:0 1px 4px rgba(13,58,92,.08),0 2px 12px rgba(13,58,92,.05);
+}
+:root[data-theme="dark"] {
+  --bg:#07131F;--surface:#0F2132;--surface2:#122740;--border:#1D3A52;
+  --navy:#3A9BBD;--teal:#28B5C8;--teal-dim:#0D2F38;--text:#D8E8F2;
+  --muted:#7A9DB5;--positive:#4CC984;--pos-bg:#0D2E1C;
+  --danger:#F07060;--danger-bg:#2E0F0C;
+  --cot-bg:#2A2200;--cot-border:#7A6000;--cot-text:#FFD84D;--cot-badge:#C9A000;
+  --shadow:0 1px 6px rgba(0,0,0,.4);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  background: var(--navy);
+  color: #fff;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,.25);
+}
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.header-logo {
+  width: 36px;
+  height: 36px;
+  background: var(--teal);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+  flex-shrink: 0;
+}
+.header-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: #fff;
+}
+.header-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.btn-theme {
+  background: rgba(255,255,255,.12);
+  border: none;
+  border-radius: 6px;
+  color: rgba(255,255,255,.8);
+  font-size: 16px;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+}
+.btn-theme:hover { background: rgba(255,255,255,.22); }
+.btn-save {
+  background: var(--teal);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 20px;
+  height: 36px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  letter-spacing: .02em;
+  transition: background .15s, transform .1s;
+}
+.btn-save:hover { background: #148898; }
+.btn-save:active { transform: scale(.97); }
+.save-icon { font-size: 15px; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  top: 76px;
+  right: 24px;
+  background: var(--positive);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  z-index: 999;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity .25s, transform .25s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── Main ── */
+main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px 20px 120px;
+}
+
+.page-intro {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.page-intro-text h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: -.01em;
+}
+.page-intro-text p {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.badge-year {
+  background: var(--teal-dim);
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--teal);
+}
+
+/* ── Category Cards ── */
+.category {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+.cat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.cat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--teal-dim);
+  color: var(--teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.cat-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: .01em;
+}
+.cat-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cat-total {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--teal);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+.cat-total-label {
+  font-size: 10.5px;
+  color: var(--muted);
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1.2;
+}
+.chevron {
+  color: var(--muted);
+  font-size: 12px;
+  transition: transform .2s;
+}
+.chevron.open { transform: rotate(180deg); }
+
+.cat-body { display: block; }
+.cat-body.collapsed { display: none; }
+
+/* ── Table ── */
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+thead tr {
+  background: var(--surface2);
+}
+th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+th:nth-child(2), th:nth-child(3), th:nth-child(4) { text-align: right; }
+
+td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+
+td:nth-child(2), td:nth-child(4) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+td:nth-child(3) { text-align: right; }
+
+.td-item { font-weight: 500; color: var(--text); }
+.td-note {
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Editable inputs */
+.edit-input {
+  width: 110px;
+  text-align: right;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 6px;
+  transition: border-color .15s, background .15s;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.edit-input::-webkit-outer-spin-button,
+.edit-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.edit-input:hover {
+  border-color: var(--border);
+  background: var(--surface2);
+}
+.edit-input:focus {
+  border-color: var(--teal);
+  background: var(--teal-dim);
+}
+.qty-input {
+  width: 60px;
+  text-align: right;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 6px;
+  transition: border-color .15s, background .15s;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.qty-input:hover { border-color: var(--border); background: var(--surface2); }
+.qty-input:focus { border-color: var(--teal); background: var(--teal-dim); }
+
+.item-input {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 3px 6px;
+  transition: border-color .15s, background .15s;
+  outline: none;
+}
+.item-input:hover { border-color: var(--border); background: var(--surface2); }
+.item-input:focus { border-color: var(--teal); background: var(--teal-dim); }
+
+.total-cell {
+  font-weight: 700;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── COT row highlight ── */
+tr.cot-row td {
+  background: var(--cot-bg) !important;
+  border-left: 3px solid var(--cot-border);
+}
+tr.cot-row:hover td { filter: brightness(.97); }
+
+.cot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--cot-badge);
+  color: #3D2E00;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 20px;
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.cot-badge svg { flex-shrink: 0; }
+
+.precio-original {
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: line-through;
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+.ahorro-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--pos-bg);
+  color: var(--positive);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Delete row button */
+.btn-del {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color .15s, background .15s;
+}
+.btn-del:hover { color: var(--danger); background: var(--danger-bg); }
+
+/* Table footer: add row */
+.cat-footer {
+  padding: 10px 18px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.btn-add {
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 7px;
+  color: var(--teal);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background .15s, border-color .15s;
+}
+.btn-add:hover { background: var(--teal-dim); border-color: var(--teal); }
+.cat-subtotal {
+  font-size: 12px;
+  color: var(--muted);
+}
+.cat-subtotal strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--positive);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Gender toggle ── */
+.gender-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+}
+.gender-btn {
+  background: var(--surface2);
+  border: none;
+  color: var(--muted);
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.gender-btn + .gender-btn { border-left: 1px solid var(--border); }
+.gender-btn.active-m {
+  background: #1A5FA8;
+  color: #fff;
+}
+.gender-btn.active-f {
+  background: #A8365C;
+  color: #fff;
+}
+.gender-btn.active-oficina {
+  background: var(--teal);
+  color: #fff;
+}
+.gender-btn.active-almacen {
+  background: #5A3DAA;
+  color: #fff;
+}
+.gender-note {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 10px;
+  font-style: italic;
+}
+tr.hidden-row { display: none; }
+
+/* ── Leyenda bar ── */
+.leyenda-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 18px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.leyenda-item { display: flex; align-items: center; gap: 7px; }
+.leyenda-dot {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.dot-normal { background: var(--surface2); border: 1px solid var(--border); }
+.dot-cot    { background: var(--cot-badge); border: 1px solid var(--cot-border); }
+.leyenda-sep { flex: 1; }
+.ahorro-resumen {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.ahorro-resumen strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--positive);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Grand Total bar ── */
+.grand-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--navy);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 32px;
+  z-index: 90;
+  box-shadow: 0 -2px 16px rgba(0,0,0,.25);
+}
+.grand-label {
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.6);
+}
+.grand-amount {
+  font-size: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+  color: #fff;
+}
+.grand-meta {
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+  margin-top: 1px;
+}
+.grand-right { text-align: right; }
+
+/* ── Modal TOKEN ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 32px 28px;
+  width: 340px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.3);
+  text-align: center;
+}
+.modal-icon { font-size: 32px; margin-bottom: 12px; }
+.modal-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+.modal-desc { font-size: 12.5px; color: var(--muted); margin-bottom: 20px; }
+.modal-input {
+  width: 100%;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--surface2);
+  color: var(--text);
+  outline: none;
+  font-family: monospace;
+  transition: border-color .15s;
+}
+.modal-input:focus { border-color: var(--teal); }
+.modal-error {
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: 8px;
+  min-height: 18px;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+.modal-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+}
+.modal-btn-cancel { background: var(--surface2); color: var(--muted); }
+.modal-btn-cancel:hover { background: var(--border); }
+.modal-btn-ok { background: var(--teal); color: #fff; }
+.modal-btn-ok:hover { background: #148898; }
+
+/* ── Import button ── */
+.btn-import {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 8px;
+  color: rgba(255,255,255,.9);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 0 14px;
+  height: 36px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background .15s;
+}
+.btn-import:hover { background: rgba(255,255,255,.22); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="toast" id="toast">✓ Cambios guardados correctamente</div>
+
+<!-- Modal TOKEN -->
+<div class="modal-overlay" id="modalToken">
+  <div class="modal-box">
+    <div class="modal-icon">🔐</div>
+    <div class="modal-title">Token de acceso</div>
+    <div class="modal-desc">Ingrese el token para guardar los cambios</div>
+    <input class="modal-input" id="tokenInput" type="password" maxlength="20"
+           placeholder="••••••" onkeydown="if(event.key==='Enter') confirmarToken()">
+    <div class="modal-error" id="tokenError"></div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="modal-btn modal-btn-ok" onclick="confirmarToken()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Input oculto para importar Excel -->
+<input type="file" id="excelInput" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)">
+
+<header class="header">
+  <div class="header-brand">
+    <div class="header-logo">FP</div>
+    <div>
+      <div class="header-title">EPP & Uniformes — Costo por Personal</div>
+      <div class="header-sub">FrioPacking 2026 · Área de Compras</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn-import" onclick="document.getElementById('excelInput').click()" title="Importar precios desde Excel">
+      📂 Importar Excel
+    </button>
+    <button class="btn-theme" id="themeToggle" title="Cambiar tema">🌙</button>
+    <button class="btn-save" onclick="abrirModal()">
+      <span class="save-icon">💾</span> GUARDAR
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="page-intro">
+    <div class="page-intro-text">
+      <h2>Cuadro de EPP y Uniformes</h2>
+      <p>Costos unitarios sin IGV · Editable — haga clic en cualquier valor para modificar</p>
+    </div>
+    <div class="badge-year">2026</div>
+  </div>
+
+  <!-- Leyenda + resumen ahorros COT -->
+  <div class="leyenda-bar">
+    <div class="leyenda-item">
+      <span class="leyenda-dot dot-normal"></span>
+      <span>Precio orden directa</span>
+    </div>
+    <div class="leyenda-item">
+      <span class="leyenda-dot dot-cot"></span>
+      <span>Cotización COMPRAS — mejor oferta encontrada en el mercado</span>
+    </div>
+    <div class="leyenda-sep"></div>
+    <div class="ahorro-resumen">
+      Ahorro total COT: <strong id="ahorroTotal">S/ 0.00</strong>
+    </div>
+  </div>
+
+  <div id="categorias"></div>
+</main>
+
+<div class="grand-bar">
+  <div>
+    <div class="grand-label">Total general</div>
+    <div class="grand-meta">Suma de todos los rubros</div>
+  </div>
+  <div class="grand-right">
+    <div class="grand-amount">S/ <span id="grandTotal">0.00</span></div>
+  </div>
+</div>
+
+<script>
+/* ── Data ── */
+// costo_directo = precio orden directa (sin cotización)
+// costo_cot     = precio que COMPRAS encontró vía cotización (mejor oferta)
+// Si costo_cot está definido, la fila se resalta en amarillo
+const DATA = [
+  {
+    id: "admin",
+    icon: "👔",
+    nombre: "Administrativo",
+    generoToggle: true,
+    items: [
+      { item: "Camisa",                 qty: 1, costo: 76.50,  nota: "" },
+      { item: "Bota Vienna Mujer",      qty: 1, costo: 280.90, nota: "", genero: "f" },
+      { item: "Bota Performance Varón", qty: 1, costo: 341.00, nota: "", genero: "m" },
+      { item: "Pantalón",               qty: 1, costo: 80.00,  nota: "aprox · No se dio pantalón" },
+    ]
+  },
+  {
+    id: "adminlog",
+    icon: "📦",
+    nombre: "Administrativo Logístico",
+    generoToggle: true,
+    items: [
+      { item: "Camisa",                 qty: 1, costo: 76.50,  nota: "" },
+      { item: "Bota Vienna Mujer",      qty: 1, costo: 280.90, nota: "", genero: "f" },
+      { item: "Bota Performance Varón", qty: 1, costo: 341.00, nota: "", genero: "m" },
+      { item: "Pantalón",               qty: 1, costo: 80.00,  nota: "aprox · No se dio pantalón" },
+      { item: "Casco",                  qty: 1, costo: 63.42,  nota: "" },
+      { item: "Orejeras",               qty: 1, costo: 71.20,  nota: "" },
+      { item: "Barbiquejo",             qty: 1, costo: 0.64,   nota: "" },
+    ]
+  },
+  {
+    id: "ssoma",
+    icon: "🦺",
+    nombre: "Operativos / Supervisión (SSOMA) — EPP básico",
+    items: [
+      { item: "Zapatos de seguridad", qty: 1, costo: 604.72, costo_directo: 620.25, nota: "Zapatos de seguridad" },
+      { item: "Camisa",                qty: 1, costo: 76.50, nota: "" },
+      { item: "Camisa celeste unisex", qty: 1, costo: 75.00, nota: "" },
+      { item: "Pantalón beige",        qty: 1, costo: 80.00, nota: "" },
+      { item: "Chaleco rojo",          qty: 1, costo: 57.00, nota: "" },
+      { item: "Casco",               qty: 1, costo: 63.42,  nota: "" },
+      { item: "Orejeras",            qty: 1, costo: 71.20,  nota: "" },
+      { item: "Barbiquejo",          qty: 1, costo: 0.64,   nota: "" },
+      { item: "Lentes de seguridad", qty: 1, costo: 9.90,   nota: "" },
+    ]
+  },
+  {
+    id: "tecnico",
+    icon: "🔧",
+    nombre: "EPP Técnicos",
+    items: [
+      { item: "Zapatos de seguridad", qty: 1, costo: 440.68, costo_directo: 547.56, nota: "Zapatos de seguridad" },
+      { item: "Casco",               qty: 1, costo: 63.42,  nota: "" },
+      { item: "Orejeras",            qty: 1, costo: 71.20,  nota: "" },
+      { item: "Barbiquejo",          qty: 1, costo: 0.64,   nota: "" },
+      { item: "Lentes de seguridad", qty: 1, costo: 9.90,   nota: "" },
+      { item: "Máscara full face",   qty: 1, costo: 500.00, nota: "" },
+      { item: "Guantes",             qty: 1, costo: 130.00, nota: "" },
+    ]
+  },
+  {
+    id: "supering",
+    icon: "⚙️",
+    nombre: "Supervisor Ingeniería",
+    items: [
+      { item: "Botas",    qty: 1, costo: 440.68, costo_directo: 547.56, nota: "Botas de seguridad" },
+      { item: "Camisa",   qty: 1, costo: 76.50,  nota: "" },
+      { item: "Pantalón", qty: 1, costo: 130.00, nota: "" },
+      { item: "Casaca",   qty: 1, costo: 120.00, nota: "" },
+      { item: "Casco",    qty: 1, costo: 63.42,  nota: "" },
+    ]
+  },
+  {
+    id: "almacen",
+    icon: "🏭",
+    nombre: "Operativos Almacén — Hombres",
+    items: [
+      { item: "Polo",         qty: 1, costo: 24.70,  nota: "" },
+      { item: "Pantalón",     qty: 1, costo: 50.00,  nota: "" },
+      { item: "Guantes",      qty: 1, costo: 5.93,   nota: "" },
+      { item: "Casco",        qty: 1, costo: 63.42,  nota: "" },
+      { item: "Zapatos",      qty: 1, costo: 341.00, nota: "" },
+      { item: "Chaleco azul", qty: 1, costo: 57.10,  nota: "" },
+    ]
+  },
+  {
+    id: "limpieza",
+    icon: "🧹",
+    nombre: "Personal de Limpieza",
+    tipoToggle: true,
+    items: [
+      { item: "Polo",        qty: 1, costo: 22.40,  nota: "" },
+      { item: "Pantalón",    qty: 1, costo: 33.00,  nota: "" },
+      { item: "Casaca",      qty: 1, costo: 44.50,  nota: "" },
+      { item: "Casco",       qty: 1, costo: 63.42,  nota: "", tipo: "almacen" },
+      { item: "Orejeras",    qty: 1, costo: 71.20,  nota: "", tipo: "almacen" },
+      { item: "Barbiquejo",  qty: 1, costo: 0.64,   nota: "", tipo: "almacen" },
+      { item: "Zapatos",     qty: 1, costo: 280.90, nota: "" },
+    ]
+  }
+];
+
+function fmt(n) {
+  return Number(n).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function catTotal(catId) {
+  const rows = document.querySelectorAll(`#cat-${catId} .item-row`);
+  let t = 0;
+  rows.forEach(r => {
+    if (r.classList.contains("hidden-row")) return; // excluir fila oculta por género
+    const qty = parseFloat(r.querySelector(".qty-input").value) || 0;
+    const c   = parseFloat(r.querySelector(".edit-input").value) || 0;
+    t += qty * c;
+  });
+  return t;
+}
+
+function updateTotals(catId) {
+  const rows = document.querySelectorAll(`#cat-${catId} .item-row`);
+  rows.forEach(r => {
+    const qty = parseFloat(r.querySelector(".qty-input").value) || 0;
+    const c   = parseFloat(r.querySelector(".edit-input").value) || 0;
+    r.querySelector(".total-cell").textContent = "S/ " + fmt(qty * c);
+    // recalc ahorro pill for COT rows
+    const directo = parseFloat(r.dataset.directo);
+    if (!isNaN(directo) && directo > 0) {
+      const pill = r.querySelector(".ahorro-pill");
+      const orig = r.querySelector(".precio-original");
+      const ahorro = directo - c;
+      if (pill) pill.textContent = `▼ Ahorro S/ ${fmt(ahorro)}`;
+      if (orig) orig.textContent = `Orden directa: S/ ${fmt(directo)}`;
+    }
+  });
+  const t = catTotal(catId);
+  document.getElementById(`catTotal-${catId}`).textContent = "S/ " + fmt(t);
+  document.getElementById(`catSub-${catId}`).innerHTML = `Total: <strong>S/ ${fmt(t)}</strong>`;
+  updateGrand();
+}
+
+function updateGrand() {
+  let grand = 0;
+  DATA.forEach(c => { grand += catTotal(c.id); });
+  document.getElementById("grandTotal").textContent = fmt(grand);
+
+  // recalc ahorro total COT
+  let ahorroTotal = 0;
+  document.querySelectorAll(".item-row.cot-row").forEach(r => {
+    const directo = parseFloat(r.dataset.directo);
+    const cot     = parseFloat(r.querySelector(".edit-input").value) || 0;
+    const qty     = parseFloat(r.querySelector(".qty-input").value)  || 0;
+    if (!isNaN(directo)) ahorroTotal += (directo - cot) * qty;
+  });
+  const el = document.getElementById("ahorroTotal");
+  if (el) el.textContent = "S/ " + fmt(ahorroTotal);
+}
+
+function setTipo(catId, t) {
+  const card = document.getElementById(`cat-${catId}`);
+  card.querySelectorAll("tr[data-tipo]").forEach(r => {
+    r.classList.toggle("hidden-row", t !== "almacen");
+  });
+  card.querySelectorAll(".gender-btn").forEach(b => {
+    b.classList.remove("active-oficina", "active-almacen");
+  });
+  const activeBtn = card.querySelector(`.gender-btn[data-t="${t}"]`);
+  if (activeBtn) activeBtn.classList.add(t === "almacen" ? "active-almacen" : "active-oficina");
+  updateTotals(catId);
+}
+
+function setGenero(catId, g) {
+  const card = document.getElementById(`cat-${catId}`);
+  // show/hide rows según género
+  card.querySelectorAll("tr[data-genero]").forEach(r => {
+    r.classList.toggle("hidden-row", r.dataset.genero !== g);
+  });
+  // update button states
+  card.querySelectorAll(".gender-btn").forEach(b => {
+    b.classList.remove("active-m", "active-f");
+  });
+  const activeBtn = card.querySelector(`.gender-btn[data-g="${g}"]`);
+  if (activeBtn) activeBtn.classList.add(g === "m" ? "active-m" : "active-f");
+
+  // update label in cat-name area
+  const label = card.querySelector(".genero-label");
+  if (label) label.textContent = g === "m" ? "Varón" : "Dama";
+
+  updateTotals(catId);
+}
+
+function addRow(catId) {
+  const tbody = document.querySelector(`#cat-${catId} tbody`);
+  const tr = document.createElement("tr");
+  tr.className = "item-row";
+  tr.innerHTML = `
+    <td class="td-item"><input class="item-input" type="text" value="Nuevo ítem" onchange="updateTotals('${catId}')"></td>
+    <td><input class="qty-input" type="number" value="1" min="0" step="1" oninput="updateTotals('${catId}')"></td>
+    <td><input class="edit-input" type="number" value="0.00" min="0" step="0.01" oninput="updateTotals('${catId}')"></td>
+    <td class="total-cell">S/ 0.00</td>
+    <td><button class="btn-del" title="Eliminar fila" onclick="delRow(this,'${catId}')">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  tr.querySelector(".item-input").focus();
+  tr.querySelector(".item-input").select();
+  updateTotals(catId);
+}
+
+function delRow(btn, catId) {
+  btn.closest("tr").remove();
+  updateTotals(catId);
+}
+
+function toggleCat(catId) {
+  const body = document.getElementById(`catBody-${catId}`);
+  const chev = document.getElementById(`chev-${catId}`);
+  body.classList.toggle("collapsed");
+  chev.classList.toggle("open");
+}
+
+function buildRow(it, catId) {
+  const isCot = it.costo_directo !== undefined;
+  const ahorro = isCot ? (it.costo_directo - it.costo) : 0;
+  const cotBadge = isCot ? `
+    <span class="cot-badge">
+      <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M5 1l1.18 2.39 2.64.38-1.91 1.86.45 2.63L5 7l-2.36 1.26.45-2.63L1.18 3.77l2.64-.38z" fill="#3D2E00"/></svg>
+      COT Compras
+    </span>` : "";
+  const precioOriginal = isCot ? `<span class="precio-original">Orden directa: S/ ${fmt(it.costo_directo)}</span>` : "";
+  const ahorroPill = isCot ? `<span class="ahorro-pill">▼ Ahorro S/ ${fmt(ahorro)}</span>` : "";
+
+  const genAttr   = it.genero ? ` data-genero="${it.genero}"` : "";
+  const tipoAttr  = it.tipo   ? ` data-tipo="${it.tipo}"`   : "";
+  // default: varón visible (m), dama oculta (f); tipo almacén oculto por defecto
+  const hiddenClass = (it.genero === "f" || it.tipo === "almacen") ? " hidden-row" : "";
+
+  return `
+    <tr class="item-row${isCot ? " cot-row" : ""}${hiddenClass}" data-directo="${isCot ? it.costo_directo : ""}"${genAttr}${tipoAttr}>
+      <td class="td-item">
+        <input class="item-input" type="text" value="${it.item}" onchange="updateTotals('${catId}')">
+        ${cotBadge}
+        ${it.nota && !isCot ? `<div class="td-note">${it.nota}</div>` : ""}
+      </td>
+      <td><input class="qty-input" type="number" value="${it.qty}" min="0" step="1" oninput="updateTotals('${catId}')"></td>
+      <td>
+        <input class="edit-input" type="number" value="${it.costo.toFixed(2)}" min="0" step="0.01" oninput="updateTotals('${catId}')">
+        ${precioOriginal}
+        ${ahorroPill}
+      </td>
+      <td class="total-cell">S/ ${fmt(it.qty * it.costo)}</td>
+      <td><button class="btn-del" title="Eliminar fila" onclick="delRow(this,'${catId}')">✕</button></td>
+    </tr>
+  `;
+}
+
+function renderCategories() {
+  const container = document.getElementById("categorias");
+  DATA.forEach(cat => {
+    const total = cat.items.reduce((s,i) => s + i.qty * i.costo, 0);
+    const rows = cat.items.map(it => buildRow(it, cat.id)).join("");
+
+    const card = document.createElement("div");
+    card.className = "category";
+    card.id = `cat-${cat.id}`;
+    const toggleHtml = cat.generoToggle ? `
+      <div class="gender-toggle" onclick="event.stopPropagation()">
+        <button class="gender-btn active-m" data-g="m" onclick="setGenero('${cat.id}','m')">♂ Varón</button>
+        <button class="gender-btn" data-g="f" onclick="setGenero('${cat.id}','f')">♀ Dama</button>
+      </div>` : cat.tipoToggle ? `
+      <div class="gender-toggle" onclick="event.stopPropagation()">
+        <button class="gender-btn active-oficina" data-t="oficina" onclick="setTipo('${cat.id}','oficina')">🏢 Oficina</button>
+        <button class="gender-btn" data-t="almacen" onclick="setTipo('${cat.id}','almacen')">🏭 Almacén</button>
+      </div>` : "";
+
+    card.innerHTML = `
+      <div class="cat-header" onclick="toggleCat('${cat.id}')">
+        <div class="cat-header-left">
+          <div class="cat-icon">${cat.icon}</div>
+          <div>
+            <div class="cat-name">${cat.nombre}</div>
+          </div>
+          ${toggleHtml}
+        </div>
+        <div class="cat-header-right">
+          <div>
+            <div class="cat-total-label">Total equipo</div>
+            <div class="cat-total" id="catTotal-${cat.id}">S/ ${fmt(total)}</div>
+          </div>
+          <span class="chevron open" id="chev-${cat.id}">▼</span>
+        </div>
+      </div>
+      <div class="cat-body" id="catBody-${cat.id}">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:42%">Ítem / Descripción</th>
+                <th style="width:10%">Cant.</th>
+                <th style="width:18%">Costo unit. S/</th>
+                <th style="width:18%">Total S/</th>
+                <th style="width:12%"></th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div class="cat-footer">
+          <button class="btn-add" onclick="addRow('${cat.id}')">＋ Agregar línea</button>
+          <div class="cat-subtotal" id="catSub-${cat.id}">Total: <strong>S/ ${fmt(total)}</strong></div>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+  updateGrand();
+}
+
+const TOKEN = "compras2026";
+
+function abrirModal() {
+  document.getElementById("tokenInput").value = "";
+  document.getElementById("tokenError").textContent = "";
+  document.getElementById("modalToken").classList.add("show");
+  setTimeout(() => document.getElementById("tokenInput").focus(), 80);
+}
+function cerrarModal() {
+  document.getElementById("modalToken").classList.remove("show");
+}
+function confirmarToken() {
+  const val = document.getElementById("tokenInput").value;
+  if (val !== TOKEN) {
+    document.getElementById("tokenError").textContent = "Token incorrecto. Intente nuevamente.";
+    document.getElementById("tokenInput").value = "";
+    document.getElementById("tokenInput").focus();
+    return;
+  }
+  cerrarModal();
+  guardar();
+}
+
+function guardar() {
+  const out = {};
+  DATA.forEach(cat => {
+    const rows = document.querySelectorAll(`#cat-${cat.id} .item-row`);
+    out[cat.nombre] = [];
+    rows.forEach(r => {
+      out[cat.nombre].push({
+        item:  r.querySelector(".item-input").value,
+        qty:   parseFloat(r.querySelector(".qty-input").value)||0,
+        costo: parseFloat(r.querySelector(".edit-input").value)||0,
+      });
+    });
+  });
+  localStorage.setItem("epp_uniformes_2026", JSON.stringify(out));
+  const t = document.getElementById("toast");
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2800);
+}
+
+function importarExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: "binary" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      if (!rows.length) { alert("El Excel está vacío o sin datos."); return; }
+
+      // detectar columnas flexiblemente
+      const keys = Object.keys(rows[0]).map(k => k.toString().toLowerCase().trim());
+      const colItem  = Object.keys(rows[0])[keys.findIndex(k => k.includes("ítem") || k.includes("item") || k.includes("descripci"))];
+      const colCosto = Object.keys(rows[0])[keys.findIndex(k => k.includes("costo") || k.includes("precio") || k.includes("unit"))];
+
+      if (!colItem || !colCosto) {
+        alert("No se encontraron columnas de Ítem y Costo en el Excel.\nAsegúrese de tener columnas con los títulos: Ítem (o Descripción) y Costo (o Precio).");
+        input.value = "";
+        return;
+      }
+
+      // construir mapa nombre → costo
+      const mapa = {};
+      rows.forEach(r => {
+        const nombre = (r[colItem] || "").toString().trim().toLowerCase();
+        const costo  = parseFloat((r[colCosto] || "").toString().replace(",", ".")) || 0;
+        if (nombre && costo) mapa[nombre] = costo;
+      });
+
+      // actualizar inputs en la página
+      let actualizados = 0;
+      document.querySelectorAll(".item-row").forEach(tr => {
+        const inputItem  = tr.querySelector(".item-input");
+        const inputCosto = tr.querySelector(".edit-input");
+        if (!inputItem || !inputCosto) return;
+        const nombre = inputItem.value.trim().toLowerCase();
+        if (mapa[nombre] !== undefined) {
+          inputCosto.value = mapa[nombre].toFixed(2);
+          actualizados++;
+        }
+      });
+
+      // recalcular todos los totales
+      DATA.forEach(cat => updateTotals(cat.id));
+
+      const toast = document.getElementById("toast");
+      toast.textContent = `✓ Excel importado — ${actualizados} precio(s) actualizado(s)`;
+      toast.classList.add("show");
+      setTimeout(() => { toast.classList.remove("show"); toast.textContent = "✓ Cambios guardados correctamente"; }, 3500);
+    } catch(err) {
+      alert("Error al leer el Excel: " + err.message);
+    }
+    input.value = "";
+  };
+  reader.readAsBinaryString(file);
+}
+
+function cargarGuardado() {
+  const saved = localStorage.getItem("epp_uniformes_2026");
+  if (!saved) return;
+  try {
+    const out = JSON.parse(saved);
+    DATA.forEach(cat => {
+      if (out[cat.nombre]) {
+        cat.items = out[cat.nombre];
+      }
+    });
+  } catch(e) {}
+}
+
+/* ── Theme toggle ── */
+(function() {
+  const btn = document.getElementById("themeToggle");
+  const root = document.documentElement;
+  const saved = localStorage.getItem("theme_epp");
+  if (saved) root.setAttribute("data-theme", saved);
+  function syncIcon() {
+    const cur = root.getAttribute("data-theme");
+    btn.textContent = cur === "dark" ? "☀️" : "🌙";
+  }
+  syncIcon();
+  btn.addEventListener("click", () => {
+    const cur = root.getAttribute("data-theme");
+    const next = cur === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    localStorage.setItem("theme_epp", next);
+    syncIcon();
+  });
+})();
+
+cargarGuardado();
+renderCategories();
+// init toggles al default para calcular totales correctos
+DATA.forEach(cat => {
+  if (cat.generoToggle) setGenero(cat.id, "m");
+  if (cat.tipoToggle)   setTipo(cat.id, "oficina");
+});
+</script>
+</body>
+</html>
