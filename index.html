@@ -1071,6 +1071,7 @@ function instNav(id){
     </div>
     <select class="fsel" id="f3resp" onchange="renderP3()"><option value="">Responsable: Todos</option></select>
     <select class="fsel" id="f3proj" onchange="renderP3()"><option value="">Proyecto: Todos</option></select>
+    <select class="fsel" id="f3est" onchange="renderP3()"><option value="">Estado: Todos</option></select>
     <input class="fsrch" id="f3q" oninput="renderP3()" placeholder="Buscar pedido / código / descripción…"/>
     <button class="fclr" onclick="clearF3()">✕ Limpiar</button>
     <span class="fcnt" id="f3cnt">— registros</span>
@@ -2103,6 +2104,7 @@ function initP3(){
   const respPed=[...new Set(D.sinoc.map(r=>r.respPed).filter(Boolean))].sort();
   const resp=[...new Set(D.sinoc.map(r=>r.resp).filter(Boolean))].sort();
   const proj=[...new Set(D.sinoc.map(r=>r.proy).filter(Boolean))].sort();
+  const ests=[...new Set(D.sinoc.map(r=>r.parcial?'OC Parcial':r.estado).filter(Boolean))].sort();
   // Multi-select Resp. Pedido
   buildMsel('f3respPedDrop','f3respPedBtn','f3respPedLbl',respPed,'Resp. Pedido: Todos',renderP3);
   const fr=document.getElementById('f3resp');
@@ -2111,6 +2113,9 @@ function initP3(){
   const fp=document.getElementById('f3proj');
   fp.innerHTML='<option value="">Proyecto: Todos</option>';
   proj.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;fp.appendChild(o);});
+  const fe=document.getElementById('f3est');
+  fe.innerHTML='<option value="">Estado: Todos</option>';
+  ests.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;fe.appendChild(o);});
   document.getElementById('bdg3').textContent=D.sinoc.length;
   document.getElementById('hc3').textContent=D.sinoc.length+' pedidos';
   document.getElementById('f3q').value='';
@@ -2123,10 +2128,12 @@ function renderP3(){
   const proj=document.getElementById('f3proj').value;
   const q=document.getElementById('f3q').value.toLowerCase();
   const respPedSel=getMselValues('f3respPedDrop');
+  const estSel=document.getElementById('f3est').value;
   p3fil=D.sinoc.filter(r=>{
     if(respPedSel.length&&!respPedSel.includes(r.respPed))return false;
     if(est&&r.resp!==est)return false;
     if(proj&&r.proy!==proj)return false;
+    if(estSel){const label=r.parcial?'OC Parcial':r.estado;if(label!==estSel)return false;}
     if(q&&![r.ped,r.prod,r.cod,r.proy,r.idproy,r.req,r.resp,r.respPed].join(' ').toLowerCase().includes(q))return false;
     return true;
   });
@@ -3486,7 +3493,7 @@ function exportP3HTML(){
 
 function clearF3(){
   resetMsel('f3respPedDrop','f3respPedBtn','f3respPedLbl','Resp. Pedido: Todos');
-  ['f3resp','f3proj'].forEach(id=>document.getElementById(id).value='');
+  ['f3resp','f3proj','f3est'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f3q').value='';renderP3();
 }
 
