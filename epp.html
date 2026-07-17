@@ -877,14 +877,16 @@ const DATA = [
     icon: "🧹",
     nombre: "Personal de Limpieza",
     tipoToggle: true,
+    generoToggle: true,
     items: [
-      { item: "Polo",        qty: 1, costo: 22.40,  nota: "" },
-      { item: "Pantalón",    qty: 1, costo: 33.00,  nota: "" },
-      { item: "Casaca",      qty: 1, costo: 44.50,  nota: "" },
-      { item: "Casco",       qty: 1, costo: 63.42,  nota: "", tipo: "almacen" },
-      { item: "Orejeras",    qty: 1, costo: 71.20,  nota: "", tipo: "almacen" },
-      { item: "Barbiquejo",  qty: 1, costo: 0.64,   nota: "", tipo: "almacen" },
-      { item: "Zapatos",     qty: 1, costo: 280.90, nota: "" },
+      { item: "Polo",                    qty: 1, costo: 22.40,  nota: "" },
+      { item: "Pantalón",                qty: 1, costo: 33.00,  nota: "" },
+      { item: "Casaca",                  qty: 1, costo: 44.50,  nota: "" },
+      { item: "Casco",                   qty: 1, costo: 63.42,  nota: "", tipo: "almacen" },
+      { item: "Orejeras",                qty: 1, costo: 71.20,  nota: "", tipo: "almacen" },
+      { item: "Barbiquejo",              qty: 1, costo: 0.64,   nota: "", tipo: "almacen" },
+      { item: "Zapatos (Varón)",         qty: 1, costo: 341.00, nota: "", genero: "m" },
+      { item: "Zapatos (Mujer - Vienna)",qty: 1, costo: 280.90, nota: "", genero: "f" },
     ]
   }
 ];
@@ -1050,15 +1052,17 @@ function renderCategories() {
     const card = document.createElement("div");
     card.className = "category";
     card.id = `cat-${cat.id}`;
-    const toggleHtml = cat.generoToggle ? `
+    const generoHtml = cat.generoToggle ? `
       <div class="gender-toggle" onclick="event.stopPropagation()">
         <button class="gender-btn active-m" data-g="m" onclick="setGenero('${cat.id}','m')">♂ Varón</button>
         <button class="gender-btn" data-g="f" onclick="setGenero('${cat.id}','f')">♀ Dama</button>
-      </div>` : cat.tipoToggle ? `
+      </div>` : "";
+    const tipoHtml = cat.tipoToggle ? `
       <div class="gender-toggle" onclick="event.stopPropagation()">
         <button class="gender-btn active-oficina" data-t="oficina" onclick="setTipo('${cat.id}','oficina')">🏢 Oficina</button>
         <button class="gender-btn" data-t="almacen" onclick="setTipo('${cat.id}','almacen')">🏭 Almacén</button>
       </div>` : "";
+    const toggleHtml = generoHtml + tipoHtml;
 
     card.innerHTML = `
       <div class="cat-header" onclick="toggleCat('${cat.id}')">
@@ -1240,8 +1244,8 @@ cargarGuardado();
 renderCategories();
 // init toggles al default para calcular totales correctos
 DATA.forEach(cat => {
-  if (cat.generoToggle) setGenero(cat.id, "m");
   if (cat.tipoToggle)   setTipo(cat.id, "oficina");
+  if (cat.generoToggle) setGenero(cat.id, "m");
 });
 </script>
 </body>
