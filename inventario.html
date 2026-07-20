@@ -820,7 +820,7 @@ function fillReqFilters(){
   const fr=document.getElementById('rfresp'),fp=document.getElementById('rfproy'),fe=document.getElementById('rfest');
   fr.innerHTML='<option value="">Responsable: Todos</option>'+resps.map(r=>`<option>${r}</option>`).join('');
   fp.innerHTML='<option value="">Proyecto: Todos</option>'+proys.map(p=>`<option>${p}</option>`).join('');
-  fe.innerHTML='<option value="">Estado: Todos</option>'+ests.map(e=>`<option>${e}</option>`).join('');
+  fe.innerHTML='<option value="">Estado: Todos</option>'+ests.map(e=>`<option value="${e}">${estadoDisplay(e)}</option>`).join('');
 }
 function semReq(e){
   const l=(e||'').toLowerCase();
@@ -828,6 +828,10 @@ function semReq(e){
   if(l.includes('pedido'))return{c:'#d97706',bg:'#fffbeb',t:'En proceso'};
   if(l.includes('revisi'))return{c:'#dc2626',bg:'#fef2f2',t:'Pendiente en almacén'};
   return{c:'#94a3b8',bg:'#f1f5f9',t:e||'Sin estado'};
+}
+// Etiqueta visible del estado: "En revisión de Almacén" (tal como viene del Excel) se muestra simplemente "En Revisión".
+function estadoDisplay(e){
+  return (e||'').toLowerCase().includes('revisi')?'En Revisión':(e||'—');
 }
 function renderReq(){
   reqPage=0;
@@ -867,7 +871,7 @@ function renderReqTable(){
     const g0=items[0];
     const estados=[...new Set(items.map(i=>i.estado))];
     const s=estados.length===1?semReq(estados[0]):{c:'#64748b',bg:'#f1f5f9',t:'Mixto'};
-    const estadoLbl=estados.length===1?(estados[0]||'—'):`Mixto (${estados.length} estados)`;
+    const estadoLbl=estados.length===1?estadoDisplay(estados[0]):`Mixto (${estados.length} estados)`;
     const cantTotal=items.reduce((a,i)=>a+(i.cant||0),0);
     let pickTotal=0,pedTotal=0;
     items.forEach(i=>{
@@ -948,7 +952,7 @@ function verReqItems(rk){
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;white-space:normal;max-width:260px;font-weight:500">${r.prod||'—'}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700">${(r.cant||0).toLocaleString('es-PE')}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#64748b">${r.unid||'—'}</td>
-            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9"><span class="pill" style="background:${s.bg};color:${s.c}">${r.estado||'—'}</span></td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9"><span class="pill" style="background:${s.bg};color:${s.c}">${estadoDisplay(r.estado)}</span></td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${pickCell}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${pedCell}</td>
           </tr>`;
