@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Plataforma LOGÍSTICA — FRIOPACKING</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;color:#e2e8f0;
+  background:linear-gradient(160deg,#0b1120 0%,#0f1e33 45%,#0b1120 100%);
+  min-height:100vh;display:flex;flex-direction:column}
+/* NAVBAR */
+.nb{background:rgba(10,16,30,.9);backdrop-filter:blur(8px);height:56px;display:flex;align-items:center;
+  padding:0 18px;gap:12px;position:sticky;top:0;z-index:50;border-bottom:1px solid #1e293b}
+.fp{background:#166534;color:#fff;font-weight:800;font-size:14px;width:36px;height:36px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 18px rgba(22,101,52,.5)}
+.brand{display:flex;flex-direction:column;gap:1px}
+.b1{color:#f8fafc;font-size:13px;font-weight:700;letter-spacing:.3px}
+.b2{color:#64748b;font-size:10px;letter-spacing:.5px}
+.nbr{margin-left:auto;display:flex;align-items:center;gap:10px;color:#64748b;font-size:11px}
+.dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
+/* HERO */
+.hero{text-align:center;padding:46px 20px 26px}
+.hero img{height:64px;filter:drop-shadow(0 2px 10px rgba(0,0,0,.5));margin-bottom:16px}
+.hero h1{font-size:30px;font-weight:800;letter-spacing:.5px;background:linear-gradient(90deg,#38bdf8,#818cf8);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{color:#94a3b8;font-size:13px;margin-top:8px}
+.hdiv{width:min(520px,80%);height:1px;background:linear-gradient(90deg,transparent,#334155,transparent);margin:24px auto 0}
+/* GRID */
+.wrap{flex:1;display:flex;flex-direction:column;align-items:center;padding:0 20px 40px}
+.sect{width:100%;max-width:860px;margin-top:30px}
+.sect-t{font-size:11px;font-weight:700;letter-spacing:2px;color:#475569;text-transform:uppercase;margin:0 6px 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
+.app{position:relative;background:#111a2e;border:1px solid #1e293b;border-radius:16px;padding:22px 16px 16px;
+  text-align:center;cursor:pointer;transition:all .18s;text-decoration:none;display:block}
+.app:hover{transform:translateY(-4px);border-color:#3b82f6;box-shadow:0 14px 34px rgba(0,0,0,.45)}
+.app.soon{cursor:not-allowed;opacity:.5}
+.app.soon:hover{transform:none;border-color:#1e293b;box-shadow:none}
+.ico{width:60px;height:60px;border-radius:16px;margin:0 auto 12px;display:flex;align-items:center;
+  justify-content:center;font-size:30px;box-shadow:0 6px 16px rgba(0,0,0,.4)}
+.app-t{color:#f1f5f9;font-size:13px;font-weight:700}
+.app-s{color:#64748b;font-size:10.5px;margin-top:3px;line-height:1.35}
+.badge{position:absolute;top:10px;right:10px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.5px}
+.b-live{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.35)}
+.b-soon{background:rgba(148,163,184,.12);color:#94a3b8;border:1px solid rgba(148,163,184,.25)}
+.foot{text-align:center;color:#475569;font-size:10.5px;padding:8px 20px 26px}
+</style>
+</head>
+<body>
+
+<nav class="nb">
+  <div class="fp">FP</div>
+  <div class="brand"><span class="b1">Plataforma LOGÍSTICA</span><span class="b2">FRIOPACKING S.A.</span></div>
+  <div class="nbr"><span class="dot"></span> En línea</div>
+</nav>
+
+<div class="hero">
+  <img src="https://cdn.prod.website-files.com/680993da51b017d5afeb2060/680993da51b017d5afeb24b9_LOGO%20FP%20FOOTER.png" alt="Friopacking">
+  <h1>Plataforma LOGÍSTICA</h1>
+  <p>Centro de aplicaciones — selecciona un área para ingresar</p>
+  <div class="hdiv"></div>
+</div>
+
+<div class="wrap">
+
+  <div class="sect">
+    <div class="sect-t">Aplicaciones activas</div>
+    <div class="grid">
+
+      <a class="app" href="index.html">
+        <span class="badge b-live">ACTIVO</span>
+        <div class="ico" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">🛒</div>
+        <div class="app-t">Compras</div>
+        <div class="app-s">Órdenes de compra, requerimientos y PMO</div>
+      </a>
+
+      <a class="app" href="inventario.html">
+        <span class="badge b-live">ACTIVO</span>
+        <div class="ico" style="background:linear-gradient(135deg,#0d9488,#0ea5e9)">📦</div>
+        <div class="app-t">Inventario / Almacén</div>
+        <div class="app-s">Stock, valorización y control de existencias</div>
+      </a>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · versión de prueba 2026</div>
+
+</body>
+</html>

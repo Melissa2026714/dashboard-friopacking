@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Inventario / Almacén — FRIOPACKING</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:13px}
+/* NAVBAR */
+.nb{background:#0f172a;height:52px;display:flex;align-items:center;padding:0 14px;gap:10px;position:fixed;top:0;left:0;right:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.back{display:flex;align-items:center;gap:6px;background:#1e293b;color:#93c5fd;border:1px solid #334155;padding:6px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;flex-shrink:0}
+.back:hover{background:#334155;color:#fff}
+.fp{background:#0d9488;color:#fff;font-weight:800;font-size:13px;width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand{display:flex;flex-direction:column;gap:1px}
+.b1{color:#e2e8f0;font-size:12px;font-weight:600;white-space:nowrap}
+.b2{color:#64748b;font-size:10px}
+.tabs{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none;margin-left:6px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:6px;color:#94a3b8;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .15s;border:none;background:transparent}
+.tab:hover{background:#1e293b;color:#e2e8f0}
+.tab.act{background:#0d9488;color:#fff}
+.nbr{display:flex;gap:6px;flex-shrink:0}
+.btn{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:'Inter',sans-serif}
+.bi{background:#0d9488;color:#fff}.bi:hover{background:#0f766e}
+.br{background:#334155;color:#94a3b8}.br:hover{background:#475569;color:#e2e8f0}
+/* PAGE */
+.pg{margin-top:52px;padding:16px;max-width:1400px;margin-left:auto;margin-right:auto}
+.hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px}
+.hd h2{font-size:18px;font-weight:800;color:#0f172a}
+.hd .sub{color:#64748b;font-size:12px;margin-top:2px}
+.note{background:#fef9c3;border:1px solid #fde047;color:#854d0e;font-size:11.5px;padding:8px 12px;border-radius:8px;margin:10px 0 16px;display:flex;gap:8px;align-items:center}
+/* KPIS */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:15px 16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.kpi .kl{color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.kpi .kv{font-size:26px;font-weight:800;margin-top:6px;color:#0f172a}
+.kpi .kd{font-size:11px;margin-top:4px;color:#64748b}
+.kpi.alert{border-color:#fecaca;background:#fef2f2}.kpi.alert .kv{color:#dc2626}
+.kpi.good{border-color:#bbf7d0;background:#f0fdf4}.kpi.good .kv{color:#16a34a}
+/* FILTERS */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filters input,.filters select{padding:8px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;font-family:inherit;background:#fff}
+.filters input{min-width:240px}
+.filters .fx{margin-left:auto;color:#64748b;font-size:11.5px}
+/* TABLE */
+.tblwrap{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:auto;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#0f172a;color:#e2e8f0;text-align:left;padding:10px 12px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+tr:hover td{background:#f8fafc}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:11px}
+.p-ok{background:#dcfce7;color:#15803d}
+.p-low{background:#fef9c3;color:#a16207}
+.p-crit{background:#fee2e2;color:#b91c1c}
+.mono{color:#475569;font-family:ui-monospace,monospace;font-size:11px}
+.foot{text-align:center;color:#94a3b8;font-size:11px;padding:20px}
+</style>
+</head>
+<body>
+
+<nav class="nb">
+  <a class="back" href="plataforma.html">◀ LOGÍSTICA</a>
+  <div class="fp">📦</div>
+  <div class="brand"><span class="b1">Inventario / Almacén 2026</span><span class="b2">FRIOPACKING S.A.</span></div>
+  <div class="tabs">
+    <button class="tab act">📦 Existencias</button>
+    <button class="tab" onclick="alert('Módulo en preparación')">📥 Movimientos</button>
+    <button class="tab" onclick="alert('Módulo en preparación')">📊 Valorización</button>
+  </div>
+  <div class="nbr">
+    <button class="btn bi" onclick="alert('Aquí se cargará el Excel de stock real (Kardex / Reporte de existencias). Estructura lista para conectar.')">📂 IMPORTAR</button>
+    <button class="btn br">↻</button>
+  </div>
+</nav>
+
+<div class="pg">
+  <div class="hd">
+    <div>
+      <h2>Control de Existencias</h2>
+      <div class="sub">Stock actual, valorización y alertas de reposición</div>
+    </div>
+  </div>
+
+  <div class="note">⚠️ <b>Datos de ejemplo.</b> Esta es la estructura del módulo lista para producción. Usa <b>📂 IMPORTAR</b> para cargar el reporte real de stock (Kardex / existencias).</div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="filters">
+    <input id="q" type="text" placeholder="🔍 Buscar por código o descripción…" oninput="render()">
+    <select id="fcat" onchange="render()"><option value="">Todas las categorías</option></select>
+    <select id="fubi" onchange="render()"><option value="">Todas las ubicaciones</option></select>
+    <select id="fest" onchange="render()">
+      <option value="">Todos los estados</option>
+      <option value="OK">Stock OK</option>
+      <option value="BAJO">Stock bajo</option>
+      <option value="CRIT">Crítico / sin stock</option>
+    </select>
+    <span class="fx" id="cnt"></span>
+  </div>
+
+  <div class="tblwrap">
+    <table>
+      <thead><tr>
+        <th>Código</th><th>Descripción</th><th>Categoría</th><th>Ubicación</th>
+        <th class="num">Stock</th><th class="num">Mínimo</th><th>UM</th>
+        <th class="num">Costo unit.</th><th class="num">Valor total</th><th>Estado</th>
+      </tr></thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+
+  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Inventario (prueba)</div>
+</div>
+
+<script>
+/* Datos de ejemplo — materiales reales que compra Friopacking (basado en catálogo de OC) */
+const DATA=[
+ {cod:"004800300004",desc:"ESPÁRRAGO INOX DE 3/4'' X 1.80 M",cat:"Ferretería",ubi:"Almacén A",stock:120,min:40,um:"UND",costo:63.5},
+ {cod:"004802100012",desc:"ARANDELA PLANA DE 1/2'' GALVANIZADO",cat:"Ferretería",ubi:"Almacén A",stock:1500,min:500,um:"UND",costo:0.19},
+ {cod:"001100100128",desc:"ELECTROBOMBA PENTAX 2.0 HP CENTRIF.",cat:"Equipos",ubi:"Almacén B",stock:2,min:3,um:"UND",costo:1580.0},
+ {cod:"001100100129",desc:"ELECTROBOMBA PENTAX 1.5 HP CENTRIF.",cat:"Equipos",ubi:"Almacén B",stock:0,min:2,um:"UND",costo:1470.0},
+ {cod:"004200600006",desc:"TUBERÍA PVC 4'' PRESIÓN",cat:"Gasfitería",ubi:"Patio",stock:85,min:30,um:"UND",costo:42.3},
+ {cod:"005100200011",desc:"GUANTE NITRILO T-9 (PAR)",cat:"EPP",ubi:"Almacén EPP",stock:340,min:200,um:"PAR",costo:3.8},
+ {cod:"005100200015",desc:"CASCO SEGURIDAD BLANCO C/RATCHET",cat:"EPP",ubi:"Almacén EPP",stock:45,min:60,um:"UND",costo:14.5},
+ {cod:"005100300022",desc:"LENTE SEGURIDAD CLARO ANTIEMPAÑE",cat:"EPP",ubi:"Almacén EPP",stock:210,min:100,um:"UND",costo:2.6},
+ {cod:"003300100088",desc:"PLANCHA INOX 304 1.5MM 1220X2440",cat:"Metalmecánica",ubi:"Almacén B",stock:18,min:10,um:"UND",costo:520.0},
+ {cod:"003300100091",desc:"TUBO INOX REDONDO 2'' X 6M",cat:"Metalmecánica",ubi:"Patio",stock:6,min:12,um:"UND",costo:185.0},
+ {cod:"002200400033",desc:"GAS REFRIGERANTE R-404A (CIL 10KG)",cat:"Refrigeración",ubi:"Almacén B",stock:9,min:6,um:"CIL",costo:410.0},
+ {cod:"002200400037",desc:"COMPRESOR HERMÉTICO 1HP R404A",cat:"Refrigeración",ubi:"Almacén B",stock:1,min:2,um:"UND",costo:890.0},
+ {cod:"006600100004",desc:"WAIPE INDUSTRIAL BLANCO (KG)",cat:"Limpieza",ubi:"Almacén A",stock:75,min:40,um:"KG",costo:5.2},
+ {cod:"006600100009",desc:"DETERGENTE INDUSTRIAL X 20L",cat:"Limpieza",ubi:"Almacén A",stock:12,min:15,um:"BID",costo:68.0},
+ {cod:"004802100020",desc:"PERNO HEXAGONAL 1/2'' X 2'' GALV.",cat:"Ferretería",ubi:"Almacén A",stock:2200,min:800,um:"UND",costo:0.85},
+ {cod:"001100200055",desc:"MOTOR TRIFÁSICO 5HP 1750RPM",cat:"Equipos",ubi:"Almacén B",stock:3,min:2,um:"UND",costo:1120.0},
+ {cod:"003300200014",desc:"ELECTRODO 6011 1/8'' (KG)",cat:"Metalmecánica",ubi:"Almacén A",stock:140,min:50,um:"KG",costo:8.9},
+ {cod:"002200500018",desc:"VÁLVULA SOLENOIDE 1/2'' 220V",cat:"Refrigeración",ubi:"Almacén B",stock:22,min:10,um:"UND",costo:76.0}
+];
+
+function estado(s,m){if(s<=0)return"CRIT";if(s<m)return"BAJO";return"OK";}
+function fmt(n){return n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+function fillFilters(){
+  const cats=[...new Set(DATA.map(d=>d.cat))].sort();
+  const ubis=[...new Set(DATA.map(d=>d.ubi))].sort();
+  document.getElementById('fcat').insertAdjacentHTML('beforeend',cats.map(c=>`<option>${c}</option>`).join(''));
+  document.getElementById('fubi').insertAdjacentHTML('beforeend',ubis.map(u=>`<option>${u}</option>`).join(''));
+}
+
+function kpis(rows){
+  const skus=DATA.length;
+  const valor=DATA.reduce((a,d)=>a+d.stock*d.costo,0);
+  const bajo=DATA.filter(d=>estado(d.stock,d.min)==="BAJO").length;
+  const crit=DATA.filter(d=>estado(d.stock,d.min)==="CRIT").length;
+  document.getElementById('kpis').innerHTML=`
+   <div class="kpi"><div class="kl">SKUs en catálogo</div><div class="kv">${skus}</div><div class="kd">ítems distintos</div></div>
+   <div class="kpi good"><div class="kl">Valor de inventario</div><div class="kv">S/ ${fmt(valor)}</div><div class="kd">stock × costo</div></div>
+   <div class="kpi alert"><div class="kl">Bajo mínimo</div><div class="kv">${bajo}</div><div class="kd">requieren reposición</div></div>
+   <div class="kpi alert"><div class="kl">Crítico / sin stock</div><div class="kv">${crit}</div><div class="kd">quiebre de stock</div></div>`;
+}
+
+function render(){
+  const q=document.getElementById('q').value.toLowerCase();
+  const fc=document.getElementById('fcat').value;
+  const fu=document.getElementById('fubi').value;
+  const fe=document.getElementById('fest').value;
+  let rows=DATA.filter(d=>{
+    const e=estado(d.stock,d.min);
+    if(q && !(d.cod.includes(q)||d.desc.toLowerCase().includes(q)))return false;
+    if(fc && d.cat!==fc)return false;
+    if(fu && d.ubi!==fu)return false;
+    if(fe && e!==fe)return false;
+    return true;
+  });
+  const pill={OK:'<span class="pill p-ok">OK</span>',BAJO:'<span class="pill p-low">BAJO</span>',CRIT:'<span class="pill p-crit">CRÍTICO</span>'};
+  document.getElementById('tb').innerHTML=rows.map(d=>{
+    const e=estado(d.stock,d.min);
+    return `<tr>
+      <td class="mono">${d.cod}</td><td>${d.desc}</td><td>${d.cat}</td><td>${d.ubi}</td>
+      <td class="num">${d.stock.toLocaleString('es-PE')}</td><td class="num">${d.min.toLocaleString('es-PE')}</td><td>${d.um}</td>
+      <td class="num">${fmt(d.costo)}</td><td class="num">${fmt(d.stock*d.costo)}</td><td>${pill[e]}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
+  document.getElementById('cnt').textContent=`${rows.length} de ${DATA.length} ítems`;
+  kpis(rows);
+}
+
+fillFilters();render();
+</script>
+</body>
+</html>
