@@ -367,6 +367,7 @@ tr:hover td{background:#f8fafc}
       </tr></thead>
       <tbody id="tbcod"></tbody>
     </table>
+    <div class="pag"><span id="codInfo">—</span><div id="codPag" style="display:flex;gap:4px"></div></div>
   </div>
 
   <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
@@ -1192,21 +1193,37 @@ function fillCodFilters(){
   if(cat.options.length>1)return;
   Object.keys(CAT_PREFIX).sort().forEach(c=>cat.insertAdjacentHTML('beforeend',`<option>${c}</option>`));
 }
+let codPage=0;
 function renderCod(){
+  codPage=0;
   const q=document.getElementById('cq').value.toLowerCase();
   const fc=document.getElementById('ccat').value;
-  const cat=getCatalogo().filter(c=>{
+  window._codFil=getCatalogo().filter(c=>{
     if(q && !(c.cod.includes(q)||c.desc.toLowerCase().includes(q)))return false;
     if(fc && c.cat!==fc)return false;
     return true;
   });
-  document.getElementById('tbcod').innerHTML=cat.map(c=>`<tr>
+  document.getElementById('ccnt').textContent=`${window._codFil.length.toLocaleString('es-PE')} códigos`;
+  renderCodTable();
+  updateCodDirtyLabels();
+}
+function renderCodTable(){
+  const cat=window._codFil||[];
+  const sz=50, rows=cat.slice(codPage*sz,(codPage+1)*sz);
+  document.getElementById('tbcod').innerHTML=rows.map(c=>`<tr>
     <td class="mono">${c.cod}</td><td>${c.desc}</td><td>${c.cat}</td><td>${c.um}</td>
     <td>${c.origen&&c.origen!=='Existencias'?`<button class="btn br" style="padding:4px 9px;font-size:10px" onclick="verFicha('${c.cod}')">📄 Ver ficha</button>`:'—'}</td>
     <td>${c.origen==='Existencias'?'<span class="pill p-gray">CATÁLOGO</span>':(CONFIRMED_COD.some(x=>x.cod===c.cod)?'<span class="pill p-ok">GENERADO</span>':'<span class="pill p-low">SIN GUARDAR</span>')}</td>
   </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
-  document.getElementById('ccnt').textContent=`${cat.length} códigos`;
-  updateCodDirtyLabels();
+  const tot=cat.length,pages=Math.max(1,Math.ceil(tot/sz));
+  document.getElementById('codInfo').textContent=tot?`Mostrando ${codPage*sz+1}–${Math.min((codPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')}`:'Sin resultados';
+  const pagEl=document.getElementById('codPag');
+  let h='';
+  if(codPage>0)h+=`<button class="pbt" onclick="codPage--;renderCodTable()">‹</button>`;
+  const start=Math.max(0,codPage-4),end=Math.min(pages,start+10);
+  for(let i=start;i<end;i++)h+=`<button class="pbt${i===codPage?' pact':''}" onclick="codPage=${i};renderCodTable()">${i+1}</button>`;
+  if(codPage<pages-1)h+=`<button class="pbt" onclick="codPage++;renderCodTable()">›</button>`;
+  pagEl.innerHTML=h;
 }
 function toggleCodForm(){
   document.getElementById('codForm').classList.toggle('open');
