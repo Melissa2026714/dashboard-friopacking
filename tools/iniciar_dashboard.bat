@@ -15,31 +15,26 @@ set "BASE_DIR=%SCRIPT_DIR%.."
 set "PORT=8080"
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$port=%PORT%; $base='%BASE_DIR%';" ^
+  "$port=%PORT%; $base=(Resolve-Path '%BASE_DIR%').Path;" ^
   "$listener = New-Object System.Net.HttpListener;" ^
   "$listener.Prefixes.Add('http://localhost:' + $port + '/');" ^
   "try { $listener.Start() } catch { Write-Host ' ERROR: Puerto ocupado. Cierra el navegador y reintenta.' -ForegroundColor Red; Start-Sleep 4; exit };" ^
   "Write-Host ' Servidor activo en http://localhost:' $port -ForegroundColor Green;" ^
   "Write-Host ' Abriendo navegador...' -ForegroundColor Cyan;" ^
-  "Start-Process ('http://localhost:' + $port);" ^
+  "Start-Process ('http://localhost:' + $port + '/plataforma.html');" ^
+  "$mime = @{'.html'='text/html; charset=utf-8';'.htm'='text/html; charset=utf-8';'.js'='application/javascript; charset=utf-8';'.json'='application/json; charset=utf-8';'.css'='text/css; charset=utf-8';'.png'='image/png';'.jpg'='image/jpeg';'.jpeg'='image/jpeg';'.gif'='image/gif';'.svg'='image/svg+xml';'.ico'='image/x-icon';'.xlsx'='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';'.pdf'='application/pdf' };" ^
   "while ($listener.IsListening) {" ^
   "  try {" ^
   "    $ctx = $listener.GetContext();" ^
-  "    $path = $ctx.Request.Url.AbsolutePath;" ^
-  "    if ($path -eq '/' -or $path -eq '/index.html') {" ^
-  "      $file = $base + '\index.html';" ^
-  "      $ct = 'text/html; charset=utf-8';" ^
-  "    } elseif ($path -match '\\.js$') {" ^
-  "      $name = [System.IO.Path]::GetFileName($path);" ^
-  "      $file = $base + '\' + $name;" ^
-  "      $ct = 'application/javascript; charset=utf-8';" ^
-  "    } else {" ^
-  "      $ctx.Response.StatusCode = 404;" ^
-  "      $ctx.Response.Close();" ^
-  "      continue;" ^
-  "    }" ^
-  "    if (-not (Test-Path $file)) { $ctx.Response.StatusCode=404; $ctx.Response.Close(); continue; }" ^
-  "    $content = [System.IO.File]::ReadAllBytes($file);" ^
+  "    $reqPath = [System.Uri]::UnescapeDataString($ctx.Request.Url.AbsolutePath);" ^
+  "    if ($reqPath -eq '/') { $reqPath = '/index.html' }" ^
+  "    $rel = $reqPath.TrimStart('/').Replace('/', [System.IO.Path]::DirectorySeparatorChar);" ^
+  "    $file = Join-Path $base $rel;" ^
+  "    $fullFile = [System.IO.Path]::GetFullPath($file);" ^
+  "    if (-not $fullFile.StartsWith($base) -or -not (Test-Path $fullFile -PathType Leaf)) { $ctx.Response.StatusCode = 404; $ctx.Response.Close(); continue; }" ^
+  "    $ext = [System.IO.Path]::GetExtension($fullFile).ToLower();" ^
+  "    $ct = $mime[$ext]; if (-not $ct) { $ct = 'application/octet-stream' };" ^
+  "    $content = [System.IO.File]::ReadAllBytes($fullFile);" ^
   "    $ctx.Response.ContentType = $ct;" ^
   "    $ctx.Response.ContentLength64 = $content.Length;" ^
   "    $ctx.Response.Headers.Add('Cache-Control','no-cache');" ^

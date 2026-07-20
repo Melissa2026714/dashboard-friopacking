@@ -182,7 +182,15 @@ tr:hover td{background:#f8fafc}
 
   <div class="note live" id="reqLiveNote">☁️ Cargando datos en vivo desde <b>data.json</b>…</div>
 
+  <div class="note crit">🧰 Los requerimientos <b>en revisión de almacén</b> traen columnas editables <b>Cant. a Picking / Cant. a Pedido</b> — el reparto que hagas aquí se refleja automáticamente en la pestaña <b>Picking</b>, agrupado por N° de requerimiento.</div>
+
   <div class="kpis" id="reqKpis"></div>
+
+  <div class="savebar">
+    <button class="btn bi" onclick="guardarDecisiones()">💾 Guardar decisiones</button>
+    <span class="dirtyLbl"></span>
+    <span class="saveLblEl"></span>
+  </div>
 
   <div class="filters">
     <input id="rq" type="text" placeholder="🔍 Buscar por requerimiento / código / descripción / proyecto…" oninput="renderReq()">
@@ -198,6 +206,7 @@ tr:hover td{background:#f8fafc}
         <th>Fecha</th><th>Responsable</th><th>Id Proyecto</th><th>Proyecto</th>
         <th>Código</th><th>Descripción</th><th class="num">Cant.</th><th>Unidad</th>
         <th>Req.</th><th>F. Req.</th><th style="text-align:center">🚦</th><th>Estado</th>
+        <th class="num">Cant. a Picking</th><th class="num">Cant. a Pedido</th>
       </tr></thead>
       <tbody id="tbreq"></tbody>
     </table>
@@ -216,14 +225,14 @@ tr:hover td{background:#f8fafc}
     </div>
   </div>
 
-  <div class="note crit">🧰 Cada ítem sugiere <b>Picking</b> (hay stock, se prepara y despacha directo) o <b>Pedido</b> (sin stock, pasa a cotización/OC) según Existencias — el sugerido es editable: marca el que corresponda ítem por ítem.</div>
+  <div class="note crit">🧰 Cada SKU se reparte por <b>cantidad</b>: la columna <b>Cant. a Picking</b> sugiere el stock disponible (repartido entre todos los pendientes de ese código, sin duplicar unidades) — edítala si hace falta. El resto (<b>Cant. a Pedido</b>) pasa a cotización/OC automáticamente.</div>
 
   <div class="kpis" id="pickKpis"></div>
 
   <div class="savebar">
     <button class="btn bi" onclick="guardarDecisiones()">💾 Guardar decisiones</button>
-    <span id="dirtyLbl"></span>
-    <span id="saveLbl"></span>
+    <span class="dirtyLbl"></span>
+    <span class="saveLblEl"></span>
   </div>
 
   <div class="filters">
@@ -246,7 +255,13 @@ tr:hover td{background:#f8fafc}
     <button class="btn bi" onclick="toggleCodForm()">➕ Generar código nuevo</button>
   </div>
 
-  <div class="note">⚠️ <b>Catálogo de ejemplo.</b> El generador crea códigos localmente en este navegador (aún no sincroniza con GitHub como el botón GUARDAR de Compras).</div>
+  <div class="note">⚠️ <b>Catálogo base de ejemplo</b> (18 ítems de Existencias). Los códigos <b>generados</b> abajo sí se guardan compartidos en <b>data.json</b> con el botón 💾 Guardar códigos.</div>
+
+  <div class="savebar">
+    <button class="btn bi" onclick="guardarCodigos()">💾 Guardar códigos</button>
+    <span class="codDirtyLbl"></span>
+    <span class="codSaveLblEl"></span>
+  </div>
 
   <div class="codform" id="codForm">
     <div class="row">
@@ -255,7 +270,13 @@ tr:hover td{background:#f8fafc}
         <input id="cf-desc" type="text" placeholder="Ej. VÁLVULA CHECK 1&quot; BRONCE" oninput="checkDup()" style="min-width:320px">
       </div>
       <div>
-        <label>Categoría</label>
+        <label>Nombre comercial (opcional)</label>
+        <input id="cf-nom" type="text" placeholder="Ej. Válvula check 1'' bronce - Marca X" style="min-width:260px">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Grupo / Categoría</label>
         <select id="cf-cat">
           <option value="Ferretería">Ferretería</option>
           <option value="Equipos">Equipos</option>
@@ -268,8 +289,45 @@ tr:hover td{background:#f8fafc}
         </select>
       </div>
       <div>
+        <label>Subgrupo (opcional)</label>
+        <input id="cf-subgrupo" type="text" placeholder="Ej. Válvulas y accesorios" style="min-width:200px">
+      </div>
+      <div>
+        <label>Marca</label>
+        <input id="cf-marca" type="text" placeholder="Ej. NIBCO" style="min-width:140px">
+      </div>
+      <div>
         <label>Unidad de medida</label>
         <input id="cf-um" type="text" placeholder="UND" style="min-width:90px">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Proveedor</label>
+        <input id="cf-prov" type="text" placeholder="Ej. Pernos Ramirez EIRL" style="min-width:220px">
+      </div>
+      <div>
+        <label>N° cotización / documento</label>
+        <input id="cf-doc" type="text" placeholder="Ej. COT-2026-0451" style="min-width:180px">
+      </div>
+      <div>
+        <label>Precio unitario</label>
+        <div style="display:flex;gap:4px">
+          <select id="cf-moneda" style="min-width:64px"><option>S/.</option><option>US$</option></select>
+          <input id="cf-precio" type="number" step="0.01" placeholder="0.00" style="min-width:100px">
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div style="flex:1">
+        <label>Nota / justificación (por qué se crea este código)</label>
+        <input id="cf-nota" type="text" placeholder="Ej. Material nuevo solicitado por Mantenimiento, no existe código previo" style="min-width:100%">
+      </div>
+    </div>
+    <div class="row">
+      <div style="flex:1">
+        <label>📎 Adjuntar cotización (PDF o imagen — se sube al repositorio, no ocupa espacio en data.json)</label>
+        <input id="cf-file" type="file" accept=".pdf,.jpg,.jpeg,.png" style="min-width:100%;padding:7px">
       </div>
     </div>
     <div id="cf-matches"></div>
@@ -295,6 +353,13 @@ tr:hover td{background:#f8fafc}
   </div>
 
   <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+</div>
+
+<!-- MODAL FICHA TÉCNICA -->
+<div id="fichaBg" onclick="if(event.target===this)cerrarFicha()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;width:100%;max-width:720px;max-height:calc(100vh - 40px);border-radius:14px;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div id="fichaBody"></div>
+  </div>
 </div>
 
 <script>
@@ -361,6 +426,7 @@ const P5_DEMO=[
 
 let CONFIRMED={};  // decisiones ya guardadas en data.json (D.almacenPicking)
 let PENDING={};    // decisiones editadas en este navegador y aún no guardadas
+let AUTO_MAP={};   // sugerencia automática de cant. a Picking por req+código (repartida, sin duplicar stock)
 
 async function cargarLive(){
   try{
@@ -371,19 +437,24 @@ async function cargarLive(){
     P5=s.D.p5reqs.map(r=>({...r,estado:fixEnc(r.estado)}));
     P5_LIVE=true;
     CONFIRMED=s.D.almacenPicking||{};
+    CONFIRMED_COD=s.D.almacenCodigos||[];
     document.getElementById('reqLiveNote').innerHTML='☁️ <b>Datos en vivo</b> desde data.json — '+P5.length.toLocaleString('es-PE')+' requerimientos (mismos que ve Compras).';
   }catch(e){
     P5=P5_DEMO;
     P5_LIVE=false;
     CONFIRMED={};
+    CONFIRMED_COD=[];
     document.getElementById('reqLiveNote').className='note';
     document.getElementById('reqLiveNote').innerHTML='⚠️ No se pudo leer data.json (modo local sin servidor) — mostrando '+P5.length+' filas de ejemplo. En la web publicada esto carga automáticamente los '+'requerimientos reales.';
   }
   try{PENDING=JSON.parse(localStorage.getItem('fp_almacen_picking_pending')||'{}');}catch(e2){PENDING={};}
+  PENDING_COD=loadPendingCodigos();
+  AUTO_MAP=computeAutoAlloc(P5.filter(r=>r.estado.toLowerCase().includes('revisi')));
   fillReqFilters();
   renderReq();
   renderPick();
   renderAlertBox();
+  renderCod();
   updateHomeCounters();
 }
 
@@ -495,6 +566,19 @@ function renderReqTable(){
   const sz=50, rows=f.slice(reqPage*sz,(reqPage+1)*sz);
   document.getElementById('tbreq').innerHTML=rows.map(r=>{
     const s=semReq(r.estado);
+    const enRevision=r.estado.toLowerCase().includes('revisi');
+    const key=r.req+'|'+r.cod;
+    let pickCell,pedCell;
+    if(enRevision){
+      const auto=AUTO_MAP[key]||0;
+      const picking=getDecision(key,auto);
+      const pedido=r.cant-picking;
+      pickCell=`<input type="number" min="0" max="${r.cant}" value="${picking}" style="width:64px;padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setDecision('${key}',this.value,${r.cant})">`;
+      pedCell=`${pedido}${pedido>0?' <span class="pill p-crit">PEDIDO</span>':' <span class="pill p-ok">COMPLETO</span>'}`;
+    }else{
+      pickCell='<span style="color:#cbd5e1">—</span>';
+      pedCell='<span style="color:#cbd5e1">—</span>';
+    }
     return `<tr>
     <td style="color:#64748b">${r.fecha||'—'}</td>
     <td>${r.resp||'—'}</td>
@@ -508,54 +592,88 @@ function renderReqTable(){
     <td style="color:#64748b">${r.freq||'—'}</td>
     <td style="text-align:center"><span class="dot" style="background:${s.c};box-shadow:0 0 0 3px ${s.bg}" title="${s.t}"></span></td>
     <td><span class="pill" style="background:${s.bg};color:${s.c}">${r.estado||'—'}</span></td>
+    <td class="num">${pickCell}</td>
+    <td class="num">${pedCell}</td>
   </tr>`;
-  }).join('') || `<tr><td colspan="12" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
+  }).join('') || `<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
   const tot=f.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqInfo').textContent=tot?`Mostrando ${reqPage*sz+1}–${Math.min((reqPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')}`:'Sin resultados';
   const pagEl=document.getElementById('reqPag');
   let h='';
   for(let i=0;i<Math.min(pages,10);i++)h+=`<button class="pbt${i===reqPage?' pact':''}" onclick="reqPage=${i};renderReqTable()">${i+1}</button>`;
   pagEl.innerHTML=h;
+  updateDirtyLabels();
 }
 
-/* ═══════════════ PÁGINA PICKING ═══════════════ */
+/* ═══════════════ PÁGINA PICKING — reparto por CANTIDAD ═══════════════ */
+// Decisión = cantidad (0..cant) que se asigna a Picking; el resto (cant-picking) va a Pedido.
 function getDecision(key,auto){
-  if(PENDING[key])return PENDING[key];
-  if(CONFIRMED[key])return CONFIRMED[key];
+  if(Object.prototype.hasOwnProperty.call(PENDING,key))return PENDING[key];
+  if(Object.prototype.hasOwnProperty.call(CONFIRMED,key))return CONFIRMED[key];
   return auto;
 }
-function setDecision(key,val){
-  PENDING[key]=val;
+function setDecision(key,val,maxCant){
+  let n=parseInt(val,10);
+  if(isNaN(n))n=0;
+  n=Math.max(0,Math.min(maxCant,n));
+  PENDING[key]=n;
   localStorage.setItem('fp_almacen_picking_pending',JSON.stringify(PENDING));
-  renderPick();
+  // Requerimientos y Picking comparten el mismo estado: refrescar ambas vistas
+  if(document.getElementById('tbreq'))renderReqTable();
+  if(document.getElementById('pickGroups'))renderPick();
   updateHomeCounters();
+}
+// Reparte el stock de cada código entre TODOS los requerimientos pendientes que lo piden
+// (más antiguos primero), para no "prometer" las mismas unidades a más de un requerimiento.
+function computeAutoAlloc(pendientes){
+  const pool={};
+  Object.keys(DATA_BY_COD).forEach(c=>pool[c]=DATA_BY_COD[c].stock);
+  const ordered=[...pendientes].sort((a,b)=>{
+    const da=(a.fecha||'').split('/').reverse().join('');
+    const db=(b.fecha||'').split('/').reverse().join('');
+    return da.localeCompare(db);
+  });
+  const auto={};
+  ordered.forEach(r=>{
+    const key=r.req+'|'+r.cod;
+    const avail=pool[r.cod]||0;
+    const take=Math.max(0,Math.min(avail,r.cant));
+    auto[key]=take;
+    if(pool[r.cod]!=null)pool[r.cod]-=take;
+  });
+  return auto;
+}
+function updateDirtyLabels(){
+  const dirty=Object.keys(PENDING).length;
+  document.querySelectorAll('.dirtyLbl').forEach(el=>{
+    el.innerHTML=dirty?`<span class="dirty-badge">${dirty} cambio(s) sin guardar</span>`:'';
+  });
 }
 function renderPick(){
   const q=document.getElementById('pq').value.toLowerCase().trim();
   const pendientes=P5.filter(r=>r.estado.toLowerCase().includes('revisi'));
-  window._autoByKey=window._autoByKey||{};
   let items=pendientes.map(r=>{
     const it=DATA_BY_COD[r.cod];
-    const disp=it?it.stock:0;
-    const auto=(it && disp>=r.cant)?'picking':'pedido';
     const key=r.req+'|'+r.cod;
-    window._autoByKey[key]=auto;
-    return {...r,stockDisp:disp,ubi:it?it.ubi:'—',auto,key,decision:getDecision(key,auto)};
+    const auto=AUTO_MAP[key]||0;
+    const picking=getDecision(key,auto);
+    const pedido=r.cant-picking;
+    return {...r,key,stockDisp:it?it.stock:0,ubi:it?it.ubi:'—',auto,picking,pedido};
   });
   if(q) items=items.filter(r=>[r.cod,r.prod,r.proy,r.resp,r.req].join(' ').toLowerCase().includes(q));
 
-  const nPicking=items.filter(r=>r.decision==='picking').length;
-  const nPedido=items.filter(r=>r.decision==='pedido').length;
-  const dirty=Object.keys(PENDING).length;
+  const totalCant=items.reduce((s,r)=>s+r.cant,0);
+  const totalPick=items.reduce((s,r)=>s+r.picking,0);
+  const totalPed=items.reduce((s,r)=>s+r.pedido,0);
   document.getElementById('pickKpis').innerHTML=`
-   <div class="kpi alert"><div class="kl">Pendientes en almacén</div><div class="kv">${pendientes.length.toLocaleString('es-PE')}</div><div class="kd">total en revisión</div></div>
-   <div class="kpi good"><div class="kl">Picking</div><div class="kv">${nPicking}</div><div class="kd">listos para preparar</div></div>
-   <div class="kpi warn"><div class="kl">Pedido</div><div class="kv">${nPedido}</div><div class="kd">pasan a cotización / OC</div></div>
-   <div class="kpi"><div class="kl">Sin guardar</div><div class="kv">${dirty}</div><div class="kd">cambios en este navegador</div></div>`;
+   <div class="kpi alert"><div class="kl">Pendientes en almacén</div><div class="kv">${pendientes.length.toLocaleString('es-PE')}</div><div class="kd">líneas en revisión</div></div>
+   <div class="kpi good"><div class="kl">Und. a Picking</div><div class="kv">${totalPick.toLocaleString('es-PE')}</div><div class="kd">de ${totalCant.toLocaleString('es-PE')} und. requeridas</div></div>
+   <div class="kpi warn"><div class="kl">Und. a Pedido</div><div class="kv">${totalPed.toLocaleString('es-PE')}</div><div class="kd">pasan a cotización / OC</div></div>
+   <div class="kpi"><div class="kl">Sin guardar</div><div class="kv">${Object.keys(PENDING).length}</div><div class="kd">cambios en este navegador</div></div>`;
   document.getElementById('pcnt').textContent=`${items.length} ítems`;
-  document.getElementById('dirtyLbl').innerHTML=dirty?`<span class="dirty-badge">${dirty} cambio(s) sin guardar</span>`:'';
+  updateDirtyLabels();
 
-  // Agrupar por requerimiento
+  // Agrupar por requerimiento — cada requerimiento puede repartirse entre Picking y Pedido ítem por ítem
   const groups={};
   items.forEach(r=>{(groups[r.req]=groups[r.req]||[]).push(r);});
   const reqCodes=Object.keys(groups).sort((a,b)=>{
@@ -564,28 +682,24 @@ function renderPick(){
   });
   document.getElementById('pickGroups').innerHTML=reqCodes.map(rc=>{
     const g=groups[rc];
-    const gPick=g.filter(r=>r.decision==='picking').length;
-    const gPed=g.filter(r=>r.decision==='pedido').length;
+    const gPick=g.reduce((s,r)=>s+r.picking,0);
+    const gPed=g.reduce((s,r)=>s+r.pedido,0);
     return `<div class="reqgroup">
       <div class="reqgroup-hd">
         <span class="rg-req">${rc}</span>
         <span class="rg-proy">${g[0].proy||'—'}</span>
-        <span class="rg-meta">${g.length} ítems · ${gPick} picking · ${gPed} pedido · ${g[0].resp||'—'} · ${g[0].fecha||'—'}</span>
+        <span class="rg-meta">${g.length} SKUs · ${gPick} und. picking · ${gPed} und. pedido · ${g[0].resp||'—'} · ${g[0].fecha||'—'}</span>
       </div>
       <table>
-        <thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant.</th><th class="num">Stock</th><th>Decisión</th></tr></thead>
+        <thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant. req.</th><th class="num">Stock disp.</th><th class="num">Cant. a Picking</th><th class="num">Cant. a Pedido</th></tr></thead>
         <tbody>
         ${g.map(r=>`<tr>
           <td class="mono">${r.cod}</td>
-          <td style="white-space:normal;max-width:340px;font-weight:500">${r.prod||'—'}</td>
+          <td style="white-space:normal;max-width:320px;font-weight:500">${r.prod||'—'}</td>
           <td class="num" style="font-weight:700">${r.cant}</td>
           <td class="num">${r.stockDisp}${r.ubi&&r.ubi!=='—'?' · '+r.ubi:''}</td>
-          <td>
-            <div class="seg">
-              <button class="segPick${r.decision==='picking'?' on':''}" onclick="setDecision('${r.key}','picking')">🧰 Picking</button>
-              <button class="segPed${r.decision==='pedido'?' on':''}" onclick="setDecision('${r.key}','pedido')">🛒 Pedido</button>
-            </div>
-          </td>
+          <td class="num"><input type="number" min="0" max="${r.cant}" value="${r.picking}" style="width:64px;padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setDecision('${r.key}',this.value,${r.cant})"></td>
+          <td class="num">${r.pedido}${r.pedido>0?' <span class="pill p-crit">PEDIDO</span>':' <span class="pill p-ok">COMPLETO</span>'}</td>
         </tr>`).join('')}
         </tbody>
       </table>
@@ -604,8 +718,8 @@ async function guardarDecisiones(){
     if(confirm('Para guardar decisiones de Picking (compartidas con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
     return;
   }
-  const lbl=document.getElementById('saveLbl');
-  lbl.innerHTML='⏳ Guardando…';
+  const lbls=document.querySelectorAll('.saveLblEl');
+  lbls.forEach(l=>l.innerHTML='⏳ Guardando…');
   try{
     const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
     if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
@@ -624,27 +738,36 @@ async function guardarDecisiones(){
     CONFIRMED=merged;
     PENDING={};
     localStorage.removeItem('fp_almacen_picking_pending');
-    lbl.textContent='✔ Guardado '+new Date().toLocaleString('es-PE');
-    renderPick();
+    const savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE');
+    document.querySelectorAll('.saveLblEl').forEach(l=>l.textContent=savedTxt);
+    if(document.getElementById('tbreq'))renderReqTable();
+    if(document.getElementById('pickGroups'))renderPick();
     updateHomeCounters();
   }catch(e){
     console.error(e);
-    lbl.textContent='⚠ Error al guardar: '+e.message;
+    document.querySelectorAll('.saveLblEl').forEach(l=>l.textContent='⚠ Error al guardar: '+e.message);
   }
 }
 
 /* ═══════════════ PÁGINA CÓDIGOS ═══════════════ */
 const CAT_PREFIX={"Ferretería":"0048","Equipos":"0011","Gasfitería":"0042","Eléctrico":"0043","EPP":"0051","Metalmecánica":"0033","Refrigeración":"0022","Limpieza":"0066"};
-function loadExtraCodigos(){
-  try{return JSON.parse(localStorage.getItem('fp_almacen_codigos_extra')||'[]');}catch(e){return [];}
+let CONFIRMED_COD=[]; // códigos generados ya guardados en data.json (D.almacenCodigos)
+let PENDING_COD=[];   // códigos generados en este navegador y aún no guardados
+function loadPendingCodigos(){
+  try{return JSON.parse(localStorage.getItem('fp_almacen_codigos_pending')||'[]');}catch(e){return [];}
 }
-function saveExtraCodigos(list){
-  localStorage.setItem('fp_almacen_codigos_extra',JSON.stringify(list));
+function savePendingCodigos(){
+  localStorage.setItem('fp_almacen_codigos_pending',JSON.stringify(PENDING_COD));
 }
 function getCatalogo(){
-  const base=DATA.map(d=>({cod:d.cod,desc:d.desc,cat:d.cat,um:d.um,ficha:'—',origen:'Existencias'}));
-  const extra=loadExtraCodigos();
-  return base.concat(extra);
+  const base=DATA.map(d=>({cod:d.cod,desc:d.desc,cat:d.cat,um:d.um,origen:'Existencias'}));
+  return base.concat(CONFIRMED_COD).concat(PENDING_COD);
+}
+function updateCodDirtyLabels(){
+  const dirty=PENDING_COD.length;
+  document.querySelectorAll('.codDirtyLbl').forEach(el=>{
+    el.innerHTML=dirty?`<span class="dirty-badge">${dirty} código(s) sin guardar</span>`:'';
+  });
 }
 function fillCodFilters(){
   const cat=document.getElementById('ccat');
@@ -661,52 +784,226 @@ function renderCod(){
   });
   document.getElementById('tbcod').innerHTML=cat.map(c=>`<tr>
     <td class="mono">${c.cod}</td><td>${c.desc}</td><td>${c.cat}</td><td>${c.um}</td>
-    <td>${c.ficha}</td>
-    <td>${c.origen==='Generado'?'<span class="pill p-ok">GENERADO</span>':'<span class="pill p-gray">CATÁLOGO</span>'}</td>
+    <td>${c.origen&&c.origen!=='Existencias'?`<button class="btn br" style="padding:4px 9px;font-size:10px" onclick="verFicha('${c.cod}')">📄 Ver ficha</button>`:'—'}</td>
+    <td>${c.origen==='Existencias'?'<span class="pill p-gray">CATÁLOGO</span>':(CONFIRMED_COD.some(x=>x.cod===c.cod)?'<span class="pill p-ok">GENERADO</span>':'<span class="pill p-low">SIN GUARDAR</span>')}</td>
   </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
   document.getElementById('ccnt').textContent=`${cat.length} códigos`;
+  updateCodDirtyLabels();
 }
 function toggleCodForm(){
   document.getElementById('codForm').classList.toggle('open');
   document.getElementById('cf-matches').innerHTML='';
-  document.getElementById('cf-desc').value='';
+  ['cf-desc','cf-nom','cf-subgrupo','cf-marca','cf-um','cf-prov','cf-doc','cf-precio','cf-nota','cf-file'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
 }
-function checkDup(){
-  const q=document.getElementById('cf-desc').value.toLowerCase().trim();
-  const box=document.getElementById('cf-matches');
-  if(q.length<3){box.innerHTML='';return;}
-  const words=q.split(/\s+/).filter(w=>w.length>2);
-  const matches=getCatalogo().filter(c=>{
+// Lee un archivo local y lo devuelve en base64 (sin el prefijo "data:...;base64,")
+function leerArchivoBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result.split(',')[1]);
+    reader.onerror=()=>reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+// Sube un archivo binario al repositorio (no a data.json) vía GitHub Contents API.
+async function subirArchivoGitHub(path,base64Content,commitMsg){
+  const token=localStorage.getItem(GH_TOKEN_KEY);
+  const api='https://api.github.com/repos/'+GH_REPO+'/contents/'+path;
+  let sha='';
+  const check=await fetch(api,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+  if(check.ok){const meta=await check.json();sha=meta.sha||'';}
+  const body={message:commitMsg,content:base64Content};
+  if(sha)body.sha=sha;
+  const res=await fetch(api,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!res.ok)throw new Error('GitHub rechazó la subida del archivo (HTTP '+res.status+')');
+  return path;
+}
+function buscarSimilares(q){
+  if(q.length<3)return [];
+  const words=q.toLowerCase().split(/\s+/).filter(w=>w.length>2);
+  return getCatalogo().filter(c=>{
     const d=c.desc.toLowerCase();
     return words.some(w=>d.includes(w));
   }).slice(0,5);
+}
+function checkDup(){
+  const q=document.getElementById('cf-desc').value.trim();
+  const box=document.getElementById('cf-matches');
+  const matches=buscarSimilares(q);
   if(!matches.length){box.innerHTML='';return;}
   box.innerHTML=`<div class="matchbox">⚠️ <b>Posibles códigos similares ya existentes</b> — revisa antes de generar uno nuevo:<br>${
     matches.map(m=>`• <span class="mono">${m.cod}</span> — ${m.desc}`).join('<br>')
   }</div>`;
 }
 function nextSeq(prefix){
-  let seqs=[];
-  try{seqs=JSON.parse(localStorage.getItem('fp_almacen_seq')||'{}');}catch(e){seqs={};}
-  const cur=(seqs[prefix]||0)+1;
-  seqs[prefix]=cur;
-  localStorage.setItem('fp_almacen_seq',JSON.stringify(seqs));
-  return cur;
+  const cat=getCatalogo();
+  let max=0;
+  cat.forEach(c=>{
+    if(c.cod && c.cod.startsWith(prefix)){
+      const n=parseInt(c.cod.slice(prefix.length),10);
+      if(!isNaN(n) && n>max)max=n;
+    }
+  });
+  return max+1;
 }
-function generarCodigo(){
+async function generarCodigo(){
   const desc=document.getElementById('cf-desc').value.trim();
+  const nom=document.getElementById('cf-nom').value.trim();
   const cat=document.getElementById('cf-cat').value;
+  const subgrupo=document.getElementById('cf-subgrupo').value.trim();
+  const marca=document.getElementById('cf-marca').value.trim();
   const um=document.getElementById('cf-um').value.trim()||'UND';
+  const prov=document.getElementById('cf-prov').value.trim();
+  const doc=document.getElementById('cf-doc').value.trim();
+  const moneda=document.getElementById('cf-moneda').value;
+  const precio=document.getElementById('cf-precio').value.trim();
+  const nota=document.getElementById('cf-nota').value.trim();
+  const fileInput=document.getElementById('cf-file');
+  const file=fileInput.files[0];
   if(!desc){alert('Ingresa la descripción del material.');return;}
+  if(file && file.size>8*1024*1024){alert('El archivo adjunto pesa más de 8 MB. Comprímelo o recórtalo antes de subirlo.');return;}
+
+  const matches=buscarSimilares(desc);
+  if(matches.length){
+    const listado=matches.map(m=>`${m.cod} — ${m.desc}`).join('\n');
+    const seguir=confirm('⚠️ ATENCIÓN: se encontraron códigos similares ya existentes:\n\n'+listado+'\n\n¿Confirmas que NO es un duplicado y quieres generar un código nuevo de todas formas?');
+    if(!seguir)return;
+  }
+
   const prefix=CAT_PREFIX[cat]||'0099';
   const seq=nextSeq(prefix);
   const cod=prefix+String(seq).padStart(8,'0');
-  const extra=loadExtraCodigos();
-  extra.push({cod,desc:desc.toUpperCase(),cat,um,ficha:'Pendiente de adjuntar',origen:'Generado'});
-  saveExtraCodigos(extra);
+  const entry={
+    cod, desc:desc.toUpperCase(), nom, cat, subgrupo, marca, um,
+    prov, doc, moneda, precio,
+    nota, origen:'Generado',
+    duplicadosVerificados:matches.map(m=>({cod:m.cod,desc:m.desc})),
+    fecha:new Date().toLocaleDateString('es-PE')
+  };
+
+  let avisoArchivo='';
+  if(file){
+    const token=localStorage.getItem(GH_TOKEN_KEY);
+    if(!token){
+      avisoArchivo='\n⚠ No se adjuntó la cotización: falta configurar el Token de GitHub (🔑). El código sí se generó.';
+      if(confirm('Para adjuntar la cotización necesitas un Token de GitHub.\n¿Configurarlo ahora? (el código se generará igual, sin el adjunto)'))setupGHToken();
+    }else{
+      try{
+        const ext=(file.name.split('.').pop()||'pdf').toLowerCase();
+        const path='assets/cotizaciones/'+cod+'.'+ext;
+        const base64=await leerArchivoBase64(file);
+        await subirArchivoGitHub(path,base64,'almacen: adjuntar cotización de '+cod);
+        entry.cotizacionPath=path;
+        entry.cotizacionNombre=file.name;
+        avisoArchivo='\n📎 Cotización adjuntada correctamente.';
+      }catch(e){
+        console.error(e);
+        avisoArchivo='\n⚠ No se pudo subir la cotización adjunta ('+e.message+'). El código sí se generó; puedes reintentar luego.';
+      }
+    }
+  }
+
+  PENDING_COD.push(entry);
+  savePendingCodigos();
   toggleCodForm();
   renderCod();
-  alert('Código generado: '+cod);
+  updateHomeCounters();
+  alert('Código generado: '+cod+avisoArchivo+'\n\nRecuerda hacer clic en 💾 Guardar códigos para compartirlo con todos.');
+}
+function fichaEntry(cod){
+  return getCatalogo().find(c=>c.cod===cod);
+}
+function verFicha(cod){
+  const c=fichaEntry(cod);
+  if(!c){alert('No se encontró la ficha de este código.');return;}
+  const dupHtml=(c.duplicadosVerificados&&c.duplicadosVerificados.length)
+    ? c.duplicadosVerificados.map(d=>`<tr><td class="td-label">Código similar verificado</td><td class="td-val">${d.cod} — ${d.desc}</td></tr>`).join('')
+    : `<tr><td class="td-label">Verificación de duplicados</td><td class="td-val" style="color:#16a34a;font-weight:600">No se encontraron códigos similares al momento de generar</td></tr>`;
+  document.getElementById('fichaBody').innerHTML=`
+    <div style="background:#0f172a;color:#fff;padding:20px 24px">
+      <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:700">Ficha técnica — Código nuevo generado</div>
+      <div style="font-size:17px;font-weight:800;margin-top:4px">${c.cod} — ${c.desc}</div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <span style="background:rgba(255,255,255,.14);border-radius:14px;padding:3px 11px;font-size:10.5px">${c.cat||'—'}</span>
+        ${c.subgrupo?`<span style="background:rgba(255,255,255,.14);border-radius:14px;padding:3px 11px;font-size:10.5px">${c.subgrupo}</span>`:''}
+        <span style="background:rgba(255,255,255,.14);border-radius:14px;padding:3px 11px;font-size:10.5px">📅 ${c.fecha||'—'}</span>
+      </div>
+    </div>
+    ${c.nota?`<div style="background:#eff6ff;color:#1e3a5f;padding:10px 24px;font-size:12px;font-weight:600">🔧 ${c.nota}</div>`:''}
+    ${c.nom?`<div style="margin:16px 24px;background:#fffbeb;border-left:4px solid #d97706;border-radius:0 8px 8px 0;padding:10px 14px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#92400e">Nombre comercial</div>
+      <div style="font-size:13px;font-weight:600;color:#78350f">${c.nom}</div></div>`:''}
+    ${c.cotizacionPath?`<div style="margin:16px 24px">
+      <a href="${c.cotizacionPath}" target="_blank" style="display:inline-flex;align-items:center;gap:7px;background:#eff6ff;color:#1d4ed8;padding:9px 15px;border-radius:8px;font-size:12.5px;font-weight:700;text-decoration:none;border:1px solid #bfdbfe">📎 Ver cotización adjunta — ${c.cotizacionNombre||'archivo'}</a>
+      </div>`:`<div style="margin:16px 24px;background:#fef2f2;border-left:4px solid #dc2626;border-radius:0 8px 8px 0;padding:10px 14px">
+      <div style="font-size:12px;color:#991b1b;font-weight:600">⚠️ Sin cotización adjunta — este código se generó sin el respaldo del proveedor</div></div>`}
+    <div style="background:#0d9488;color:#fff;padding:7px 24px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:10px">Identificación y cotización</div>
+    <div style="margin:0 24px 16px;border:1px solid #e2e8f0;border-radius:0 0 10px 10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <tr><td class="td-label" style="font-weight:600;color:#64748b;background:#f8fafc;padding:8px 12px;width:170px;border-bottom:1px solid #f1f5f9">Grupo</td><td class="td-val" style="padding:8px 12px;border-bottom:1px solid #f1f5f9">${c.cat||'—'}</td></tr>
+        <tr><td class="td-label" style="font-weight:600;color:#64748b;background:#f8fafc;padding:8px 12px;border-bottom:1px solid #f1f5f9">Subgrupo</td><td class="td-val" style="padding:8px 12px;border-bottom:1px solid #f1f5f9">${c.subgrupo||'—'}</td></tr>
+        <tr><td class="td-label" style="font-weight:600;color:#64748b;background:#f8fafc;padding:8px 12px;border-bottom:1px solid #f1f5f9">Código (Idproducto)</td><td class="td-val mono" style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;color:#0d9488">${c.cod}</td></tr>
+        <tr><td class="td-label" style="font-weight:600;color:#64748b;background:#f8fafc;padding:8px 12px;border-bottom:1px solid #f1f5f9">Marca</td><td class="td-val" style="padding:8px 12px;border-bottom:1px solid #f1f5f9">${c.marca||'—'}</td></tr>
+        <tr><td class="td-label" style="font-weight:600;color:#64748b;background:#f8fafc;padding:8px 12px;border-bottom:1px solid #f1f5f9">Unidad de medida</td><td class="td-val" style="padding:8px 12px;border-bottom:1px solid #f1f5f9">${c.um||'—'}</td></tr>
+        <tr><td class="td-label" style="font-weight:600;color:#64748b;background:#f8fafc;padding:8px 12px;border-bottom:1px solid #f1f5f9">Proveedor</td><td class="td-val" style="padding:8px 12px;border-bottom:1px solid #f1f5f9">${c.prov||'—'}</td></tr>
+        <tr><td class="td-label" style="font-weight:600;color:#64748b;background:#f8fafc;padding:8px 12px;border-bottom:1px solid #f1f5f9">Documento / cotización</td><td class="td-val" style="padding:8px 12px;border-bottom:1px solid #f1f5f9">${c.doc||'—'}</td></tr>
+        <tr><td class="td-label" style="font-weight:600;color:#64748b;background:#f8fafc;padding:8px 12px">Precio unitario</td><td class="td-val" style="padding:8px 12px">${c.precio?(c.moneda||'')+' '+c.precio:'—'}</td></tr>
+      </table>
+    </div>
+    <div style="background:#0d9488;color:#fff;padding:7px 24px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Verificación de duplicados</div>
+    <div style="margin:0 24px 20px;border:1px solid #e2e8f0;border-radius:0 0 10px 10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">${dupHtml}</table>
+    </div>
+    <div style="text-align:center;color:#94a3b8;font-size:10.5px;padding:14px;border-top:1px solid #e2e8f0">
+      FRIOPACKING S.A. · Generado ${c.fecha||''} · Módulo Almacén — Códigos
+      <button class="btn br" style="margin-top:8px" onclick="cerrarFicha()">Cerrar</button>
+    </div>`;
+  document.getElementById('fichaBg').style.display='flex';
+}
+function cerrarFicha(){document.getElementById('fichaBg').style.display='none';}
+
+/* Guardar códigos generados en data.json compartido — solo toca D.almacenCodigos */
+async function guardarCodigos(){
+  if(!PENDING_COD.length){alert('No hay códigos nuevos para guardar.');return;}
+  const token=localStorage.getItem(GH_TOKEN_KEY);
+  if(!token){
+    if(confirm('Para guardar códigos (compartidos con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
+    return;
+  }
+  const lbls=document.querySelectorAll('.codSaveLblEl');
+  lbls.forEach(l=>l.innerHTML='⏳ Guardando…');
+  try{
+    const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+    if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
+    const meta=await check.json();
+    const sha=meta.sha;
+    const remoteRaw=await fetch(GH_RAW+'?t='+Date.now());
+    if(!remoteRaw.ok)throw new Error('No se pudo leer el contenido actual de data.json');
+    const remote=await remoteRaw.json();
+    if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
+    const remoteCodigos=remote.D.almacenCodigos||[];
+    const remoteCods=new Set(remoteCodigos.map(c=>c.cod));
+    const colisiones=PENDING_COD.filter(c=>remoteCods.has(c.cod));
+    const nuevos=PENDING_COD.filter(c=>!remoteCods.has(c.cod));
+    const merged=remoteCodigos.concat(nuevos);
+    remote.D.almacenCodigos=merged;
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
+    const body={message:'almacen: agregar '+nuevos.length+' código(s) nuevo(s) '+new Date().toISOString(),content,sha};
+    const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
+    CONFIRMED_COD=merged;
+    PENDING_COD=colisiones; // los que chocaron quedan pendientes para regenerar
+    savePendingCodigos();
+    let savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE');
+    if(colisiones.length)savedTxt+=` — ⚠ ${colisiones.length} código(s) ya existían y no se subieron, regenéralos`;
+    document.querySelectorAll('.codSaveLblEl').forEach(l=>l.textContent=savedTxt);
+    renderCod();
+    updateHomeCounters();
+  }catch(e){
+    console.error(e);
+    document.querySelectorAll('.codSaveLblEl').forEach(l=>l.textContent='⚠ Error al guardar: '+e.message);
+  }
 }
 
 /* ═══════════════ CONTADORES DE INICIO ═══════════════ */
@@ -715,13 +1012,14 @@ function updateHomeCounters(){
   document.getElementById('hc-general').textContent=`${DATA.length} SKUs · ${bajo} con alerta`;
   const pendientes=P5.filter(r=>r.estado.toLowerCase().includes('revisi'));
   document.getElementById('hc-req').textContent=P5_LIVE?`${P5.length.toLocaleString('es-PE')} requerimientos (en vivo)`:`${P5.length} de ejemplo`;
-  const nPicking=pendientes.filter(r=>{
-    const it=DATA_BY_COD[r.cod];
-    const auto=(it&&it.stock>=r.cant)?'picking':'pedido';
+  const autoMap=computeAutoAlloc(pendientes);
+  let totalPick=0,totalReq=0;
+  pendientes.forEach(r=>{
     const key=r.req+'|'+r.cod;
-    return getDecision(key,auto)==='picking';
-  }).length;
-  document.getElementById('hc-pick').textContent=`${nPicking} picking de ${pendientes.length} pendientes`;
+    totalPick+=getDecision(key,autoMap[key]||0);
+    totalReq+=r.cant;
+  });
+  document.getElementById('hc-pick').textContent=`${totalPick.toLocaleString('es-PE')} und. a picking de ${totalReq.toLocaleString('es-PE')} req.`;
   document.getElementById('hc-cod').textContent=`${getCatalogo().length} códigos registrados`;
 }
 
