@@ -1396,7 +1396,10 @@ function renderP2(){
   p2fil=filterP2().sort((a,b)=>{
     const pa=a.foc?a.foc.split('/').reverse().join(''):'';
     const pb=b.foc?b.foc.split('/').reverse().join(''):'';
-    return pb.localeCompare(pa);
+    if(pa!==pb)return pb.localeCompare(pa);
+    const na=parseInt((a.oc||'').replace(/\D/g,''),10)||0;
+    const nb=parseInt((b.oc||'').replace(/\D/g,''),10)||0;
+    return nb-na;
   }); p2pg=0;
   document.getElementById('f2cnt').textContent=p2fil.length+' OC';
   document.getElementById('p2tot').textContent=p2fil.length;
@@ -5265,11 +5268,14 @@ function importMaestro(wb){
     delete o._estados;
     return o;
   });
-  // Sort desc by foc
+  // Sort desc by foc; si empatan en fecha, desempatar por número de OC descendente
   ocData.sort((a,b)=>{
     const pa=a.foc?a.foc.split('/').reverse().join(''):'';
     const pb=b.foc?b.foc.split('/').reverse().join(''):'';
-    return pb.localeCompare(pa);
+    if(pa!==pb)return pb.localeCompare(pa);
+    const na=parseInt((a.oc||'').replace(/\D/g,''),10)||0;
+    const nb=parseInt((b.oc||'').replace(/\D/g,''),10)||0;
+    return nb-na;
   });
 
   // ── 3. Build Sin OC data (Page 3) ─────────────────────────────────────────
@@ -5596,7 +5602,10 @@ function importPedidoSinReq(wb){
   p4Data.sort((a,b)=>{
     const pa=a.foc?a.foc.split('/').reverse().join(''):'';
     const pb=b.foc?b.foc.split('/').reverse().join(''):'';
-    return pb.localeCompare(pa);
+    if(pa!==pb)return pb.localeCompare(pa);
+    const na=parseInt((a.oc||'').replace(/\D/g,''),10)||0;
+    const nb=parseInt((b.oc||'').replace(/\D/g,''),10)||0;
+    return nb-na;
   });
 
   D.p4=p4Data;
