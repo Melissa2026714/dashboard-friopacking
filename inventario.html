@@ -113,7 +113,7 @@ tr:hover td{background:#f8fafc}
   </div>
   <div class="nbr">
     <button class="btn bi" onclick="alert('Aquí se cargará el Excel de stock real (Kardex / Reporte de existencias). Estructura lista para conectar.')">📂 IMPORTAR</button>
-    <button class="btn br" onclick="setupGHToken()" title="Configurar token de GitHub para guardar decisiones de Picking (mismo token que Compras)">🔑</button>
+    <button class="btn br" onclick="setupGHToken()" title="Configurar el token de GitHub de Almacén (propio, distinto al de Compras) para guardar Picking y Códigos">🔑</button>
     <button class="btn br" onclick="location.reload()">↻</button>
   </div>
 </nav>
@@ -225,7 +225,7 @@ tr:hover td{background:#f8fafc}
     </div>
   </div>
 
-  <div class="note crit">🧰 Cada SKU se reparte por <b>cantidad</b>: la columna <b>Cant. a Picking</b> sugiere el stock disponible (repartido entre todos los pendientes de ese código, sin duplicar unidades) — edítala si hace falta. El resto (<b>Cant. a Pedido</b>) pasa a cotización/OC automáticamente.</div>
+  <div class="note crit">🧰 Aquí solo aparecen los SKUs con <b>Cant. a Picking</b> mayor a 0 (el reparto por cantidad se hace desde Requerimientos). Cuando termines de preparar un ítem, márcalo <b>✅ Completado</b> con responsable, foto y fecha/hora.</div>
 
   <div class="kpis" id="pickKpis"></div>
 
@@ -362,6 +362,27 @@ tr:hover td{background:#f8fafc}
   </div>
 </div>
 
+<!-- MODAL CIERRE DE CICLO DE PICKING -->
+<div id="pickCompleteBg" onclick="if(event.target===this)cerrarCompletar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;width:100%;max-width:420px;border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="background:#0d9488;color:#fff;padding:16px 20px">
+      <div style="font-size:15px;font-weight:800">✅ Marcar picking completado</div>
+      <div style="font-size:11px;color:#ccfbf1;margin-top:2px">Registra quién lo hizo y adjunta una foto de evidencia (opcional)</div>
+    </div>
+    <div style="padding:18px 20px">
+      <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Responsable (quién preparó el pedido)</label>
+      <input id="pc-resp" type="text" placeholder="Nombre y apellido" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Foto de evidencia (opcional)</label>
+      <input id="pc-foto" type="file" accept=".jpg,.jpeg,.png" style="width:100%;padding:7px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;margin-bottom:6px">
+      <div style="font-size:10.5px;color:#94a3b8;margin-bottom:16px">La fecha y hora se registran automáticamente al confirmar.</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bi" onclick="confirmarCompletado()" style="flex:1;justify-content:center;padding:10px">✅ Confirmar</button>
+        <button class="btn br" onclick="cerrarCompletar()" style="padding:10px 16px">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ═══════════════ NAVEGACIÓN ═══════════════ */
 const PAGES=['home','p-general','p-req','p-pick','p-cod'];
@@ -406,10 +427,10 @@ const GH_REPO='Melissa2026714/dashboard-friopacking';
 const GH_FILE='data.json';
 const GH_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE;
 const GH_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE;
-const GH_TOKEN_KEY='fp_gh_token'; // mismo token que usa Compras (localStorage compartido por origen)
+const GH_TOKEN_KEY='fp_gh_token_almacen'; // token propio de Almacén, independiente del que usa Compras
 function setupGHToken(){
   const cur=localStorage.getItem(GH_TOKEN_KEY)||'';
-  const t=prompt('Ingresa tu GitHub Personal Access Token\n(se guarda solo en este navegador — es el mismo que usa Compras):',cur);
+  const t=prompt('Ingresa el Token de GitHub de Almacén\n(propio de este módulo, no el de Compras — se guarda solo en este navegador):',cur);
   if(t!==null){
     localStorage.setItem(GH_TOKEN_KEY,t.trim());
     alert(t.trim()?'✅ Token guardado. Ya puedes usar GUARDAR.':'⚠ Token eliminado.');
@@ -606,17 +627,24 @@ function renderReqTable(){
 }
 
 /* ═══════════════ PÁGINA PICKING — reparto por CANTIDAD ═══════════════ */
-// Decisión = cantidad (0..cant) que se asigna a Picking; el resto (cant-picking) va a Pedido.
+// Registro por key = req+'|'+cod: { picking, completado, responsable, fechaHora, fotoPath }
+// (por compatibilidad, si el valor guardado es un número plano, se trata como {picking:valor}).
+function getRecord(key){
+  const r=Object.prototype.hasOwnProperty.call(PENDING,key)?PENDING[key]
+    :(Object.prototype.hasOwnProperty.call(CONFIRMED,key)?CONFIRMED[key]:null);
+  if(r==null)return null;
+  return typeof r==='object'?r:{picking:r};
+}
 function getDecision(key,auto){
-  if(Object.prototype.hasOwnProperty.call(PENDING,key))return PENDING[key];
-  if(Object.prototype.hasOwnProperty.call(CONFIRMED,key))return CONFIRMED[key];
-  return auto;
+  const rec=getRecord(key);
+  return rec?(rec.picking!=null?rec.picking:auto):auto;
 }
 function setDecision(key,val,maxCant){
   let n=parseInt(val,10);
   if(isNaN(n))n=0;
   n=Math.max(0,Math.min(maxCant,n));
-  PENDING[key]=n;
+  const prev=getRecord(key)||{};
+  PENDING[key]={...prev,picking:n};
   localStorage.setItem('fp_almacen_picking_pending',JSON.stringify(PENDING));
   // Requerimientos y Picking comparten el mismo estado: refrescar ambas vistas
   if(document.getElementById('tbreq'))renderReqTable();
@@ -652,28 +680,32 @@ function updateDirtyLabels(){
 function renderPick(){
   const q=document.getElementById('pq').value.toLowerCase().trim();
   const pendientes=P5.filter(r=>r.estado.toLowerCase().includes('revisi'));
-  let items=pendientes.map(r=>{
+  let allItems=pendientes.map(r=>{
     const it=DATA_BY_COD[r.cod];
     const key=r.req+'|'+r.cod;
     const auto=AUTO_MAP[key]||0;
     const picking=getDecision(key,auto);
     const pedido=r.cant-picking;
-    return {...r,key,stockDisp:it?it.stock:0,ubi:it?it.ubi:'—',auto,picking,pedido};
+    const rec=getRecord(key)||{};
+    return {...r,key,stockDisp:it?it.stock:0,ubi:it?it.ubi:'—',auto,picking,pedido,
+      completado:!!rec.completado,responsable:rec.responsable||'',fechaHora:rec.fechaHora||'',fotoPath:rec.fotoPath||''};
   });
+  // Esta página solo muestra ítems con cantidad efectivamente asignada a Picking
+  let items=allItems.filter(r=>r.picking>0);
   if(q) items=items.filter(r=>[r.cod,r.prod,r.proy,r.resp,r.req].join(' ').toLowerCase().includes(q));
 
-  const totalCant=items.reduce((s,r)=>s+r.cant,0);
-  const totalPick=items.reduce((s,r)=>s+r.picking,0);
-  const totalPed=items.reduce((s,r)=>s+r.pedido,0);
+  const totalCant=allItems.reduce((s,r)=>s+r.cant,0);
+  const totalPick=allItems.reduce((s,r)=>s+r.picking,0);
+  const completados=items.filter(r=>r.completado).length;
   document.getElementById('pickKpis').innerHTML=`
    <div class="kpi alert"><div class="kl">Pendientes en almacén</div><div class="kv">${pendientes.length.toLocaleString('es-PE')}</div><div class="kd">líneas en revisión</div></div>
    <div class="kpi good"><div class="kl">Und. a Picking</div><div class="kv">${totalPick.toLocaleString('es-PE')}</div><div class="kd">de ${totalCant.toLocaleString('es-PE')} und. requeridas</div></div>
-   <div class="kpi warn"><div class="kl">Und. a Pedido</div><div class="kv">${totalPed.toLocaleString('es-PE')}</div><div class="kd">pasan a cotización / OC</div></div>
-   <div class="kpi"><div class="kl">Sin guardar</div><div class="kv">${Object.keys(PENDING).length}</div><div class="kd">cambios en este navegador</div></div>`;
-  document.getElementById('pcnt').textContent=`${items.length} ítems`;
+   <div class="kpi warn"><div class="kl">Por preparar</div><div class="kv">${items.length-completados}</div><div class="kd">de ${items.length} ítems en picking</div></div>
+   <div class="kpi"><div class="kl">Completados</div><div class="kv">${completados}</div><div class="kd">con evidencia registrada</div></div>`;
+  document.getElementById('pcnt').textContent=`${items.length} ítems en picking`;
   updateDirtyLabels();
 
-  // Agrupar por requerimiento — cada requerimiento puede repartirse entre Picking y Pedido ítem por ítem
+  // Agrupar por requerimiento — solo aparecen los SKUs con Cant. a Picking > 0
   const groups={};
   items.forEach(r=>{(groups[r.req]=groups[r.req]||[]).push(r);});
   const reqCodes=Object.keys(groups).sort((a,b)=>{
@@ -683,28 +715,76 @@ function renderPick(){
   document.getElementById('pickGroups').innerHTML=reqCodes.map(rc=>{
     const g=groups[rc];
     const gPick=g.reduce((s,r)=>s+r.picking,0);
-    const gPed=g.reduce((s,r)=>s+r.pedido,0);
+    const gDone=g.filter(r=>r.completado).length;
     return `<div class="reqgroup">
       <div class="reqgroup-hd">
         <span class="rg-req">${rc}</span>
         <span class="rg-proy">${g[0].proy||'—'}</span>
-        <span class="rg-meta">${g.length} SKUs · ${gPick} und. picking · ${gPed} und. pedido · ${g[0].resp||'—'} · ${g[0].fecha||'—'}</span>
+        <span class="rg-meta">${g.length} SKUs en picking · ${gPick} und. · ${gDone}/${g.length} completados · ${g[0].resp||'—'} · ${g[0].fecha||'—'}</span>
       </div>
       <table>
-        <thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant. req.</th><th class="num">Stock disp.</th><th class="num">Cant. a Picking</th><th class="num">Cant. a Pedido</th></tr></thead>
+        <thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant. req.</th><th class="num">Cant. a Picking</th><th>Cierre de ciclo</th></tr></thead>
         <tbody>
         ${g.map(r=>`<tr>
           <td class="mono">${r.cod}</td>
-          <td style="white-space:normal;max-width:320px;font-weight:500">${r.prod||'—'}</td>
+          <td style="white-space:normal;max-width:300px;font-weight:500">${r.prod||'—'}</td>
           <td class="num" style="font-weight:700">${r.cant}</td>
-          <td class="num">${r.stockDisp}${r.ubi&&r.ubi!=='—'?' · '+r.ubi:''}</td>
           <td class="num"><input type="number" min="0" max="${r.cant}" value="${r.picking}" style="width:64px;padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setDecision('${r.key}',this.value,${r.cant})"></td>
-          <td class="num">${r.pedido}${r.pedido>0?' <span class="pill p-crit">PEDIDO</span>':' <span class="pill p-ok">COMPLETO</span>'}</td>
+          <td>${r.completado
+            ? `<span class="pill p-ok">✅ COMPLETADO</span> <span style="font-size:10.5px;color:#64748b">${r.responsable} · ${r.fechaHora}</span>${r.fotoPath?` · <a href="${r.fotoPath}" target="_blank" style="font-size:10.5px;font-weight:600">📷 ver foto</a>`:''}`
+            : `<button class="btn bi" style="padding:5px 10px;font-size:10.5px" onclick="abrirCompletar('${r.key}')">✅ Marcar completado</button>`}
+          </td>
         </tr>`).join('')}
         </tbody>
       </table>
     </div>`;
-  }).join('') || `<div class="note">Sin requerimientos pendientes en almacén.</div>`;
+  }).join('') || `<div class="note">Ningún ítem tiene cantidad asignada a Picking todavía — asígnala desde Requerimientos o editando "Cant. a Picking" aquí.</div>`;
+}
+
+/* ═══════════════ CIERRE DE CICLO DE PICKING (foto + responsable + fecha/hora) ═══════════════ */
+let _completarKey=null;
+function abrirCompletar(key){
+  _completarKey=key;
+  document.getElementById('pc-resp').value='';
+  document.getElementById('pc-foto').value='';
+  document.getElementById('pickCompleteBg').style.display='flex';
+}
+function cerrarCompletar(){
+  document.getElementById('pickCompleteBg').style.display='none';
+  _completarKey=null;
+}
+async function confirmarCompletado(){
+  const key=_completarKey;
+  if(!key)return;
+  const responsable=document.getElementById('pc-resp').value.trim();
+  if(!responsable){alert('Indica quién realizó el picking.');return;}
+  const file=document.getElementById('pc-foto').files[0];
+  const ahora=new Date().toLocaleString('es-PE');
+  const prev=getRecord(key)||{};
+  const rec={...prev,completado:true,responsable,fechaHora:ahora};
+  if(file){
+    const token=localStorage.getItem(GH_TOKEN_KEY);
+    if(!token){
+      if(confirm('Para adjuntar la foto de evidencia necesitas el Token de GitHub de Almacén.\n¿Configurarlo ahora? (se guardará igual, sin la foto)'))setupGHToken();
+    }else{
+      try{
+        const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+        const path='assets/picking/'+key.replace(/[|/\\]/g,'_')+'_'+Date.now()+'.'+ext;
+        const base64=await leerArchivoBase64(file);
+        await subirArchivoGitHub(path,base64,'almacen: evidencia de picking '+key);
+        rec.fotoPath=path;
+      }catch(e){
+        console.error(e);
+        alert('No se pudo subir la foto de evidencia ('+e.message+'). Se guarda el resto de la información igual.');
+      }
+    }
+  }
+  PENDING[key]=rec;
+  localStorage.setItem('fp_almacen_picking_pending',JSON.stringify(PENDING));
+  cerrarCompletar();
+  renderPick();
+  if(document.getElementById('tbreq'))renderReqTable();
+  updateHomeCounters();
 }
 
 /* Guardar decisiones en data.json compartido (mismo repo que Compras).
