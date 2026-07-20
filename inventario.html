@@ -67,7 +67,13 @@ tr:hover td{background:#f8fafc}
 .p-ok{background:#dcfce7;color:#15803d}
 .p-low{background:#fef9c3;color:#a16207}
 .p-crit{background:#fee2e2;color:#b91c1c}
+.p-sobre{background:#ede9fe;color:#6d28d9}
 .p-gray{background:#f1f5f9;color:#64748b}
+.rowclick{cursor:pointer}
+.rowclick:hover td{background:#eef2ff!important}
+.detrow{display:flex;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #f1f5f9;font-size:12px}
+.detrow .dl{color:#64748b;font-weight:600}
+.detrow .dv{font-weight:700;color:#0f172a}
 .mono{color:#475569;font-family:ui-monospace,monospace;font-size:11px}
 .foot{text-align:center;color:#94a3b8;font-size:11px;padding:20px}
 .dot{display:inline-block;width:11px;height:11px;border-radius:50%}
@@ -149,13 +155,13 @@ tr:hover td{background:#f8fafc}
 
   <div class="filters">
     <input id="q" type="text" placeholder="🔍 Buscar por código o descripción…" oninput="render()">
-    <select id="fcat" onchange="render()"><option value="">Todas las categorías</option></select>
-    <select id="fubi" onchange="render()"><option value="">Todas las ubicaciones</option></select>
     <select id="fest" onchange="render()">
       <option value="">Todos los estados</option>
-      <option value="OK">Stock OK</option>
-      <option value="BAJO">Stock bajo</option>
-      <option value="CRIT">Crítico / sin stock</option>
+      <option value="CRITICO">🔴 Crítico</option>
+      <option value="REABASTECER">🟡 Reabastecer</option>
+      <option value="SOBRESTOCK">🟣 Sobrestock</option>
+      <option value="OK">🟢 OK</option>
+      <option value="SIN DATOS">⚪ Sin datos</option>
     </select>
     <span class="fx" id="cnt"></span>
   </div>
@@ -163,13 +169,16 @@ tr:hover td{background:#f8fafc}
   <div class="tblwrap">
     <table>
       <thead><tr>
-        <th>Código</th><th>Descripción</th><th>Categoría</th><th>Ubicación</th>
-        <th class="num">Stock</th><th class="num">Mínimo</th><th>UM</th>
-        <th class="num">Costo unit.</th><th class="num">Valor total</th><th>Estado</th>
+        <th>Código</th><th>Descripción</th><th>UM</th>
+        <th class="num">ICA</th><th class="num">LIMA</th><th class="num">TRUJILLO</th>
+        <th class="num">Stock Actual</th><th class="num">P. Reorden</th>
+        <th>Estado</th><th class="num">Cant. Faltante</th>
       </tr></thead>
       <tbody id="tb"></tbody>
     </table>
+    <div class="pag"><span id="genInfo">—</span><div id="genPag" style="display:flex;gap:4px"></div></div>
   </div>
+  <div class="sub" style="margin-top:6px">Haz clic en una fila para ver el detalle completo (consumo, lead time, EOQ, costos, cobertura…)</div>
 
   <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
@@ -397,26 +406,78 @@ function nav(id){
   document.getElementById(TABS[id]).classList.add('act');
 }
 
-/* ═══════════════ EXISTENCIAS — datos de ejemplo hasta que se importe el Kardex real ═══════════════ */
+/* ═══════════════ EXISTENCIAS — datos de ejemplo hasta que se importe el Análisis Inventario real ═══════════════ */
+// Esquema alineado a la hoja "Análisis Inventario": cod, desc, um, ica/lima/trujillo (stock por sede),
+// transito, stock (=Stock Actual), consumoM/consumoD, leadTime, desvest, stockSeg, rop (Punto de Reorden),
+// min/max (Stock mínimo/máximo), estado (CRITICO/REABASTECER/SOBRESTOCK/OK/SIN DATOS — viene tal cual del Excel),
+// demandaAnual, costoPedido, pctMant, costo (=Costo Unitario), costoMant, eoq, reservas, stockDisp,
+// cobertura (meses), deficitROP, cantFaltante, prioridad.
+// cat/ubi se mantienen solo por compatibilidad con Códigos/Picking (el Análisis Inventario no trae esos campos).
 const SAMPLE_DATA=[
- {cod:"004800300004",desc:"ESPÁRRAGO INOX DE 3/4'' X 1.80 M",cat:"Ferretería",ubi:"Almacén A",stock:120,min:40,um:"UND",costo:63.5},
- {cod:"004802100012",desc:"ARANDELA PLANA DE 1/2'' GALVANIZADO",cat:"Ferretería",ubi:"Almacén A",stock:1500,min:500,um:"UND",costo:0.19},
- {cod:"001100100128",desc:"ELECTROBOMBA PENTAX 2.0 HP CENTRIF.",cat:"Equipos",ubi:"Almacén B",stock:2,min:3,um:"UND",costo:1580.0},
- {cod:"001100100129",desc:"ELECTROBOMBA PENTAX 1.5 HP CENTRIF.",cat:"Equipos",ubi:"Almacén B",stock:0,min:2,um:"UND",costo:1470.0},
- {cod:"004200600006",desc:"TUBERÍA PVC 4'' PRESIÓN",cat:"Gasfitería",ubi:"Patio",stock:85,min:30,um:"UND",costo:42.3},
- {cod:"005100200011",desc:"GUANTE NITRILO T-9 (PAR)",cat:"EPP",ubi:"Almacén EPP",stock:340,min:200,um:"PAR",costo:3.8},
- {cod:"005100200015",desc:"CASCO SEGURIDAD BLANCO C/RATCHET",cat:"EPP",ubi:"Almacén EPP",stock:45,min:60,um:"UND",costo:14.5},
- {cod:"005100300022",desc:"LENTE SEGURIDAD CLARO ANTIEMPAÑE",cat:"EPP",ubi:"Almacén EPP",stock:210,min:100,um:"UND",costo:2.6},
- {cod:"003300100088",desc:"PLANCHA INOX 304 1.5MM 1220X2440",cat:"Metalmecánica",ubi:"Almacén B",stock:18,min:10,um:"UND",costo:520.0},
- {cod:"003300100091",desc:"TUBO INOX REDONDO 2'' X 6M",cat:"Metalmecánica",ubi:"Patio",stock:6,min:12,um:"UND",costo:185.0},
- {cod:"002200400033",desc:"GAS REFRIGERANTE R-404A (CIL 10KG)",cat:"Refrigeración",ubi:"Almacén B",stock:9,min:6,um:"CIL",costo:410.0},
- {cod:"002200400037",desc:"COMPRESOR HERMÉTICO 1HP R404A",cat:"Refrigeración",ubi:"Almacén B",stock:1,min:2,um:"UND",costo:890.0},
- {cod:"006600100004",desc:"WAIPE INDUSTRIAL BLANCO (KG)",cat:"Limpieza",ubi:"Almacén A",stock:75,min:40,um:"KG",costo:5.2},
- {cod:"006600100009",desc:"DETERGENTE INDUSTRIAL X 20L",cat:"Limpieza",ubi:"Almacén A",stock:12,min:15,um:"BID",costo:68.0},
- {cod:"004802100020",desc:"PERNO HEXAGONAL 1/2'' X 2'' GALV.",cat:"Ferretería",ubi:"Almacén A",stock:2200,min:800,um:"UND",costo:0.85},
- {cod:"001100200055",desc:"MOTOR TRIFÁSICO 5HP 1750RPM",cat:"Equipos",ubi:"Almacén B",stock:3,min:2,um:"UND",costo:1120.0},
- {cod:"003300200014",desc:"ELECTRODO 6011 1/8'' (KG)",cat:"Metalmecánica",ubi:"Almacén A",stock:140,min:50,um:"KG",costo:8.9},
- {cod:"002200500018",desc:"VÁLVULA SOLENOIDE 1/2'' 220V",cat:"Refrigeración",ubi:"Almacén B",stock:22,min:10,um:"UND",costo:76.0}
+ {cod:"000100100057",desc:"EVAPORADOR X-TADN-063.1-B-4-07-HG",um:"UND",cat:"—",ubi:"—",
+  ica:0,lima:0,trujillo:0,transito:0,stock:2,consumoM:0.07,consumoD:0.60,leadTime:0.1,desvest:0.14,
+  stockSeg:0.14,rop:4.14,min:0.14,max:4.14,estado:"CRITICO",demandaAnual:24,costoPedido:6,pctMant:0.25,
+  costo:12184.15,costoMant:3046.04,eoq:0.31,reservas:0,stockDisp:2,cobertura:1.0,deficitROP:2.14,cantFaltante:0,prioridad:"—"},
+ {cod:"000100200046",desc:"EVAPORADOR TAN.2-050-12-D-N-D6-07-HG",um:"UND",cat:"—",ubi:"—",
+  ica:0,lima:0,trujillo:0,transito:0,stock:0,consumoM:3.5,consumoD:0.12,leadTime:7,desvest:3.62,
+  stockSeg:7.42,rop:14.42,min:7.42,max:14.42,estado:"CRITICO",demandaAnual:42,costoPedido:6,pctMant:0.25,
+  costo:0,costoMant:0,eoq:0,reservas:0,stockDisp:0,cobertura:0,deficitROP:14.42,cantFaltante:15,prioridad:"SIN STOCK"},
+ {cod:"001100100128",desc:"ELECTROBOMBA PENTAX 2.0 HP CENTRIF.",um:"UND",cat:"—",ubi:"—",
+  ica:1,lima:1,trujillo:0,transito:0,stock:2,consumoM:0.4,consumoD:0.013,leadTime:12,desvest:0.5,
+  stockSeg:2.1,rop:6.9,min:2.1,max:6.9,estado:"REABASTECER",demandaAnual:5,costoPedido:6,pctMant:0.25,
+  costo:1580,costoMant:395,eoq:0.9,reservas:0,stockDisp:2,cobertura:5,deficitROP:4.9,cantFaltante:5,prioridad:"REABASTECER"},
+ {cod:"001100100129",desc:"ELECTROBOMBA PENTAX 1.5 HP CENTRIF.",um:"UND",cat:"—",ubi:"—",
+  ica:0,lima:0,trujillo:0,transito:0,stock:0,consumoM:0.3,consumoD:0.01,leadTime:12,desvest:0.4,
+  stockSeg:1.8,rop:5.4,min:1.8,max:5.4,estado:"CRITICO",demandaAnual:4,costoPedido:6,pctMant:0.25,
+  costo:1470,costoMant:367.5,eoq:0.7,reservas:0,stockDisp:0,cobertura:0,deficitROP:5.4,cantFaltante:6,prioridad:"SIN STOCK"},
+ {cod:"004200600006",desc:"TUBERÍA PVC 4'' PRESIÓN",um:"UND",cat:"—",ubi:"—",
+  ica:40,lima:30,trujillo:15,transito:0,stock:85,consumoM:15,consumoD:0.5,leadTime:5,desvest:2,
+  stockSeg:5,rop:20,min:5,max:20,estado:"OK",demandaAnual:180,costoPedido:6,pctMant:0.25,
+  costo:42.3,costoMant:10.58,eoq:24,reservas:0,stockDisp:85,cobertura:5.7,deficitROP:0,cantFaltante:0,prioridad:"OK"},
+ {cod:"005100200011",desc:"GUANTE NITRILO T-9 (PAR)",um:"PAR",cat:"—",ubi:"—",
+  ica:140,lima:150,trujillo:50,transito:0,stock:340,consumoM:60,consumoD:2,leadTime:7,desvest:8,
+  stockSeg:20,rop:80,min:20,max:80,estado:"OK",demandaAnual:720,costoPedido:6,pctMant:0.25,
+  costo:3.8,costoMant:0.95,eoq:106,reservas:0,stockDisp:340,cobertura:5.6,deficitROP:0,cantFaltante:0,prioridad:"OK"},
+ {cod:"005100200015",desc:"CASCO SEGURIDAD BLANCO C/RATCHET",um:"UND",cat:"—",ubi:"—",
+  ica:20,lima:20,trujillo:5,transito:0,stock:45,consumoM:20,consumoD:0.67,leadTime:10,desvest:4,
+  stockSeg:14,rop:60,min:60,max:120,estado:"REABASTECER",demandaAnual:240,costoPedido:6,pctMant:0.25,
+  costo:14.5,costoMant:3.63,eoq:44,reservas:0,stockDisp:45,cobertura:2.25,deficitROP:15,cantFaltante:15,prioridad:"REABASTECER"},
+ {cod:"003300100088",desc:"PLANCHA INOX 304 1.5MM 1220X2440",um:"UND",cat:"—",ubi:"—",
+  ica:10,lima:6,trujillo:2,transito:0,stock:18,consumoM:4,consumoD:0.13,leadTime:15,desvest:1.5,
+  stockSeg:6,rop:26,min:10,max:26,estado:"REABASTECER",demandaAnual:48,costoPedido:6,pctMant:0.25,
+  costo:520,costoMant:130,eoq:10.5,reservas:0,stockDisp:18,cobertura:4.5,deficitROP:8,cantFaltante:8,prioridad:"REABASTECER"},
+ {cod:"002200400033",desc:"GAS REFRIGERANTE R-404A (CIL 10KG)",um:"CIL",cat:"—",ubi:"—",
+  ica:5,lima:3,trujillo:1,transito:0,stock:9,consumoM:2,consumoD:0.07,leadTime:8,desvest:0.8,
+  stockSeg:3,rop:6,min:6,max:15,estado:"SOBRESTOCK",demandaAnual:24,costoPedido:6,pctMant:0.25,
+  costo:410,costoMant:102.5,eoq:6,reservas:0,stockDisp:9,cobertura:4.5,deficitROP:0,cantFaltante:0,prioridad:"SOBRESTOCK"},
+ {cod:"002200400037",desc:"COMPRESOR HERMÉTICO 1HP R404A",um:"UND",cat:"—",ubi:"—",
+  ica:1,lima:0,trujillo:0,transito:0,stock:1,consumoM:0.5,consumoD:0.017,leadTime:20,desvest:0.6,
+  stockSeg:2.5,rop:7.5,min:2.5,max:7.5,estado:"CRITICO",demandaAnual:6,costoPedido:6,pctMant:0.25,
+  costo:890,costoMant:222.5,eoq:1.4,reservas:0,stockDisp:1,cobertura:2,deficitROP:6.5,cantFaltante:7,prioridad:"SIN STOCK"},
+ {cod:"006600100004",desc:"WAIPE INDUSTRIAL BLANCO (KG)",um:"KG",cat:"—",ubi:"—",
+  ica:30,lima:30,trujillo:15,transito:0,stock:75,consumoM:35,consumoD:1.17,leadTime:5,desvest:5,
+  stockSeg:9,rop:44,min:40,max:100,estado:"OK",demandaAnual:420,costoPedido:6,pctMant:0.25,
+  costo:5.2,costoMant:1.3,eoq:70,reservas:0,stockDisp:75,cobertura:2.1,deficitROP:0,cantFaltante:0,prioridad:"OK"},
+ {cod:"006600100009",desc:"DETERGENTE INDUSTRIAL X 20L",um:"BID",cat:"—",ubi:"—",
+  ica:5,lima:5,trujillo:2,transito:0,stock:12,consumoM:8,consumoD:0.27,leadTime:6,desvest:2,
+  stockSeg:5,rop:14,min:15,max:35,estado:"REABASTECER",demandaAnual:96,costoPedido:6,pctMant:0.25,
+  costo:68,costoMant:17,eoq:15,reservas:0,stockDisp:12,cobertura:1.5,deficitROP:2,cantFaltante:3,prioridad:"REABASTECER"},
+ {cod:"004802100020",desc:"PERNO HEXAGONAL 1/2'' X 2'' GALV.",um:"UND",cat:"—",ubi:"—",
+  ica:900,lima:900,trujillo:400,transito:0,stock:2200,consumoM:250,consumoD:8.3,leadTime:4,desvest:30,
+  stockSeg:65,rop:315,min:800,max:2500,estado:"OK",demandaAnual:3000,costoPedido:6,pctMant:0.25,
+  costo:0.85,costoMant:0.21,eoq:184,reservas:0,stockDisp:2200,cobertura:8.8,deficitROP:0,cantFaltante:0,prioridad:"OK"},
+ {cod:"001100200055",desc:"MOTOR TRIFÁSICO 5HP 1750RPM",um:"UND",cat:"—",ubi:"—",
+  ica:2,lima:1,trujillo:0,transito:0,stock:3,consumoM:0.6,consumoD:0.02,leadTime:14,desvest:0.5,
+  stockSeg:2.2,rop:10.6,min:2,max:10.6,estado:"OK",demandaAnual:7,costoPedido:6,pctMant:0.25,
+  costo:1120,costoMant:280,eoq:1.5,reservas:0,stockDisp:3,cobertura:5,deficitROP:0,cantFaltante:0,prioridad:"OK"},
+ {cod:"003300200014",desc:"ELECTRODO 6011 1/8'' (KG)",um:"KG",cat:"—",ubi:"—",
+  ica:60,lima:50,trujillo:30,transito:0,stock:140,consumoM:45,consumoD:1.5,leadTime:6,desvest:6,
+  stockSeg:12,rop:57,min:50,max:150,estado:"OK",demandaAnual:540,costoPedido:6,pctMant:0.25,
+  costo:8.9,costoMant:2.23,eoq:78,reservas:0,stockDisp:140,cobertura:3.1,deficitROP:0,cantFaltante:0,prioridad:"OK"},
+ {cod:"002200500018",desc:"VÁLVULA SOLENOIDE 1/2'' 220V",um:"UND",cat:"—",ubi:"—",
+  ica:10,lima:8,trujillo:4,transito:0,stock:22,consumoM:5,consumoD:0.17,leadTime:9,desvest:1,
+  stockSeg:5,rop:20,min:10,max:35,estado:"OK",demandaAnual:60,costoPedido:6,pctMant:0.25,
+  costo:76,costoMant:19,eoq:12,reservas:0,stockDisp:22,cobertura:4.4,deficitROP:0,cantFaltante:0,prioridad:"OK"}
 ];
 let DATA=[...SAMPLE_DATA];
 let DATA_BY_COD={};
@@ -436,8 +497,17 @@ function setExistencias(rows,marcarDirty){
 }
 rebuildDataByCod();
 
-function estado(s,m){if(s<=0)return"CRIT";if(s<m)return"BAJO";return"OK";}
-function fmt(n){return n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});}
+// Normaliza el campo Estado tal como viene de la hoja "Análisis Inventario" (CRITICO/REABASTECER/SOBRESTOCK/OK)
+// a uno de nuestros 5 valores canónicos; cualquier cosa vacía o "#N/A" se trata como "SIN DATOS".
+function normEstado(e){
+  const v=String(e||'').trim().toUpperCase();
+  if(v==='CRITICO'||v==='CRÍTICO')return'CRITICO';
+  if(v==='REABASTECER')return'REABASTECER';
+  if(v==='SOBRESTOCK')return'SOBRESTOCK';
+  if(v==='OK')return'OK';
+  return'SIN DATOS';
+}
+function fmt(n){return (n||0).toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fixEnc(s){return (s||'').replace('revisi�n','revisión').replace('Almac�n','Almacén');}
 
 /* ═══════════════ SYNC GITHUB (mismo repo/token que Compras) ═══════════════ */
@@ -467,27 +537,55 @@ function pickField(row,candidates){
 }
 function toNum(v){
   if(v==null||v==='')return 0;
-  const n=Number(String(v).replace(/,/g,'').trim());
+  const s=String(v).trim();
+  if(s==='#N/A'||s==='#N/D'||s==='')return 0;
+  const n=Number(s.replace(/,/g,''));
   return isNaN(n)?0:n;
 }
 function parseExistenciasWorkbook(wb){
-  // Prioriza una hoja llamada tipo "Existencias"/"Kardex"/"Stock"; si no, usa la primera.
-  let sheetName=wb.SheetNames.find(n=>/existenc|kardex|stock/i.test(n))||wb.SheetNames[0];
+  // Prioriza la hoja "Análisis Inventario" (el reporte real de ICA/Lima/Trujillo);
+  // si no existe, cae a Existencias/Kardex/Stock; si tampoco, usa la primera hoja.
+  let sheetName=wb.SheetNames.find(n=>/an[aá]lisis.*inventario|inventario.*an[aá]lisis/i.test(n))
+    ||wb.SheetNames.find(n=>/existenc|kardex|stock/i.test(n))
+    ||wb.SheetNames[0];
   const sheet=wb.Sheets[sheetName];
   const rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
   const out=[];
   rows.forEach(row=>{
     const cod=String(pickField(row,['Código','Codigo','Idproducto','SKU','Cod'])).trim();
     if(!cod)return;
+    const min=toNum(pickField(row,['Stock mínimo','Stock minimo','Mínimo','Minimo']));
+    const max=toNum(pickField(row,['Stock máximo','Stock maximo','Máximo','Maximo']));
     out.push({
       cod,
       desc:String(pickField(row,['Descripción','Descripcion','Producto','Nombre'])).trim().toUpperCase(),
-      cat:String(pickField(row,['Categoría','Categoria','Grupo','Familia'])||'Sin categoría').trim(),
-      ubi:String(pickField(row,['Ubicación','Ubicacion','Almacén','Almacen','Bodega'])||'—').trim(),
-      stock:toNum(pickField(row,['Stock','Cantidad','Existencia','Saldo'])),
-      min:toNum(pickField(row,['Mínimo','Minimo','Stock Minimo','Stock Mínimo'])),
-      um:String(pickField(row,['UM','Unidad','Unidad de Medida','UnidadMedida'])||'UND').trim(),
-      costo:toNum(pickField(row,['Costo','Precio','Costo Unitario','Precio Unitario']))
+      um:String(pickField(row,['Medida','UM','Unidad','Unidad de Medida'])||'UND').trim(),
+      cat:'—', ubi:'—', // no vienen en Análisis Inventario; se mantienen por compatibilidad con Códigos/Picking
+      ica:toNum(pickField(row,['ICA'])),
+      lima:toNum(pickField(row,['LIMA'])),
+      trujillo:toNum(pickField(row,['TRUJILLO'])),
+      transito:toNum(pickField(row,['Stock en tránsito','Stock en transito'])),
+      stock:toNum(pickField(row,['Stock Actual','Stock actual'])),
+      consumoM:toNum(pickField(row,['Consumo Mensual'])),
+      consumoD:toNum(pickField(row,['Consumo Diario'])),
+      leadTime:toNum(pickField(row,['Lead Time'])),
+      desvest:toNum(pickField(row,['Desvest','Desviación','Desviacion'])),
+      stockSeg:toNum(pickField(row,['Stock Seguridad'])),
+      rop:toNum(pickField(row,['Punto de Reorden'])),
+      min, max,
+      estado:normEstado(pickField(row,['Estado'])),
+      demandaAnual:toNum(pickField(row,['Demanda Anual'])),
+      costoPedido:toNum(pickField(row,['Costo Pedido'])),
+      pctMant:toNum(pickField(row,['% Mantenimiento'])),
+      costo:toNum(pickField(row,['Costo Unitario','Costo','Precio','Precio Unitario'])),
+      costoMant:toNum(pickField(row,['Costo Mantener'])),
+      eoq:toNum(pickField(row,['EOQ'])),
+      reservas:toNum(pickField(row,['Reservas'])),
+      stockDisp:toNum(pickField(row,['Stock Disponible'])),
+      cobertura:toNum(pickField(row,['Cobertura (meses)','Cobertura'])),
+      deficitROP:toNum(pickField(row,['Deficit contra ROP','Déficit contra ROP'])),
+      cantFaltante:toNum(pickField(row,['Cant. Faltante a comprar','Cant Faltante a comprar'])),
+      prioridad:String(pickField(row,['Prioridad'])||'—').trim()
     });
   });
   return out;
@@ -578,42 +676,43 @@ async function cargarLive(){
 
 /* ═══════════════ PÁGINA GENERAL — EXISTENCIAS ═══════════════ */
 function fillFilters(){
-  const cats=[...new Set(DATA.map(d=>d.cat))].sort();
-  const ubis=[...new Set(DATA.map(d=>d.ubi))].sort();
-  document.getElementById('fcat').innerHTML='<option value="">Todas las categorías</option>'+cats.map(c=>`<option>${c}</option>`).join('');
-  document.getElementById('fubi').innerHTML='<option value="">Todas las ubicaciones</option>'+ubis.map(u=>`<option>${u}</option>`).join('');
+  // Sin filtros de categoría/ubicación: Análisis Inventario no trae esos campos.
+  // El filtro de Estado ya viene fijo en el HTML (CRITICO/REABASTECER/SOBRESTOCK/OK/SIN DATOS).
 }
 
 function kpis(){
   const skus=DATA.length;
   const valor=DATA.reduce((a,d)=>a+d.stock*d.costo,0);
-  const bajo=DATA.filter(d=>estado(d.stock,d.min)==="BAJO").length;
-  const crit=DATA.filter(d=>estado(d.stock,d.min)==="CRIT").length;
+  const crit=DATA.filter(d=>d.estado==="CRITICO").length;
+  const reab=DATA.filter(d=>d.estado==="REABASTECER").length;
+  const sobre=DATA.filter(d=>d.estado==="SOBRESTOCK").length;
   document.getElementById('kpis').innerHTML=`
-   <div class="kpi"><div class="kl">SKUs en catálogo</div><div class="kv">${skus}</div><div class="kd">ítems distintos</div></div>
-   <div class="kpi good"><div class="kl">Valor de inventario</div><div class="kv">S/ ${fmt(valor)}</div><div class="kd">stock × costo</div></div>
-   <div class="kpi alert"><div class="kl">Bajo mínimo</div><div class="kv">${bajo}</div><div class="kd">requieren reposición</div></div>
-   <div class="kpi alert"><div class="kl">Crítico / sin stock</div><div class="kv">${crit}</div><div class="kd">quiebre de stock</div></div>`;
+   <div class="kpi"><div class="kl">SKUs en catálogo</div><div class="kv">${skus.toLocaleString('es-PE')}</div><div class="kd">ítems distintos</div></div>
+   <div class="kpi good"><div class="kl">Valor de inventario</div><div class="kv">S/ ${fmt(valor)}</div><div class="kd">stock actual × costo unit.</div></div>
+   <div class="kpi alert"><div class="kl">Crítico</div><div class="kv">${crit.toLocaleString('es-PE')}</div><div class="kd">bajo punto de reorden</div></div>
+   <div class="kpi warn"><div class="kl">Reabastecer</div><div class="kv">${reab.toLocaleString('es-PE')}</div><div class="kd">requieren reposición</div></div>
+   <div class="kpi"><div class="kl">Sobrestock</div><div class="kv">${sobre.toLocaleString('es-PE')}</div><div class="kd">por encima del máximo</div></div>`;
   const note=document.getElementById('existNote');
   if(note){
     if(EXISTENCIAS_LIVE){
       note.className='note live';
-      note.innerHTML='☁️ <b>Existencias reales</b>'+(EXISTENCIAS_DIRTY?' — hay cambios importados sin guardar. Usa <b>💾 GUARDAR</b> para compartirlos.':' importadas — '+skus+' SKUs.');
+      note.innerHTML='☁️ <b>Existencias reales</b>'+(EXISTENCIAS_DIRTY?' — hay cambios importados sin guardar. Usa <b>💾 GUARDAR</b> para compartirlos.':' importadas desde Análisis Inventario — '+skus.toLocaleString('es-PE')+' SKUs.');
     }else{
       note.className='note';
-      note.innerHTML='⚠️ <b>Existencias de ejemplo.</b> Usa <b>📂 IMPORTAR</b> para cargar el reporte real de stock (Kardex). Las alertas de abajo ya cruzan datos <b>reales</b> de Requerimientos.';
+      note.innerHTML='⚠️ <b>Existencias de ejemplo.</b> Usa <b>📂 IMPORTAR</b> para cargar el Excel real (hoja "Análisis Inventario"). Las alertas de abajo ya cruzan datos <b>reales</b> de Requerimientos.';
     }
   }
 }
 
 function renderAlertBox(){
   if(!P5.length){document.getElementById('alertBox').innerHTML='';return;}
-  // Cruce real: requerimientos pendientes cuyo código está en Existencias pero con stock insuficiente
+  // Cruce real: requerimientos pendientes cuyo código está en Existencias pero con stock disponible insuficiente
   const pendientes=P5.filter(r=>r.estado.toLowerCase().includes('revisi'));
   const sinStock=[];
   pendientes.forEach(r=>{
     const it=DATA_BY_COD[r.cod];
-    if(it && it.stock<r.cant) sinStock.push({...r,stockDisp:it.stock});
+    const disp=it?(it.stockDisp!=null&&it.stockDisp!==0?it.stockDisp:it.stock):null;
+    if(it && disp<r.cant) sinStock.push({...r,stockDisp:disp});
   });
   if(!sinStock.length){
     document.getElementById('alertBox').innerHTML=`<div class="note live">✅ Sin alertas: ningún requerimiento pendiente (con código en Existencias) supera el stock disponible.</div>`;
@@ -622,31 +721,89 @@ function renderAlertBox(){
   document.getElementById('alertBox').innerHTML=`<div class="note crit">🔔 <b>${sinStock.length} alerta(s) de pedido</b> — requerimientos pendientes cuyo stock actual no alcanza. Revisa la pestaña <b>Picking</b> para el detalle.</div>`;
 }
 
+const PILL_GEN={
+  CRITICO:'<span class="pill p-crit">CRÍTICO</span>',
+  REABASTECER:'<span class="pill p-low">REABASTECER</span>',
+  SOBRESTOCK:'<span class="pill p-sobre">SOBRESTOCK</span>',
+  OK:'<span class="pill p-ok">OK</span>',
+  'SIN DATOS':'<span class="pill p-gray">SIN DATOS</span>'
+};
+let genPage=0;
 function render(){
+  genPage=0;
   const q=document.getElementById('q').value.toLowerCase();
-  const fc=document.getElementById('fcat').value;
-  const fu=document.getElementById('fubi').value;
   const fe=document.getElementById('fest').value;
-  let rows=DATA.filter(d=>{
-    const e=estado(d.stock,d.min);
+  window._genFil=DATA.filter(d=>{
     if(q && !(d.cod.includes(q)||d.desc.toLowerCase().includes(q)))return false;
-    if(fc && d.cat!==fc)return false;
-    if(fu && d.ubi!==fu)return false;
-    if(fe && e!==fe)return false;
+    if(fe && d.estado!==fe)return false;
     return true;
   });
-  const pill={OK:'<span class="pill p-ok">OK</span>',BAJO:'<span class="pill p-low">BAJO</span>',CRIT:'<span class="pill p-crit">CRÍTICO</span>'};
-  document.getElementById('tb').innerHTML=rows.map(d=>{
-    const e=estado(d.stock,d.min);
-    return `<tr>
-      <td class="mono">${d.cod}</td><td>${d.desc}</td><td>${d.cat}</td><td>${d.ubi}</td>
-      <td class="num">${d.stock.toLocaleString('es-PE')}</td><td class="num">${d.min.toLocaleString('es-PE')}</td><td>${d.um}</td>
-      <td class="num">${fmt(d.costo)}</td><td class="num">${fmt(d.stock*d.costo)}</td><td>${pill[e]}</td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
-  document.getElementById('cnt').textContent=`${rows.length} de ${DATA.length} ítems`;
+  document.getElementById('cnt').textContent=`${window._genFil.length.toLocaleString('es-PE')} de ${DATA.length.toLocaleString('es-PE')} ítems`;
+  renderGenTable();
   kpis();
   renderAlertBox();
+}
+function renderGenTable(){
+  const f=window._genFil||[];
+  const sz=50, rows=f.slice(genPage*sz,(genPage+1)*sz);
+  document.getElementById('tb').innerHTML=rows.map(d=>{
+    return `<tr class="rowclick" onclick="verFichaExistencia('${d.cod}')">
+      <td class="mono">${d.cod}</td><td>${d.desc}</td><td>${d.um}</td>
+      <td class="num">${(d.ica||0).toLocaleString('es-PE')}</td>
+      <td class="num">${(d.lima||0).toLocaleString('es-PE')}</td>
+      <td class="num">${(d.trujillo||0).toLocaleString('es-PE')}</td>
+      <td class="num">${(d.stock||0).toLocaleString('es-PE')}</td>
+      <td class="num">${(d.rop||0).toLocaleString('es-PE',{maximumFractionDigits:1})}</td>
+      <td>${PILL_GEN[d.estado]||PILL_GEN['SIN DATOS']}</td>
+      <td class="num">${(d.cantFaltante||0).toLocaleString('es-PE')}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
+  const tot=f.length,pages=Math.ceil(tot/sz);
+  document.getElementById('genInfo').textContent=tot?`Mostrando ${genPage*sz+1}–${Math.min((genPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')}`:'Sin resultados';
+  let h='';
+  if(genPage>0)h+=`<button class="pbt" onclick="genPage--;renderGenTable()">‹</button>`;
+  const start=Math.max(0,genPage-4),end=Math.min(pages,start+10);
+  for(let i=start;i<end;i++)h+=`<button class="pbt${i===genPage?' pact':''}" onclick="genPage=${i};renderGenTable()">${i+1}</button>`;
+  if(genPage<pages-1)h+=`<button class="pbt" onclick="genPage++;renderGenTable()">›</button>`;
+  document.getElementById('genPag').innerHTML=h;
+}
+
+/* Ficha de detalle de una existencia (consumo, lead time, EOQ, costos, cobertura…) — reutiliza el modal de Códigos */
+function verFichaExistencia(cod){
+  const d=DATA_BY_COD[cod];
+  if(!d)return;
+  document.getElementById('fichaBody').innerHTML=`
+    <div style="background:#0d9488;color:#fff;padding:16px 20px">
+      <div style="font-size:11px;opacity:.85;font-family:ui-monospace,monospace">${d.cod}</div>
+      <div style="font-size:15px;font-weight:800;margin-top:2px">${d.desc}</div>
+      <div style="margin-top:8px">${PILL_GEN[d.estado]||PILL_GEN['SIN DATOS']} <span style="background:rgba(255,255,255,.14);border-radius:14px;padding:3px 11px;font-size:10.5px;margin-left:6px">${d.um}</span></div>
+    </div>
+    <div style="padding:6px 0">
+      <div class="detrow"><span class="dl">Stock ICA / LIMA / TRUJILLO</span><span class="dv">${(d.ica||0).toLocaleString('es-PE')} / ${(d.lima||0).toLocaleString('es-PE')} / ${(d.trujillo||0).toLocaleString('es-PE')}</span></div>
+      <div class="detrow"><span class="dl">Stock en tránsito</span><span class="dv">${(d.transito||0).toLocaleString('es-PE')}</span></div>
+      <div class="detrow"><span class="dl">Stock Actual</span><span class="dv">${(d.stock||0).toLocaleString('es-PE')}</span></div>
+      <div class="detrow"><span class="dl">Stock Disponible</span><span class="dv">${(d.stockDisp||0).toLocaleString('es-PE')}</span></div>
+      <div class="detrow"><span class="dl">Reservas</span><span class="dv">${(d.reservas||0).toLocaleString('es-PE')}</span></div>
+      <div class="detrow"><span class="dl">Consumo Mensual / Diario</span><span class="dv">${fmt(d.consumoM)} / ${fmt(d.consumoD)}</span></div>
+      <div class="detrow"><span class="dl">Lead Time (días)</span><span class="dv">${fmt(d.leadTime)}</span></div>
+      <div class="detrow"><span class="dl">Desviación estándar</span><span class="dv">${fmt(d.desvest)}</span></div>
+      <div class="detrow"><span class="dl">Stock Seguridad</span><span class="dv">${fmt(d.stockSeg)}</span></div>
+      <div class="detrow"><span class="dl">Punto de Reorden</span><span class="dv">${fmt(d.rop)}</span></div>
+      <div class="detrow"><span class="dl">Stock mínimo / máximo</span><span class="dv">${fmt(d.min)} / ${fmt(d.max)}</span></div>
+      <div class="detrow"><span class="dl">Demanda Anual</span><span class="dv">${(d.demandaAnual||0).toLocaleString('es-PE')}</span></div>
+      <div class="detrow"><span class="dl">Costo Pedido</span><span class="dv">S/ ${fmt(d.costoPedido)}</span></div>
+      <div class="detrow"><span class="dl">% Mantenimiento</span><span class="dv">${((d.pctMant||0)*100).toFixed(0)}%</span></div>
+      <div class="detrow"><span class="dl">Costo Unitario</span><span class="dv">S/ ${fmt(d.costo)}</span></div>
+      <div class="detrow"><span class="dl">Costo Mantener</span><span class="dv">S/ ${fmt(d.costoMant)}</span></div>
+      <div class="detrow"><span class="dl">EOQ</span><span class="dv">${fmt(d.eoq)}</span></div>
+      <div class="detrow"><span class="dl">Cobertura (meses)</span><span class="dv">${fmt(d.cobertura)}</span></div>
+      <div class="detrow"><span class="dl">Déficit vs ROP</span><span class="dv">${fmt(d.deficitROP)}</span></div>
+      <div class="detrow"><span class="dl">Cant. Faltante a comprar</span><span class="dv">${(d.cantFaltante||0).toLocaleString('es-PE')}</span></div>
+      <div class="detrow"><span class="dl">Prioridad</span><span class="dv">${d.prioridad||'—'}</span></div>
+      <div class="detrow"><span class="dl">Valor de inventario (SKU)</span><span class="dv">S/ ${fmt((d.stock||0)*(d.costo||0))}</span></div>
+    </div>
+    <div style="padding:12px 20px 18px"><button class="btn br" onclick="cerrarFicha()">Cerrar</button></div>`;
+  document.getElementById('fichaBg').style.display='flex';
 }
 
 /* ═══════════════ PÁGINA REQUERIMIENTOS ═══════════════ */
@@ -1261,7 +1418,7 @@ async function guardarTodo(){
 
 /* ═══════════════ CONTADORES DE INICIO ═══════════════ */
 function updateHomeCounters(){
-  const bajo=DATA.filter(d=>estado(d.stock,d.min)!=="OK").length;
+  const bajo=DATA.filter(d=>d.estado&&d.estado!=="OK").length;
   document.getElementById('hc-general').textContent=`${DATA.length} SKUs · ${bajo} con alerta${EXISTENCIAS_LIVE?' (real)':' (ejemplo)'}`;
   const pendientes=P5.filter(r=>r.estado.toLowerCase().includes('revisi'));
   document.getElementById('hc-req').textContent=P5_LIVE?`${P5.length.toLocaleString('es-PE')} requerimientos (en vivo)`:`${P5.length} de ejemplo`;
