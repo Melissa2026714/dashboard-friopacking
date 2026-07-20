@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Inventario / Almacén — FRIOPACKING</title>
+<title>Almacén — FRIOPACKING</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -13,9 +13,6 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:1
 .back{display:flex;align-items:center;gap:6px;background:#1e293b;color:#93c5fd;border:1px solid #334155;padding:6px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;flex-shrink:0}
 .back:hover{background:#334155;color:#fff}
 .fp{background:#0d9488;color:#fff;font-weight:800;font-size:13px;width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.brand{display:flex;flex-direction:column;gap:1px}
-.b1{color:#e2e8f0;font-size:12px;font-weight:600;white-space:nowrap}
-.b2{color:#64748b;font-size:10px}
 .tabs{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none;margin-left:6px}
 .tabs::-webkit-scrollbar{display:none}
 .tab{display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:6px;color:#94a3b8;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .15s;border:none;background:transparent}
@@ -25,24 +22,38 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:1
 .btn{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:'Inter',sans-serif}
 .bi{background:#0d9488;color:#fff}.bi:hover{background:#0f766e}
 .br{background:#334155;color:#94a3b8}.br:hover{background:#475569;color:#e2e8f0}
+/* HOME */
+#ph{margin-top:52px;height:calc(100vh - 52px);background:linear-gradient(160deg,rgba(8,15,30,.80) 0%,rgba(13,30,45,.55) 40%,rgba(8,15,30,.82) 100%),url('assets/almacen_hero.png') center/cover no-repeat;display:none;align-items:center;justify-content:center;flex-direction:column;gap:26px}
+#ph.act{display:flex}
+.hlogo{display:flex;align-items:center;gap:14px}
+.htitle{color:#f8fafc;text-align:left}.htitle h1{font-size:22px;font-weight:800}.htitle p{color:#cbd5e1;font-size:12px;margin-top:4px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.hdiv{width:640px;max-width:85vw;height:1px;background:#334155}
+.hcards{display:grid;grid-template-columns:repeat(4,170px);gap:10px}
+.hcard{background:rgba(15,23,42,.72);backdrop-filter:blur(10px);border:1px solid rgba(148,163,184,.18);border-radius:12px;padding:14px;cursor:pointer;transition:all .2s;text-align:left}
+.hcard:hover{border-color:#0d9488;background:rgba(13,60,55,.55);transform:translateY(-2px);box-shadow:0 6px 20px rgba(13,148,136,.3)}
+.hci{font-size:20px;margin-bottom:5px}.hct{color:#e2e8f0;font-size:11px;font-weight:600;line-height:1.3}.hcs{color:#94a3b8;font-size:10px;margin-top:3px}
 /* PAGE */
-.pg{margin-top:52px;padding:16px;max-width:1400px;margin-left:auto;margin-right:auto}
+.pg{display:none;margin-top:52px;padding:16px;max-width:1500px;margin-left:auto;margin-right:auto}
+.pg.act{display:block}
 .hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px}
 .hd h2{font-size:18px;font-weight:800;color:#0f172a}
 .hd .sub{color:#64748b;font-size:12px;margin-top:2px}
 .note{background:#fef9c3;border:1px solid #fde047;color:#854d0e;font-size:11.5px;padding:8px 12px;border-radius:8px;margin:10px 0 16px;display:flex;gap:8px;align-items:center}
+.note.live{background:#e0f2fe;border-color:#7dd3fc;color:#075985}
+.note.crit{background:#fef2f2;border-color:#fecaca;color:#991b1b}
 /* KPIS */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
 .kpi{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:15px 16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
 .kpi .kl{color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 .kpi .kv{font-size:26px;font-weight:800;margin-top:6px;color:#0f172a}
 .kpi .kd{font-size:11px;margin-top:4px;color:#64748b}
 .kpi.alert{border-color:#fecaca;background:#fef2f2}.kpi.alert .kv{color:#dc2626}
 .kpi.good{border-color:#bbf7d0;background:#f0fdf4}.kpi.good .kv{color:#16a34a}
+.kpi.warn{border-color:#fde68a;background:#fffbeb}.kpi.warn .kv{color:#b45309}
 /* FILTERS */
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
 .filters input,.filters select{padding:8px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;font-family:inherit;background:#fff}
-.filters input{min-width:240px}
+.filters input{min-width:220px}
 .filters .fx{margin-left:auto;color:#64748b;font-size:11.5px}
 /* TABLE */
 .tblwrap{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:auto;box-shadow:0 1px 3px rgba(0,0,0,.04)}
@@ -51,42 +62,87 @@ th{background:#0f172a;color:#e2e8f0;text-align:left;padding:10px 12px;font-weigh
 td{padding:9px 12px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
 tr:hover td{background:#f8fafc}
 .num{text-align:right;font-variant-numeric:tabular-nums}
-.pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:11px}
+.pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:11px;white-space:nowrap}
 .p-ok{background:#dcfce7;color:#15803d}
 .p-low{background:#fef9c3;color:#a16207}
 .p-crit{background:#fee2e2;color:#b91c1c}
+.p-gray{background:#f1f5f9;color:#64748b}
 .mono{color:#475569;font-family:ui-monospace,monospace;font-size:11px}
 .foot{text-align:center;color:#94a3b8;font-size:11px;padding:20px}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%}
+.pag{display:flex;justify-content:flex-end;align-items:center;gap:6px;padding:10px 12px;font-size:11px;color:#64748b}
+.pbt{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11px}
+.pbt.pact{background:#0d9488;color:#fff;border-color:#0d9488}
+/* CODIGOS */
+.codform{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:16px;display:none}
+.codform.open{display:block}
+.codform .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.codform label{display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px}
+.codform input,.codform select{padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:12px;font-family:inherit;min-width:180px}
+.matchbox{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-top:8px;font-size:11.5px;color:#92400e}
+.matchbox b{color:#78350f}
+.chk{width:15px;height:15px;cursor:pointer}
+.strike td{text-decoration:line-through;color:#94a3b8}
+/* PICKING — agrupado por requerimiento */
+.reqgroup{background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.reqgroup-hd{background:#f8fafc;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid #e2e8f0}
+.reqgroup-hd .rg-req{color:#7c3aed;background:#f5f3ff;padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700}
+.reqgroup-hd .rg-proy{font-weight:700;color:#1e293b;font-size:12.5px}
+.reqgroup-hd .rg-meta{color:#64748b;font-size:11px;margin-left:auto;white-space:nowrap}
+.reqgroup table{font-size:12px}
+.seg{display:inline-flex;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;flex-shrink:0}
+.seg button{border:none;background:#fff;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;color:#94a3b8;white-space:nowrap}
+.seg button.segPick.on{background:#0d9488;color:#fff}
+.seg button.segPed.on{background:#d97706;color:#fff}
+.dirty-badge{background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px}
+.savebar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+#saveLbl{font-size:11px;color:#64748b}
 </style>
 </head>
 <body>
 
 <nav class="nb">
-  <a class="back" href="plataforma.html">◀ LOGÍSTICA</a>
+  <a class="back" href="plataforma.html" title="Volver al Inicio de la Plataforma LOGÍSTICA">◀ INICIO</a>
   <div class="fp">📦</div>
-  <div class="brand"><span class="b1">Inventario / Almacén 2026</span><span class="b2">FRIOPACKING S.A.</span></div>
   <div class="tabs">
-    <button class="tab act">📦 Existencias</button>
-    <button class="tab" onclick="alert('Módulo en preparación')">📥 Movimientos</button>
-    <button class="tab" onclick="alert('Módulo en preparación')">📊 Valorización</button>
+    <button class="tab act" id="tab-home" onclick="nav('home')">📦 ALMACÉN</button>
+    <button class="tab" id="tab-general" onclick="nav('p-general')">📋 General</button>
+    <button class="tab" id="tab-req" onclick="nav('p-req')">⚡ Requerimientos</button>
+    <button class="tab" id="tab-pick" onclick="nav('p-pick')">🧰 Picking</button>
+    <button class="tab" id="tab-cod" onclick="nav('p-cod')">🔖 Códigos</button>
   </div>
   <div class="nbr">
     <button class="btn bi" onclick="alert('Aquí se cargará el Excel de stock real (Kardex / Reporte de existencias). Estructura lista para conectar.')">📂 IMPORTAR</button>
-    <button class="btn br">↻</button>
+    <button class="btn br" onclick="setupGHToken()" title="Configurar token de GitHub para guardar decisiones de Picking (mismo token que Compras)">🔑</button>
+    <button class="btn br" onclick="location.reload()">↻</button>
   </div>
 </nav>
 
-<div class="pg">
+<div id="ph" class="act">
+  <div class="hlogo"><img src="https://cdn.prod.website-files.com/680993da51b017d5afeb2060/680993da51b017d5afeb24b9_LOGO%20FP%20FOOTER.png" style="height:56px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.4))" alt="Friopacking">
+    <div class="htitle"><h1>Almacén 2026</h1><p>Existencias, requerimientos, picking y códigos — FRIOPACKING S.A.</p></div></div>
+  <div class="hdiv"></div>
+  <div class="hcards">
+    <div class="hcard" onclick="nav('p-general')"><div class="hci">📋</div><div class="hct">General</div><div class="hcs" id="hc-general">cargando…</div></div>
+    <div class="hcard" onclick="nav('p-req')"><div class="hci">⚡</div><div class="hct">Requerimientos</div><div class="hcs" id="hc-req">cargando…</div></div>
+    <div class="hcard" onclick="nav('p-pick')"><div class="hci">🧰</div><div class="hct">Picking</div><div class="hcs" id="hc-pick">cargando…</div></div>
+    <div class="hcard" onclick="nav('p-cod')"><div class="hci">🔖</div><div class="hct">Códigos</div><div class="hcs" id="hc-cod">cargando…</div></div>
+  </div>
+</div>
+
+<!-- ══════════════ PÁGINA 1: GENERAL ══════════════ -->
+<div class="pg" id="p-general">
   <div class="hd">
     <div>
-      <h2>Control de Existencias</h2>
-      <div class="sub">Stock actual, valorización y alertas de reposición</div>
+      <h2>General — Existencias</h2>
+      <div class="sub">Stock actual, valorización y alertas cruzadas con Requerimientos</div>
     </div>
   </div>
 
-  <div class="note">⚠️ <b>Datos de ejemplo.</b> Esta es la estructura del módulo lista para producción. Usa <b>📂 IMPORTAR</b> para cargar el reporte real de stock (Kardex / existencias).</div>
+  <div class="note">⚠️ <b>Existencias de ejemplo.</b> Usa <b>📂 IMPORTAR</b> para cargar el reporte real de stock (Kardex). Las alertas de abajo ya cruzan datos <b>reales</b> de Requerimientos.</div>
 
   <div class="kpis" id="kpis"></div>
+  <div id="alertBox"></div>
 
   <div class="filters">
     <input id="q" type="text" placeholder="🔍 Buscar por código o descripción…" oninput="render()">
@@ -112,11 +168,147 @@ tr:hover td{background:#f8fafc}
     </table>
   </div>
 
-  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Inventario (prueba)</div>
+  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+</div>
+
+<!-- ══════════════ PÁGINA 2: REQUERIMIENTOS ══════════════ -->
+<div class="pg" id="p-req">
+  <div class="hd">
+    <div>
+      <h2>Requerimientos</h2>
+      <div class="sub">Requerimientos pendientes de todas las áreas — mismos datos que ve Compras</div>
+    </div>
+  </div>
+
+  <div class="note live" id="reqLiveNote">☁️ Cargando datos en vivo desde <b>data.json</b>…</div>
+
+  <div class="kpis" id="reqKpis"></div>
+
+  <div class="filters">
+    <input id="rq" type="text" placeholder="🔍 Buscar por requerimiento / código / descripción / proyecto…" oninput="renderReq()">
+    <select id="rfresp" onchange="renderReq()"><option value="">Responsable: Todos</option></select>
+    <select id="rfproy" onchange="renderReq()"><option value="">Proyecto: Todos</option></select>
+    <select id="rfest" onchange="renderReq()"><option value="">Estado: Todos</option></select>
+    <span class="fx" id="rcnt"></span>
+  </div>
+
+  <div class="tblwrap">
+    <table>
+      <thead><tr>
+        <th>Fecha</th><th>Responsable</th><th>Id Proyecto</th><th>Proyecto</th>
+        <th>Código</th><th>Descripción</th><th class="num">Cant.</th><th>Unidad</th>
+        <th>Req.</th><th>F. Req.</th><th style="text-align:center">🚦</th><th>Estado</th>
+      </tr></thead>
+      <tbody id="tbreq"></tbody>
+    </table>
+    <div class="pag"><span id="reqInfo">—</span><div id="reqPag" style="display:flex;gap:4px"></div></div>
+  </div>
+
+  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba) — copia de "Req. sin Pedido" de Compras</div>
+</div>
+
+<!-- ══════════════ PÁGINA 3: PICKING ══════════════ -->
+<div class="pg" id="p-pick">
+  <div class="hd">
+    <div>
+      <h2>Picking — Por preparar</h2>
+      <div class="sub">Requerimientos en revisión de almacén, agrupados — marca ítem por ítem: Picking o Pedido</div>
+    </div>
+  </div>
+
+  <div class="note crit">🧰 Cada ítem sugiere <b>Picking</b> (hay stock, se prepara y despacha directo) o <b>Pedido</b> (sin stock, pasa a cotización/OC) según Existencias — el sugerido es editable: marca el que corresponda ítem por ítem.</div>
+
+  <div class="kpis" id="pickKpis"></div>
+
+  <div class="savebar">
+    <button class="btn bi" onclick="guardarDecisiones()">💾 Guardar decisiones</button>
+    <span id="dirtyLbl"></span>
+    <span id="saveLbl"></span>
+  </div>
+
+  <div class="filters">
+    <input id="pq" type="text" placeholder="🔍 Buscar por código, descripción, proyecto o N° de requerimiento…" oninput="renderPick()">
+    <span class="fx" id="pcnt"></span>
+  </div>
+
+  <div id="pickGroups"></div>
+
+  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+</div>
+
+<!-- ══════════════ PÁGINA 4: CÓDIGOS ══════════════ -->
+<div class="pg" id="p-cod">
+  <div class="hd">
+    <div>
+      <h2>Códigos — Catálogo maestro</h2>
+      <div class="sub">Fichas técnicas y generador de nuevos códigos</div>
+    </div>
+    <button class="btn bi" onclick="toggleCodForm()">➕ Generar código nuevo</button>
+  </div>
+
+  <div class="note">⚠️ <b>Catálogo de ejemplo.</b> El generador crea códigos localmente en este navegador (aún no sincroniza con GitHub como el botón GUARDAR de Compras).</div>
+
+  <div class="codform" id="codForm">
+    <div class="row">
+      <div>
+        <label>Descripción del material</label>
+        <input id="cf-desc" type="text" placeholder="Ej. VÁLVULA CHECK 1&quot; BRONCE" oninput="checkDup()" style="min-width:320px">
+      </div>
+      <div>
+        <label>Categoría</label>
+        <select id="cf-cat">
+          <option value="Ferretería">Ferretería</option>
+          <option value="Equipos">Equipos</option>
+          <option value="Gasfitería">Gasfitería</option>
+          <option value="Eléctrico">Eléctrico</option>
+          <option value="EPP">EPP</option>
+          <option value="Metalmecánica">Metalmecánica</option>
+          <option value="Refrigeración">Refrigeración</option>
+          <option value="Limpieza">Limpieza</option>
+        </select>
+      </div>
+      <div>
+        <label>Unidad de medida</label>
+        <input id="cf-um" type="text" placeholder="UND" style="min-width:90px">
+      </div>
+    </div>
+    <div id="cf-matches"></div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn bi" onclick="generarCodigo()">✅ Confirmar y generar código</button>
+      <button class="btn br" onclick="toggleCodForm()">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <input id="cq" type="text" placeholder="🔍 Buscar por código o descripción…" oninput="renderCod()">
+    <select id="ccat" onchange="renderCod()"><option value="">Todas las categorías</option></select>
+    <span class="fx" id="ccnt"></span>
+  </div>
+
+  <div class="tblwrap">
+    <table>
+      <thead><tr>
+        <th>Código</th><th>Descripción</th><th>Categoría</th><th>UM</th><th>Ficha técnica</th><th>Origen</th>
+      </tr></thead>
+      <tbody id="tbcod"></tbody>
+    </table>
+  </div>
+
+  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
 
 <script>
-/* Datos de ejemplo — materiales reales que compra Friopacking (basado en catálogo de OC) */
+/* ═══════════════ NAVEGACIÓN ═══════════════ */
+const PAGES=['home','p-general','p-req','p-pick','p-cod'];
+const TABS={home:'tab-home','p-general':'tab-general','p-req':'tab-req','p-pick':'tab-pick','p-cod':'tab-cod'};
+function nav(id){
+  PAGES.forEach(p=>{const el=document.getElementById(p==='home'?'ph':p);if(el)el.classList.remove('act');});
+  document.getElementById(id==='home'?'ph':id).classList.add('act');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('act'));
+  document.getElementById(TABS[id]).classList.add('act');
+}
+
+/* ═══════════════ DATOS DE EJEMPLO — EXISTENCIAS ═══════════════ */
 const DATA=[
  {cod:"004800300004",desc:"ESPÁRRAGO INOX DE 3/4'' X 1.80 M",cat:"Ferretería",ubi:"Almacén A",stock:120,min:40,um:"UND",costo:63.5},
  {cod:"004802100012",desc:"ARANDELA PLANA DE 1/2'' GALVANIZADO",cat:"Ferretería",ubi:"Almacén A",stock:1500,min:500,um:"UND",costo:0.19},
@@ -137,10 +329,65 @@ const DATA=[
  {cod:"003300200014",desc:"ELECTRODO 6011 1/8'' (KG)",cat:"Metalmecánica",ubi:"Almacén A",stock:140,min:50,um:"KG",costo:8.9},
  {cod:"002200500018",desc:"VÁLVULA SOLENOIDE 1/2'' 220V",cat:"Refrigeración",ubi:"Almacén B",stock:22,min:10,um:"UND",costo:76.0}
 ];
+const DATA_BY_COD={};
+DATA.forEach(d=>DATA_BY_COD[d.cod]=d);
 
 function estado(s,m){if(s<=0)return"CRIT";if(s<m)return"BAJO";return"OK";}
 function fmt(n){return n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fixEnc(s){return (s||'').replace('revisi�n','revisión').replace('Almac�n','Almacén');}
 
+/* ═══════════════ SYNC GITHUB (mismo repo/token que Compras) ═══════════════ */
+const GH_REPO='Melissa2026714/dashboard-friopacking';
+const GH_FILE='data.json';
+const GH_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE;
+const GH_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE;
+const GH_TOKEN_KEY='fp_gh_token'; // mismo token que usa Compras (localStorage compartido por origen)
+function setupGHToken(){
+  const cur=localStorage.getItem(GH_TOKEN_KEY)||'';
+  const t=prompt('Ingresa tu GitHub Personal Access Token\n(se guarda solo en este navegador — es el mismo que usa Compras):',cur);
+  if(t!==null){
+    localStorage.setItem(GH_TOKEN_KEY,t.trim());
+    alert(t.trim()?'✅ Token guardado. Ya puedes usar GUARDAR.':'⚠ Token eliminado.');
+  }
+}
+
+/* ═══════════════ CARGA EN VIVO DE data.json (Requerimientos reales) ═══════════════ */
+let P5=[];       // D.p5reqs real (o demo si falla el fetch)
+let P5_LIVE=false;
+const P5_DEMO=[
+ {req:"0001-DEMO01",fecha:"20/07/2026",resp:"EJEMPLO RESPONSABLE",idproy:"PRY-DEMO",proy:"PROYECTO DEMO S.A.",cod:"004800300004",prod:"ESPÁRRAGO INOX DE 3/4'' X 1.80 M",cant:10,unid:"UND",freq:"20/07/2026",estado:"En revisión de Almacén"},
+ {req:"0001-DEMO02",fecha:"19/07/2026",resp:"EJEMPLO RESPONSABLE",idproy:"PRY-DEMO",proy:"PROYECTO DEMO S.A.",cod:"001100100129",prod:"ELECTROBOMBA PENTAX 1.5 HP CENTRIF.",cant:1,unid:"UND",freq:"22/07/2026",estado:"En revisión de Almacén"}
+];
+
+let CONFIRMED={};  // decisiones ya guardadas en data.json (D.almacenPicking)
+let PENDING={};    // decisiones editadas en este navegador y aún no guardadas
+
+async function cargarLive(){
+  try{
+    const r=await fetch('data.json?t='+Date.now());
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const s=await r.json();
+    if(!s||!s.D||!Array.isArray(s.D.p5reqs))throw new Error('formato inesperado');
+    P5=s.D.p5reqs.map(r=>({...r,estado:fixEnc(r.estado)}));
+    P5_LIVE=true;
+    CONFIRMED=s.D.almacenPicking||{};
+    document.getElementById('reqLiveNote').innerHTML='☁️ <b>Datos en vivo</b> desde data.json — '+P5.length.toLocaleString('es-PE')+' requerimientos (mismos que ve Compras).';
+  }catch(e){
+    P5=P5_DEMO;
+    P5_LIVE=false;
+    CONFIRMED={};
+    document.getElementById('reqLiveNote').className='note';
+    document.getElementById('reqLiveNote').innerHTML='⚠️ No se pudo leer data.json (modo local sin servidor) — mostrando '+P5.length+' filas de ejemplo. En la web publicada esto carga automáticamente los '+'requerimientos reales.';
+  }
+  try{PENDING=JSON.parse(localStorage.getItem('fp_almacen_picking_pending')||'{}');}catch(e2){PENDING={};}
+  fillReqFilters();
+  renderReq();
+  renderPick();
+  renderAlertBox();
+  updateHomeCounters();
+}
+
+/* ═══════════════ PÁGINA GENERAL — EXISTENCIAS ═══════════════ */
 function fillFilters(){
   const cats=[...new Set(DATA.map(d=>d.cat))].sort();
   const ubis=[...new Set(DATA.map(d=>d.ubi))].sort();
@@ -148,7 +395,7 @@ function fillFilters(){
   document.getElementById('fubi').insertAdjacentHTML('beforeend',ubis.map(u=>`<option>${u}</option>`).join(''));
 }
 
-function kpis(rows){
+function kpis(){
   const skus=DATA.length;
   const valor=DATA.reduce((a,d)=>a+d.stock*d.costo,0);
   const bajo=DATA.filter(d=>estado(d.stock,d.min)==="BAJO").length;
@@ -158,6 +405,22 @@ function kpis(rows){
    <div class="kpi good"><div class="kl">Valor de inventario</div><div class="kv">S/ ${fmt(valor)}</div><div class="kd">stock × costo</div></div>
    <div class="kpi alert"><div class="kl">Bajo mínimo</div><div class="kv">${bajo}</div><div class="kd">requieren reposición</div></div>
    <div class="kpi alert"><div class="kl">Crítico / sin stock</div><div class="kv">${crit}</div><div class="kd">quiebre de stock</div></div>`;
+}
+
+function renderAlertBox(){
+  if(!P5.length){document.getElementById('alertBox').innerHTML='';return;}
+  // Cruce real: requerimientos pendientes cuyo código está en Existencias pero con stock insuficiente
+  const pendientes=P5.filter(r=>r.estado.toLowerCase().includes('revisi'));
+  const sinStock=[];
+  pendientes.forEach(r=>{
+    const it=DATA_BY_COD[r.cod];
+    if(it && it.stock<r.cant) sinStock.push({...r,stockDisp:it.stock});
+  });
+  if(!sinStock.length){
+    document.getElementById('alertBox').innerHTML=`<div class="note live">✅ Sin alertas: ningún requerimiento pendiente (con código en Existencias) supera el stock disponible.</div>`;
+    return;
+  }
+  document.getElementById('alertBox').innerHTML=`<div class="note crit">🔔 <b>${sinStock.length} alerta(s) de pedido</b> — requerimientos pendientes cuyo stock actual no alcanza. Revisa la pestaña <b>Picking</b> para el detalle.</div>`;
 }
 
 function render(){
@@ -183,10 +446,289 @@ function render(){
     </tr>`;
   }).join('') || `<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
   document.getElementById('cnt').textContent=`${rows.length} de ${DATA.length} ítems`;
-  kpis(rows);
+  kpis();
+  renderAlertBox();
 }
 
+/* ═══════════════ PÁGINA REQUERIMIENTOS ═══════════════ */
+let reqPage=0;
+function fillReqFilters(){
+  const resps=[...new Set(P5.map(r=>r.resp))].filter(Boolean).sort();
+  const proys=[...new Set(P5.map(r=>r.proy))].filter(Boolean).sort();
+  const ests=[...new Set(P5.map(r=>r.estado))].filter(Boolean).sort();
+  const fr=document.getElementById('rfresp'),fp=document.getElementById('rfproy'),fe=document.getElementById('rfest');
+  fr.innerHTML='<option value="">Responsable: Todos</option>'+resps.map(r=>`<option>${r}</option>`).join('');
+  fp.innerHTML='<option value="">Proyecto: Todos</option>'+proys.map(p=>`<option>${p}</option>`).join('');
+  fe.innerHTML='<option value="">Estado: Todos</option>'+ests.map(e=>`<option>${e}</option>`).join('');
+}
+function semReq(e){
+  const l=(e||'').toLowerCase();
+  if(l.includes('enviado a obra')||l.includes('recibido en obra'))return{c:'#16a34a',bg:'#f0fdf4',t:'Completado'};
+  if(l.includes('pedido'))return{c:'#d97706',bg:'#fffbeb',t:'En proceso'};
+  if(l.includes('revisi'))return{c:'#dc2626',bg:'#fef2f2',t:'Pendiente en almacén'};
+  return{c:'#94a3b8',bg:'#f1f5f9',t:e||'Sin estado'};
+}
+function renderReq(){
+  reqPage=0;
+  const q=document.getElementById('rq').value.toLowerCase().trim();
+  const fr=document.getElementById('rfresp').value;
+  const fp=document.getElementById('rfproy').value;
+  const fe=document.getElementById('rfest').value;
+  window._reqFil=P5.filter(r=>{
+    if(fr && r.resp!==fr)return false;
+    if(fp && r.proy!==fp)return false;
+    if(fe && r.estado!==fe)return false;
+    if(q && ![r.req,r.cod,r.prod,r.proy,r.resp].join(' ').toLowerCase().includes(q))return false;
+    return true;
+  });
+  const f=window._reqFil;
+  document.getElementById('reqKpis').innerHTML=`
+   <div class="kpi"><div class="kl">Total Req.</div><div class="kv">${f.length.toLocaleString('es-PE')}</div><div class="kd">filtrados</div></div>
+   <div class="kpi"><div class="kl">Responsables</div><div class="kv">${new Set(f.map(r=>r.resp)).size}</div><div class="kd">compradores</div></div>
+   <div class="kpi"><div class="kl">Proyectos</div><div class="kv">${new Set(f.map(r=>r.proy)).size}</div><div class="kd">involucrados</div></div>
+   <div class="kpi good"><div class="kl">Cant. total</div><div class="kv">${f.reduce((s,r)=>s+(r.cant||0),0).toLocaleString('es-PE')}</div><div class="kd">unidades req.</div></div>`;
+  document.getElementById('rcnt').textContent=`${f.length.toLocaleString('es-PE')} requerimientos`;
+  renderReqTable();
+}
+function renderReqTable(){
+  const f=window._reqFil||[];
+  const sz=50, rows=f.slice(reqPage*sz,(reqPage+1)*sz);
+  document.getElementById('tbreq').innerHTML=rows.map(r=>{
+    const s=semReq(r.estado);
+    return `<tr>
+    <td style="color:#64748b">${r.fecha||'—'}</td>
+    <td>${r.resp||'—'}</td>
+    <td><span style="font-size:10px;font-weight:700;color:#0891b2;background:#e0f2fe;padding:2px 7px;border-radius:5px">${r.idproy||'—'}</span></td>
+    <td style="white-space:normal;font-size:11px;max-width:220px" title="${r.proy||''}">${r.proy||'—'}</td>
+    <td class="mono">${r.cod||'—'}</td>
+    <td style="white-space:normal;max-width:280px;font-weight:500">${r.prod||'—'}</td>
+    <td class="num" style="font-weight:700">${(r.cant||0).toLocaleString('es-PE')}</td>
+    <td style="color:#64748b">${r.unid||'—'}</td>
+    <td><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${r.req||'—'}</span></td>
+    <td style="color:#64748b">${r.freq||'—'}</td>
+    <td style="text-align:center"><span class="dot" style="background:${s.c};box-shadow:0 0 0 3px ${s.bg}" title="${s.t}"></span></td>
+    <td><span class="pill" style="background:${s.bg};color:${s.c}">${r.estado||'—'}</span></td>
+  </tr>`;
+  }).join('') || `<tr><td colspan="12" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
+  const tot=f.length,pages=Math.max(1,Math.ceil(tot/sz));
+  document.getElementById('reqInfo').textContent=tot?`Mostrando ${reqPage*sz+1}–${Math.min((reqPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')}`:'Sin resultados';
+  const pagEl=document.getElementById('reqPag');
+  let h='';
+  for(let i=0;i<Math.min(pages,10);i++)h+=`<button class="pbt${i===reqPage?' pact':''}" onclick="reqPage=${i};renderReqTable()">${i+1}</button>`;
+  pagEl.innerHTML=h;
+}
+
+/* ═══════════════ PÁGINA PICKING ═══════════════ */
+function getDecision(key,auto){
+  if(PENDING[key])return PENDING[key];
+  if(CONFIRMED[key])return CONFIRMED[key];
+  return auto;
+}
+function setDecision(key,val){
+  PENDING[key]=val;
+  localStorage.setItem('fp_almacen_picking_pending',JSON.stringify(PENDING));
+  renderPick();
+  updateHomeCounters();
+}
+function renderPick(){
+  const q=document.getElementById('pq').value.toLowerCase().trim();
+  const pendientes=P5.filter(r=>r.estado.toLowerCase().includes('revisi'));
+  window._autoByKey=window._autoByKey||{};
+  let items=pendientes.map(r=>{
+    const it=DATA_BY_COD[r.cod];
+    const disp=it?it.stock:0;
+    const auto=(it && disp>=r.cant)?'picking':'pedido';
+    const key=r.req+'|'+r.cod;
+    window._autoByKey[key]=auto;
+    return {...r,stockDisp:disp,ubi:it?it.ubi:'—',auto,key,decision:getDecision(key,auto)};
+  });
+  if(q) items=items.filter(r=>[r.cod,r.prod,r.proy,r.resp,r.req].join(' ').toLowerCase().includes(q));
+
+  const nPicking=items.filter(r=>r.decision==='picking').length;
+  const nPedido=items.filter(r=>r.decision==='pedido').length;
+  const dirty=Object.keys(PENDING).length;
+  document.getElementById('pickKpis').innerHTML=`
+   <div class="kpi alert"><div class="kl">Pendientes en almacén</div><div class="kv">${pendientes.length.toLocaleString('es-PE')}</div><div class="kd">total en revisión</div></div>
+   <div class="kpi good"><div class="kl">Picking</div><div class="kv">${nPicking}</div><div class="kd">listos para preparar</div></div>
+   <div class="kpi warn"><div class="kl">Pedido</div><div class="kv">${nPedido}</div><div class="kd">pasan a cotización / OC</div></div>
+   <div class="kpi"><div class="kl">Sin guardar</div><div class="kv">${dirty}</div><div class="kd">cambios en este navegador</div></div>`;
+  document.getElementById('pcnt').textContent=`${items.length} ítems`;
+  document.getElementById('dirtyLbl').innerHTML=dirty?`<span class="dirty-badge">${dirty} cambio(s) sin guardar</span>`:'';
+
+  // Agrupar por requerimiento
+  const groups={};
+  items.forEach(r=>{(groups[r.req]=groups[r.req]||[]).push(r);});
+  const reqCodes=Object.keys(groups).sort((a,b)=>{
+    const fa=groups[a][0].fecha||'',fb=groups[b][0].fecha||'';
+    return fb.localeCompare(fa);
+  });
+  document.getElementById('pickGroups').innerHTML=reqCodes.map(rc=>{
+    const g=groups[rc];
+    const gPick=g.filter(r=>r.decision==='picking').length;
+    const gPed=g.filter(r=>r.decision==='pedido').length;
+    return `<div class="reqgroup">
+      <div class="reqgroup-hd">
+        <span class="rg-req">${rc}</span>
+        <span class="rg-proy">${g[0].proy||'—'}</span>
+        <span class="rg-meta">${g.length} ítems · ${gPick} picking · ${gPed} pedido · ${g[0].resp||'—'} · ${g[0].fecha||'—'}</span>
+      </div>
+      <table>
+        <thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant.</th><th class="num">Stock</th><th>Decisión</th></tr></thead>
+        <tbody>
+        ${g.map(r=>`<tr>
+          <td class="mono">${r.cod}</td>
+          <td style="white-space:normal;max-width:340px;font-weight:500">${r.prod||'—'}</td>
+          <td class="num" style="font-weight:700">${r.cant}</td>
+          <td class="num">${r.stockDisp}${r.ubi&&r.ubi!=='—'?' · '+r.ubi:''}</td>
+          <td>
+            <div class="seg">
+              <button class="segPick${r.decision==='picking'?' on':''}" onclick="setDecision('${r.key}','picking')">🧰 Picking</button>
+              <button class="segPed${r.decision==='pedido'?' on':''}" onclick="setDecision('${r.key}','pedido')">🛒 Pedido</button>
+            </div>
+          </td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  }).join('') || `<div class="note">Sin requerimientos pendientes en almacén.</div>`;
+}
+
+/* Guardar decisiones en data.json compartido (mismo repo que Compras).
+   Solo toca D.almacenPicking — nunca reescribe oc/p4/p5reqs/etc, para no
+   arriesgar los datos de Compras (ver memoria del bug de "última escritura gana"). */
+async function guardarDecisiones(){
+  const keys=Object.keys(PENDING);
+  if(!keys.length){alert('No hay cambios nuevos para guardar.');return;}
+  const token=localStorage.getItem(GH_TOKEN_KEY);
+  if(!token){
+    if(confirm('Para guardar decisiones de Picking (compartidas con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
+    return;
+  }
+  const lbl=document.getElementById('saveLbl');
+  lbl.innerHTML='⏳ Guardando…';
+  try{
+    const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+    if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
+    const meta=await check.json();
+    const sha=meta.sha;
+    const remoteRaw=await fetch(GH_RAW+'?t='+Date.now());
+    if(!remoteRaw.ok)throw new Error('No se pudo leer el contenido actual de data.json');
+    const remote=await remoteRaw.json();
+    if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
+    const merged={...(remote.D.almacenPicking||{}),...PENDING};
+    remote.D.almacenPicking=merged;
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
+    const body={message:'almacen: actualizar decisiones de picking '+new Date().toISOString(),content,sha};
+    const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
+    CONFIRMED=merged;
+    PENDING={};
+    localStorage.removeItem('fp_almacen_picking_pending');
+    lbl.textContent='✔ Guardado '+new Date().toLocaleString('es-PE');
+    renderPick();
+    updateHomeCounters();
+  }catch(e){
+    console.error(e);
+    lbl.textContent='⚠ Error al guardar: '+e.message;
+  }
+}
+
+/* ═══════════════ PÁGINA CÓDIGOS ═══════════════ */
+const CAT_PREFIX={"Ferretería":"0048","Equipos":"0011","Gasfitería":"0042","Eléctrico":"0043","EPP":"0051","Metalmecánica":"0033","Refrigeración":"0022","Limpieza":"0066"};
+function loadExtraCodigos(){
+  try{return JSON.parse(localStorage.getItem('fp_almacen_codigos_extra')||'[]');}catch(e){return [];}
+}
+function saveExtraCodigos(list){
+  localStorage.setItem('fp_almacen_codigos_extra',JSON.stringify(list));
+}
+function getCatalogo(){
+  const base=DATA.map(d=>({cod:d.cod,desc:d.desc,cat:d.cat,um:d.um,ficha:'—',origen:'Existencias'}));
+  const extra=loadExtraCodigos();
+  return base.concat(extra);
+}
+function fillCodFilters(){
+  const cat=document.getElementById('ccat');
+  if(cat.options.length>1)return;
+  Object.keys(CAT_PREFIX).sort().forEach(c=>cat.insertAdjacentHTML('beforeend',`<option>${c}</option>`));
+}
+function renderCod(){
+  const q=document.getElementById('cq').value.toLowerCase();
+  const fc=document.getElementById('ccat').value;
+  const cat=getCatalogo().filter(c=>{
+    if(q && !(c.cod.includes(q)||c.desc.toLowerCase().includes(q)))return false;
+    if(fc && c.cat!==fc)return false;
+    return true;
+  });
+  document.getElementById('tbcod').innerHTML=cat.map(c=>`<tr>
+    <td class="mono">${c.cod}</td><td>${c.desc}</td><td>${c.cat}</td><td>${c.um}</td>
+    <td>${c.ficha}</td>
+    <td>${c.origen==='Generado'?'<span class="pill p-ok">GENERADO</span>':'<span class="pill p-gray">CATÁLOGO</span>'}</td>
+  </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
+  document.getElementById('ccnt').textContent=`${cat.length} códigos`;
+}
+function toggleCodForm(){
+  document.getElementById('codForm').classList.toggle('open');
+  document.getElementById('cf-matches').innerHTML='';
+  document.getElementById('cf-desc').value='';
+}
+function checkDup(){
+  const q=document.getElementById('cf-desc').value.toLowerCase().trim();
+  const box=document.getElementById('cf-matches');
+  if(q.length<3){box.innerHTML='';return;}
+  const words=q.split(/\s+/).filter(w=>w.length>2);
+  const matches=getCatalogo().filter(c=>{
+    const d=c.desc.toLowerCase();
+    return words.some(w=>d.includes(w));
+  }).slice(0,5);
+  if(!matches.length){box.innerHTML='';return;}
+  box.innerHTML=`<div class="matchbox">⚠️ <b>Posibles códigos similares ya existentes</b> — revisa antes de generar uno nuevo:<br>${
+    matches.map(m=>`• <span class="mono">${m.cod}</span> — ${m.desc}`).join('<br>')
+  }</div>`;
+}
+function nextSeq(prefix){
+  let seqs=[];
+  try{seqs=JSON.parse(localStorage.getItem('fp_almacen_seq')||'{}');}catch(e){seqs={};}
+  const cur=(seqs[prefix]||0)+1;
+  seqs[prefix]=cur;
+  localStorage.setItem('fp_almacen_seq',JSON.stringify(seqs));
+  return cur;
+}
+function generarCodigo(){
+  const desc=document.getElementById('cf-desc').value.trim();
+  const cat=document.getElementById('cf-cat').value;
+  const um=document.getElementById('cf-um').value.trim()||'UND';
+  if(!desc){alert('Ingresa la descripción del material.');return;}
+  const prefix=CAT_PREFIX[cat]||'0099';
+  const seq=nextSeq(prefix);
+  const cod=prefix+String(seq).padStart(8,'0');
+  const extra=loadExtraCodigos();
+  extra.push({cod,desc:desc.toUpperCase(),cat,um,ficha:'Pendiente de adjuntar',origen:'Generado'});
+  saveExtraCodigos(extra);
+  toggleCodForm();
+  renderCod();
+  alert('Código generado: '+cod);
+}
+
+/* ═══════════════ CONTADORES DE INICIO ═══════════════ */
+function updateHomeCounters(){
+  const bajo=DATA.filter(d=>estado(d.stock,d.min)!=="OK").length;
+  document.getElementById('hc-general').textContent=`${DATA.length} SKUs · ${bajo} con alerta`;
+  const pendientes=P5.filter(r=>r.estado.toLowerCase().includes('revisi'));
+  document.getElementById('hc-req').textContent=P5_LIVE?`${P5.length.toLocaleString('es-PE')} requerimientos (en vivo)`:`${P5.length} de ejemplo`;
+  const nPicking=pendientes.filter(r=>{
+    const it=DATA_BY_COD[r.cod];
+    const auto=(it&&it.stock>=r.cant)?'picking':'pedido';
+    const key=r.req+'|'+r.cod;
+    return getDecision(key,auto)==='picking';
+  }).length;
+  document.getElementById('hc-pick').textContent=`${nPicking} picking de ${pendientes.length} pendientes`;
+  document.getElementById('hc-cod').textContent=`${getCatalogo().length} códigos registrados`;
+}
+
+/* ═══════════════ INIT ═══════════════ */
 fillFilters();render();
+fillCodFilters();renderCod();
+cargarLive();
 </script>
 </body>
 </html>

@@ -32,7 +32,7 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:1
 .pg{margin-top:52px;height:calc(100vh - 52px);overflow-y:auto;padding:14px;display:none}
 .pg.act{display:block}
 /* HOME */
-#ph{margin-top:52px;height:calc(100vh - 52px);background:linear-gradient(160deg,rgba(8,15,30,.78) 0%,rgba(15,40,65,.55) 40%,rgba(8,15,30,.72) 100%),url('https://img.youtube.com/vi/6_Kqf-KL13o/maxresdefault.jpg') center/cover no-repeat;display:none;align-items:center;justify-content:center;flex-direction:column;gap:28px}
+#ph{margin-top:52px;height:calc(100vh - 52px);background:linear-gradient(160deg,rgba(8,15,30,.78) 0%,rgba(15,40,65,.55) 40%,rgba(8,15,30,.72) 100%),url('assets/compras_hero.png') center/cover no-repeat;display:none;align-items:center;justify-content:center;flex-direction:column;gap:28px}
 #ph.act{display:flex}
 .hlogo{display:flex;align-items:center;gap:14px}
 .hfp{background:#166534;color:#fff;font-weight:800;font-size:28px;width:64px;height:64px;border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px rgba(22,101,52,.5)}
@@ -334,12 +334,11 @@ body.dark .g-rank-card{background:#111b2b!important}
 <body>
 
 <nav class="nb">
-  <a href="plataforma.html" title="Volver a la Plataforma LOGÍSTICA" style="display:flex;align-items:center;gap:6px;background:#1e293b;color:#93c5fd;border:1px solid #334155;padding:6px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;flex-shrink:0">◀ LOGÍSTICA</a>
+  <a href="plataforma.html" title="Volver al Inicio de la Plataforma LOGÍSTICA" style="display:flex;align-items:center;gap:6px;background:#1e293b;color:#93c5fd;border:1px solid #334155;padding:6px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;flex-shrink:0">◀ INICIO</a>
   <div class="fp">FP</div>
-  <div class="brand"><span class="b1">Seguimiento Compras 2026</span><span class="b2">FRIOPACKING S.A.</span></div>
   <div class="sep"></div>
   <div class="tabs">
-    <button class="tab" onclick="nav('home')">🏠 Inicio</button>
+    <button class="tab" onclick="nav('home')">🛒 COMPRAS</button>
     <button class="tab" onclick="nav('p2')">📋 OC Pendientes <span class="tbdg" id="bdg2">—</span></button>
     <button class="tab" onclick="nav('p3')">🔴 Sin OC — Cotización <span class="tbdg" id="bdg3">—</span></button>
     <button class="tab" onclick="nav('p4')">📦 Compras Directas</button>
