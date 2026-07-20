@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Almacén — FRIOPACKING</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -112,11 +113,13 @@ tr:hover td{background:#f8fafc}
     <button class="tab" id="tab-cod" onclick="nav('p-cod')">🔖 Códigos</button>
   </div>
   <div class="nbr">
-    <button class="btn bi" onclick="alert('Aquí se cargará el Excel de stock real (Kardex / Reporte de existencias). Estructura lista para conectar.')">📂 IMPORTAR</button>
-    <button class="btn br" onclick="setupGHToken()" title="Configurar el token de GitHub de Almacén (propio, distinto al de Compras) para guardar Picking y Códigos">🔑</button>
+    <button class="btn bi" onclick="document.getElementById('fileAlmacen').click()" title="Importar Existencias/Kardex (.xlsx) — acepta más de un archivo a la vez">📂 IMPORTAR</button>
+    <button class="btn" id="saveBtnAlm" onclick="guardarTodo()" title="Guardar y sincronizar Existencias, Picking y Códigos con todos" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
+    <button class="btn br" onclick="setupGHToken()" title="Configurar el token de GitHub de Almacén (propio, distinto al de Compras)">🔑</button>
     <button class="btn br" onclick="location.reload()">↻</button>
   </div>
 </nav>
+<input type="file" id="fileAlmacen" accept=".xlsx,.xls" style="display:none" multiple onchange="handleImportAlmacen(this)"/>
 
 <div id="ph" class="act">
   <div class="hlogo"><img src="https://cdn.prod.website-files.com/680993da51b017d5afeb2060/680993da51b017d5afeb24b9_LOGO%20FP%20FOOTER.png" style="height:56px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.4))" alt="Friopacking">
@@ -139,7 +142,7 @@ tr:hover td{background:#f8fafc}
     </div>
   </div>
 
-  <div class="note">⚠️ <b>Existencias de ejemplo.</b> Usa <b>📂 IMPORTAR</b> para cargar el reporte real de stock (Kardex). Las alertas de abajo ya cruzan datos <b>reales</b> de Requerimientos.</div>
+  <div class="note" id="existNote">⚠️ <b>Existencias de ejemplo.</b> Usa <b>📂 IMPORTAR</b> para cargar el reporte real de stock (Kardex). Las alertas de abajo ya cruzan datos <b>reales</b> de Requerimientos.</div>
 
   <div class="kpis" id="kpis"></div>
   <div id="alertBox"></div>
@@ -394,8 +397,8 @@ function nav(id){
   document.getElementById(TABS[id]).classList.add('act');
 }
 
-/* ═══════════════ DATOS DE EJEMPLO — EXISTENCIAS ═══════════════ */
-const DATA=[
+/* ═══════════════ EXISTENCIAS — datos de ejemplo hasta que se importe el Kardex real ═══════════════ */
+const SAMPLE_DATA=[
  {cod:"004800300004",desc:"ESPÁRRAGO INOX DE 3/4'' X 1.80 M",cat:"Ferretería",ubi:"Almacén A",stock:120,min:40,um:"UND",costo:63.5},
  {cod:"004802100012",desc:"ARANDELA PLANA DE 1/2'' GALVANIZADO",cat:"Ferretería",ubi:"Almacén A",stock:1500,min:500,um:"UND",costo:0.19},
  {cod:"001100100128",desc:"ELECTROBOMBA PENTAX 2.0 HP CENTRIF.",cat:"Equipos",ubi:"Almacén B",stock:2,min:3,um:"UND",costo:1580.0},
@@ -415,8 +418,23 @@ const DATA=[
  {cod:"003300200014",desc:"ELECTRODO 6011 1/8'' (KG)",cat:"Metalmecánica",ubi:"Almacén A",stock:140,min:50,um:"KG",costo:8.9},
  {cod:"002200500018",desc:"VÁLVULA SOLENOIDE 1/2'' 220V",cat:"Refrigeración",ubi:"Almacén B",stock:22,min:10,um:"UND",costo:76.0}
 ];
-const DATA_BY_COD={};
-DATA.forEach(d=>DATA_BY_COD[d.cod]=d);
+let DATA=[...SAMPLE_DATA];
+let DATA_BY_COD={};
+let EXISTENCIAS_LIVE=false;   // true si se cargaron Existencias reales (importadas o desde data.json)
+let EXISTENCIAS_DIRTY=false;  // true si se importó algo en este navegador y falta GUARDAR
+function rebuildDataByCod(){
+  DATA_BY_COD={};
+  DATA.forEach(d=>DATA_BY_COD[d.cod]=d);
+}
+function setExistencias(rows,marcarDirty){
+  DATA=rows;
+  rebuildDataByCod();
+  EXISTENCIAS_LIVE=true;
+  if(marcarDirty)EXISTENCIAS_DIRTY=true;
+  fillFilters();
+  render();
+}
+rebuildDataByCod();
 
 function estado(s,m){if(s<=0)return"CRIT";if(s<m)return"BAJO";return"OK";}
 function fmt(n){return n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -435,6 +453,78 @@ function setupGHToken(){
     localStorage.setItem(GH_TOKEN_KEY,t.trim());
     alert(t.trim()?'✅ Token guardado. Ya puedes usar GUARDAR.':'⚠ Token eliminado.');
   }
+}
+
+/* ═══════════════ IMPORTAR EXCEL (Existencias/Kardex) — acepta varios archivos a la vez ═══════════════ */
+// Busca un campo en la fila probando varios nombres de columna posibles (insensible a mayúsculas/espacios).
+function pickField(row,candidates){
+  const keys=Object.keys(row);
+  for(const cand of candidates){
+    const k=keys.find(kk=>kk.trim().toLowerCase()===cand.toLowerCase());
+    if(k!==undefined && row[k]!=='' && row[k]!=null)return row[k];
+  }
+  return '';
+}
+function toNum(v){
+  if(v==null||v==='')return 0;
+  const n=Number(String(v).replace(/,/g,'').trim());
+  return isNaN(n)?0:n;
+}
+function parseExistenciasWorkbook(wb){
+  // Prioriza una hoja llamada tipo "Existencias"/"Kardex"/"Stock"; si no, usa la primera.
+  let sheetName=wb.SheetNames.find(n=>/existenc|kardex|stock/i.test(n))||wb.SheetNames[0];
+  const sheet=wb.Sheets[sheetName];
+  const rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+  const out=[];
+  rows.forEach(row=>{
+    const cod=String(pickField(row,['Código','Codigo','Idproducto','SKU','Cod'])).trim();
+    if(!cod)return;
+    out.push({
+      cod,
+      desc:String(pickField(row,['Descripción','Descripcion','Producto','Nombre'])).trim().toUpperCase(),
+      cat:String(pickField(row,['Categoría','Categoria','Grupo','Familia'])||'Sin categoría').trim(),
+      ubi:String(pickField(row,['Ubicación','Ubicacion','Almacén','Almacen','Bodega'])||'—').trim(),
+      stock:toNum(pickField(row,['Stock','Cantidad','Existencia','Saldo'])),
+      min:toNum(pickField(row,['Mínimo','Minimo','Stock Minimo','Stock Mínimo'])),
+      um:String(pickField(row,['UM','Unidad','Unidad de Medida','UnidadMedida'])||'UND').trim(),
+      costo:toNum(pickField(row,['Costo','Precio','Costo Unitario','Precio Unitario']))
+    });
+  });
+  return out;
+}
+function handleImportAlmacen(input){
+  if(!input.files||!input.files.length)return;
+  const files=Array.from(input.files);
+  let processed=0;
+  const results=[];
+  let existenciasAcum=[];
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+        const rows=parseExistenciasWorkbook(wb);
+        if(!rows.length)throw new Error('no se encontraron filas con código válido');
+        existenciasAcum=existenciasAcum.concat(rows);
+        results.push('✅ '+file.name+' ('+rows.length+' ítems)');
+      }catch(err){
+        results.push('❌ '+file.name+': '+err.message);
+      }
+      processed++;
+      if(processed===files.length){
+        if(existenciasAcum.length){
+          // Si dos archivos traen el mismo código, el último gana (se asume más reciente).
+          const merged={};
+          existenciasAcum.forEach(r=>merged[r.cod]=r);
+          setExistencias(Object.values(merged),true);
+          updateHomeCounters();
+        }
+        alert('Importación de Existencias completada:\n\n'+results.join('\n')+(existenciasAcum.length?'\n\nRecuerda hacer clic en 💾 GUARDAR para compartirlo con todos.':''));
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+  input.value='';
 }
 
 /* ═══════════════ CARGA EN VIVO DE data.json (Requerimientos reales) ═══════════════ */
@@ -459,6 +549,11 @@ async function cargarLive(){
     P5_LIVE=true;
     CONFIRMED=s.D.almacenPicking||{};
     CONFIRMED_COD=s.D.almacenCodigos||[];
+    if(Array.isArray(s.D.almacenExistencias)&&s.D.almacenExistencias.length){
+      DATA=s.D.almacenExistencias;
+      rebuildDataByCod();
+      EXISTENCIAS_LIVE=true;
+    }
     document.getElementById('reqLiveNote').innerHTML='☁️ <b>Datos en vivo</b> desde data.json — '+P5.length.toLocaleString('es-PE')+' requerimientos (mismos que ve Compras).';
   }catch(e){
     P5=P5_DEMO;
@@ -471,6 +566,8 @@ async function cargarLive(){
   try{PENDING=JSON.parse(localStorage.getItem('fp_almacen_picking_pending')||'{}');}catch(e2){PENDING={};}
   PENDING_COD=loadPendingCodigos();
   AUTO_MAP=computeAutoAlloc(P5.filter(r=>r.estado.toLowerCase().includes('revisi')));
+  fillFilters();
+  render();
   fillReqFilters();
   renderReq();
   renderPick();
@@ -483,8 +580,8 @@ async function cargarLive(){
 function fillFilters(){
   const cats=[...new Set(DATA.map(d=>d.cat))].sort();
   const ubis=[...new Set(DATA.map(d=>d.ubi))].sort();
-  document.getElementById('fcat').insertAdjacentHTML('beforeend',cats.map(c=>`<option>${c}</option>`).join(''));
-  document.getElementById('fubi').insertAdjacentHTML('beforeend',ubis.map(u=>`<option>${u}</option>`).join(''));
+  document.getElementById('fcat').innerHTML='<option value="">Todas las categorías</option>'+cats.map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('fubi').innerHTML='<option value="">Todas las ubicaciones</option>'+ubis.map(u=>`<option>${u}</option>`).join('');
 }
 
 function kpis(){
@@ -497,6 +594,16 @@ function kpis(){
    <div class="kpi good"><div class="kl">Valor de inventario</div><div class="kv">S/ ${fmt(valor)}</div><div class="kd">stock × costo</div></div>
    <div class="kpi alert"><div class="kl">Bajo mínimo</div><div class="kv">${bajo}</div><div class="kd">requieren reposición</div></div>
    <div class="kpi alert"><div class="kl">Crítico / sin stock</div><div class="kv">${crit}</div><div class="kd">quiebre de stock</div></div>`;
+  const note=document.getElementById('existNote');
+  if(note){
+    if(EXISTENCIAS_LIVE){
+      note.className='note live';
+      note.innerHTML='☁️ <b>Existencias reales</b>'+(EXISTENCIAS_DIRTY?' — hay cambios importados sin guardar. Usa <b>💾 GUARDAR</b> para compartirlos.':' importadas — '+skus+' SKUs.');
+    }else{
+      note.className='note';
+      note.innerHTML='⚠️ <b>Existencias de ejemplo.</b> Usa <b>📂 IMPORTAR</b> para cargar el reporte real de stock (Kardex). Las alertas de abajo ya cruzan datos <b>reales</b> de Requerimientos.';
+    }
+  }
 }
 
 function renderAlertBox(){
@@ -1086,10 +1193,76 @@ async function guardarCodigos(){
   }
 }
 
+/* Botón principal de la barra: guarda Existencias + Picking + Códigos en un solo commit,
+   igual que el botón GUARDAR de Compras. Solo toca D.almacenExistencias/almacenPicking/almacenCodigos —
+   nunca reescribe oc/p4/p5reqs/etc. */
+async function guardarTodo(){
+  const hayExistencias=EXISTENCIAS_DIRTY;
+  const hayPicking=Object.keys(PENDING).length>0;
+  const hayCodigos=PENDING_COD.length>0;
+  if(!hayExistencias&&!hayPicking&&!hayCodigos){alert('No hay cambios nuevos para guardar.');return;}
+  const token=localStorage.getItem(GH_TOKEN_KEY);
+  if(!token){
+    if(confirm('Para guardar (compartido con todos) necesitas un Token de GitHub de Almacén.\n¿Configurarlo ahora?'))setupGHToken();
+    return;
+  }
+  const btn=document.getElementById('saveBtnAlm');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Guardando…';}
+  document.querySelectorAll('.saveLblEl,.codSaveLblEl').forEach(l=>l.innerHTML='⏳ Guardando…');
+  try{
+    const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+    if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
+    const meta=await check.json();
+    const sha=meta.sha;
+    const remoteRaw=await fetch(GH_RAW+'?t='+Date.now());
+    if(!remoteRaw.ok)throw new Error('No se pudo leer el contenido actual de data.json');
+    const remote=await remoteRaw.json();
+    if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
+
+    if(hayPicking)remote.D.almacenPicking={...(remote.D.almacenPicking||{}),...PENDING};
+    let colisionesCod=[];
+    if(hayCodigos){
+      const remoteCodigos=remote.D.almacenCodigos||[];
+      const remoteCods=new Set(remoteCodigos.map(c=>c.cod));
+      colisionesCod=PENDING_COD.filter(c=>remoteCods.has(c.cod));
+      const nuevosCod=PENDING_COD.filter(c=>!remoteCods.has(c.cod));
+      remote.D.almacenCodigos=remoteCodigos.concat(nuevosCod);
+    }
+    if(hayExistencias)remote.D.almacenExistencias=DATA;
+
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
+    const partes=[];
+    if(hayExistencias)partes.push('Existencias ('+DATA.length+' SKUs)');
+    if(hayPicking)partes.push('Picking ('+Object.keys(PENDING).length+' cambios)');
+    if(hayCodigos)partes.push('Códigos ('+PENDING_COD.length+' nuevos)');
+    const body={message:'almacen: guardar '+partes.join(' + ')+' — '+new Date().toISOString(),content,sha};
+    const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
+
+    if(hayPicking){CONFIRMED=remote.D.almacenPicking;PENDING={};localStorage.removeItem('fp_almacen_picking_pending');}
+    if(hayCodigos){CONFIRMED_COD=remote.D.almacenCodigos;PENDING_COD=colisionesCod;savePendingCodigos();}
+    if(hayExistencias){EXISTENCIAS_DIRTY=false;}
+
+    let savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE')+' — '+partes.join(' + ');
+    if(colisionesCod.length)savedTxt+=` — ⚠ ${colisionesCod.length} código(s) ya existían y no se subieron, regenéralos`;
+    document.querySelectorAll('.saveLblEl,.codSaveLblEl').forEach(l=>l.textContent=savedTxt);
+    if(btn){btn.textContent='💾 GUARDAR';btn.disabled=false;}
+    if(document.getElementById('tbreq'))renderReqTable();
+    renderPick();
+    renderCod();
+    render();
+    updateHomeCounters();
+  }catch(e){
+    console.error(e);
+    document.querySelectorAll('.saveLblEl,.codSaveLblEl').forEach(l=>l.textContent='⚠ Error al guardar: '+e.message);
+    if(btn){btn.textContent='💾 GUARDAR';btn.disabled=false;}
+  }
+}
+
 /* ═══════════════ CONTADORES DE INICIO ═══════════════ */
 function updateHomeCounters(){
   const bajo=DATA.filter(d=>estado(d.stock,d.min)!=="OK").length;
-  document.getElementById('hc-general').textContent=`${DATA.length} SKUs · ${bajo} con alerta`;
+  document.getElementById('hc-general').textContent=`${DATA.length} SKUs · ${bajo} con alerta${EXISTENCIAS_LIVE?' (real)':' (ejemplo)'}`;
   const pendientes=P5.filter(r=>r.estado.toLowerCase().includes('revisi'));
   document.getElementById('hc-req').textContent=P5_LIVE?`${P5.length.toLocaleString('es-PE')} requerimientos (en vivo)`:`${P5.length} de ejemplo`;
   const autoMap=computeAutoAlloc(pendientes);
