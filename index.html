@@ -342,7 +342,6 @@ body.dark .g-rank-card{background:#111b2b!important}
     <button class="tab" onclick="nav('p2')">📋 OC Pendientes <span class="tbdg" id="bdg2">—</span></button>
     <button class="tab" onclick="nav('p3')">🔴 Sin OC — Cotización <span class="tbdg" id="bdg3">—</span></button>
     <button class="tab" onclick="nav('p4')">📦 Compras Directas</button>
-    <button class="tab" onclick="nav('p5')">⚡ Req. sin Pedido</button>
     <button class="tab" onclick="nav('p6')">🏗️ Proyectos PMO <span class="tbdg" id="bdg6">—</span></button>
     <button class="tab" onclick="nav('p1')">📊 Gerencial / KPIs</button>
     <button class="tab" onclick="nav('p7')">🔍 Consultas</button>
@@ -366,7 +365,6 @@ body.dark .g-rank-card{background:#111b2b!important}
     <div class="hcard" onclick="nav('p2')"><div class="hci">📋</div><div class="hct">OC Pendientes<br>con Requerimiento</div><div class="hcs" id="hc2">cargando…</div></div>
     <div class="hcard" onclick="nav('p3')"><div class="hci">🔴</div><div class="hct">Pedidos sin OC<br>En Cotización</div><div class="hcs" id="hc3">cargando…</div></div>
     <div class="hcard" onclick="nav('p4')"><div class="hci">📦</div><div class="hct">Compras<br>Directas</div><div class="hcs">Archivo externo</div></div>
-    <div class="hcard" onclick="nav('p5')"><div class="hci">⚡</div><div class="hct">Req. sin Pedido<br>Javier</div><div class="hcs">Sin pedido asignado</div></div>
     <div class="hcard" onclick="nav('p6')"><div class="hci">🏗️</div><div class="hct">Proyectos PMO</div><div class="hcs" id="hc6">cargando…</div></div>
     <div class="hcard" onclick="nav('p1')"><div class="hci">📊</div><div class="hct">Gerencial / KPIs<br>Manuel</div><div class="hcs">Vista ejecutiva</div></div>
   </div>
@@ -402,7 +400,6 @@ body.dark .g-rank-card{background:#111b2b!important}
     <button data-sec="isec3" onclick="instNav('isec3')">🔴 Sin OC — Cotización</button>
     <button data-sec="isec4" onclick="instNav('isec4')">📥 Exportar Excel</button>
     <button data-sec="isec5" onclick="instNav('isec5')">📦 Compras Directas</button>
-    <button data-sec="isec6" onclick="instNav('isec6')">⚡ Req. sin Pedido</button>
     <button data-sec="isec7" onclick="instNav('isec7')">🏗️ Proyectos PMO</button>
     <button data-sec="isec8" onclick="instNav('isec8')">📊 Gerencial / KPIs</button>
     <button data-sec="isec9" onclick="instNav('isec9')">🔍 Consultas</button>
@@ -423,7 +420,6 @@ body.dark .g-rank-card{background:#111b2b!important}
         <li><span class="ibadge ibadge-blue">📋 OC Pendientes</span> — Órdenes de compra con requerimiento asignado</li>
         <li><span class="ibadge ibadge-red">🔴 Sin OC</span> — Pedidos en proceso de cotización sin OC aún</li>
         <li><span class="ibadge ibadge-gray">📦 Compras Directas</span> — Compras sin requerimiento formal (archivo externo)</li>
-        <li><span class="ibadge ibadge-gray">⚡ Req. sin Pedido</span> — Requerimientos sin pedido (Javier)</li>
         <li><span class="ibadge ibadge-gray">🏗️ Proyectos PMO</span> — Seguimiento de proyectos activos</li>
         <li><span class="ibadge ibadge-purple">📊 Gerencial / KPIs</span> — Vista ejecutiva para gerencia (Manuel)</li>
       </ul>
@@ -609,19 +605,6 @@ body.dark .g-rank-card{background:#111b2b!important}
       <div class="itip"><span class="itip-icon">💡</span><p>Para ver los datos de Compras Directas en el módulo Gerencial, cambia el filtro <strong>Origen</strong> a "Compras Directas (Sin Req.)" o "Ambas".</p></div>
     </div>
 
-    <!-- 6 REQ SIN PEDIDO -->
-    <div class="isec" id="isec6">
-      <h3>⚡ Req. sin Pedido — Comodín (Javier)</h3>
-      <p>Muestra los requerimientos NISIRA que aún no tienen un pedido/OC asignado. Esta sección es administrada principalmente por Javier y está fuera del flujo regular de compras.</p>
-      <h4>Uso</h4>
-      <ul>
-        <li>Identificar requerimientos "huérfanos" sin acción de compra</li>
-        <li>Hacer seguimiento de ítems pendientes de asignación</li>
-        <li>Los datos se cargan desde el archivo <strong>PedidoSinReq.xlsx</strong> en la importación</li>
-      </ul>
-      <div class="iwarn"><p>⚠️ Los ítems en esta sección no aparecen en OC Pendientes ni en Sin OC hasta que se les asigne un pedido en NISIRA y se reimporte el MAESTRO.xlsx.</p></div>
-    </div>
-
     <!-- 7 PROYECTOS PMO -->
     <div class="isec" id="isec7">
       <h3>🏗️ Proyectos PMO</h3>
@@ -717,15 +700,6 @@ body.dark .g-rank-card{background:#111b2b!important}
         <li><strong>Importaciones en provisión</strong> — el área de compras registra aquí los pedidos de importación que aún están en proceso de internamiento o que se manejan fuera del flujo regular de NISIRA</li>
       </ul>
       <p>Esta sección tiene <strong>gran peso en el seguimiento general</strong> porque concentra un volumen significativo de compras, especialmente todo lo relacionado a importaciones.</p>
-
-      <h4>⚡ Req. sin Pedido</h4>
-      <p>Muestra requerimientos NISIRA que <strong>todavía no tienen un pedido asignado</strong>. Hay varias razones por las que un requerimiento puede estar aquí:</p>
-      <ul>
-        <li>El requerimiento aún no ha sido procesado por <strong>Javier</strong>, quien se encarga de gestionar esta sección</li>
-        <li><strong>Almacén ya cuenta con el stock solicitado</strong> — si el material está disponible en almacén, compras no genera pedido porque no es necesario comprarlo</li>
-        <li>El requerimiento está en revisión o pendiente de aprobación interna</li>
-      </ul>
-      <p>Esta sección la administra principalmente Javier.</p>
 
       <h4>🏗️ Proyectos PMO</h4>
       <p>Vista de seguimiento de los <strong>proyectos activos de la empresa</strong> con mapa referencial y estado de avance. Muestra el nombre del proyecto, supervisor, zona, fechas de inicio y fin estimadas.</p>
@@ -1133,54 +1107,8 @@ function instNav(id){
   </div>
 </div>
 
-<div class="pg" id="pp5">
-  <div class="ib"><span class="thtt">⚡ Req. sin Pedido — Comodín (Javier / NO COMPRAS)</span>
-    <span id="hc5" style="font-size:11px;color:#94a3b8;margin-left:8px">—</span>
-  </div>
-  <!-- KPIs -->
-  <div class="kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
-    <div class="kpi" style="border-top:3px solid #f59e0b"><div class="klbl">TOTAL REQ.</div><div class="kval" id="k5tot">—</div><div class="ksub">Pendientes</div></div>
-    <div class="kpi" style="border-top:3px solid #8b5cf6"><div class="klbl">RESPONSABLES</div><div class="kval" id="k5resp">—</div><div class="ksub">Compradores</div></div>
-    <div class="kpi" style="border-top:3px solid #06b6d4"><div class="klbl">PROYECTOS</div><div class="kval" id="k5proj">—</div><div class="ksub">Involucrados</div></div>
-    <div class="kpi" style="border-top:3px solid #10b981"><div class="klbl">CANT. TOTAL</div><div class="kval" id="k5cant">—</div><div class="ksub">Unidades req.</div></div>
-  </div>
-  <!-- Filters -->
-  <div class="flt">
-    <div class="msel-wrap" id="f5respWrap">
-      <div class="msel-btn" id="f5respBtn" onclick="toggleMsel('f5respDrop','f5respBtn')"><span id="f5respLbl">Responsable: Todos</span></div>
-      <div class="msel-drop" id="f5respDrop"></div>
-    </div>
-    <div class="msel-wrap" id="f5estWrap">
-      <div class="msel-btn" id="f5estBtn" onclick="toggleMsel('f5estDrop','f5estBtn')"><span id="f5estLbl">Estado: Todos</span></div>
-      <div class="msel-drop" id="f5estDrop"></div>
-    </div>
-    <select class="fsel" id="f5proj" onchange="renderP5()"><option value="">Proyecto: Todos</option></select>
-    <input class="fsrch" id="f5q" oninput="renderP5()" placeholder="Buscar req. / código / descripción / proyecto…">
-    <button class="cbtn" onclick="clearF5()">✕ Limpiar</button>
-    <span id="f5cnt" style="margin-left:8px;font-size:12px;color:#64748b"></span>
-  </div>
-  <!-- Table -->
-  <div class="tw" style="margin-top:12px">
-    <table class="ttbl">
-      <thead><tr>
-        <th style="white-space:nowrap">FECHA</th>
-        <th>RESPONSABLE</th>
-        <th style="white-space:nowrap">ID PROYECTO</th>
-        <th style="min-width:200px">PROYECTO</th>
-        <th style="white-space:nowrap">CÓDIGO</th>
-        <th style="min-width:280px">DESCRIPCIÓN PRODUCTO</th>
-        <th style="text-align:right;white-space:nowrap">CANT.</th>
-        <th style="white-space:nowrap">UNIDAD</th>
-        <th style="white-space:nowrap">REQ.</th>
-        <th style="white-space:nowrap">F. REQ.</th>
-        <th style="white-space:nowrap;text-align:center" title="Verde: enviado/recibido en obra · Ámbar: enviado a pedido · Rojo: en revisión de almacén · Gris: archivado">🚦</th>
-        <th style="white-space:nowrap">ESTADO</th>
-      </tr></thead>
-      <tbody id="tb5"></tbody>
-    </table>
-    <div class="pag"><span id="p5info">—</span><div class="pbts" id="p5pag"></div></div>
-  </div>
-</div>
+<!-- Página "Req. sin Pedido" removida de Compras (migrada a Requerimientos/Picking en Almacén).
+     D.p5reqs sigue construyéndose en la importación — Almacén lo lee desde data.json. -->
 
 <div class="pg" id="pp6">
   <div class="ib">
@@ -1337,11 +1265,10 @@ function nav(id){
   if(pg){ pg.classList.add('act'); }
   else { document.getElementById('ph').classList.add('act'); }
   const tabs=[...document.querySelectorAll('.tab')];
-  const ti={home:0,p2:1,p3:2,p4:3,p5:4,p6:5,p1:6,p7:7};
+  const ti={home:0,p2:1,p3:2,p4:3,p6:4,p1:5,p7:6};
   if(ti[id]!==undefined&&tabs[ti[id]])tabs[ti[id]].classList.add('act');
   curPage=id;
   if(id==='p4'){try{initP4();}catch(e){}}
-  if(id==='p5'){try{initP5();}catch(e){}}
   if(id==='p1'){initP1();renderGerencial();}
   if(id==='p7'){renderP7();}
   if(id==='p6'&&!mapInited){setTimeout(initMap,100);mapInited=true;}
@@ -4136,77 +4063,8 @@ function openSkuModalP4(el){
   document.getElementById('sku-modal').style.display='flex';
 }
 
-// ── PAGE 5 ───────────────────────────────────────────────────────
-let p5pg=0, p5fil=[];
-function initP5(){
-  document.getElementById('f5proj').value='';
-  document.getElementById('f5q').value='';
-  const resp5=[...new Set(D.p5reqs.map(r=>r.resp).filter(Boolean))].sort();
-  const est5=[...new Set(D.p5reqs.map(r=>r.estado).filter(Boolean))].sort();
-  const proj5=[...new Set(D.p5reqs.map(r=>r.proy).filter(Boolean))].sort();
-  buildMsel('f5respDrop','f5respBtn','f5respLbl',resp5,'Responsable: Todos',renderP5);
-  buildMsel('f5estDrop','f5estBtn','f5estLbl',est5,'Estado: Todos',renderP5);
-  const fp5=document.getElementById('f5proj');
-  fp5.innerHTML='<option value="">Proyecto: Todos</option>';
-  proj5.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;fp5.appendChild(o);});
-  document.getElementById('bdg5').textContent=D.p5reqs.length;
-  document.getElementById('hc5').textContent=D.p5reqs.length+' requerimientos';
-  renderP5();
-}
-function renderP5(){
-  p5pg=0;
-  const resps=getMselValues('f5respDrop');
-  const ests=getMselValues('f5estDrop');
-  const proj=document.getElementById('f5proj').value;
-  const q=document.getElementById('f5q').value.toLowerCase().trim();
-  p5fil=D.p5reqs.filter(r=>{
-    if(resps.length&&!resps.includes(r.resp))return false;
-    if(ests.length&&!ests.includes(r.estado))return false;
-    if(proj&&r.proy!==proj)return false;
-    if(q&&![r.req,r.cod,r.prod,r.proy,r.idproy,r.resp].join(' ').toLowerCase().includes(q))return false;
-    return true;
-  });
-  document.getElementById('f5cnt').textContent=p5fil.length+' requerimientos';
-  document.getElementById('k5tot').textContent=p5fil.length;
-  document.getElementById('k5resp').textContent=new Set(p5fil.map(r=>r.resp)).size;
-  document.getElementById('k5proj').textContent=new Set(p5fil.map(r=>r.proy)).size;
-  document.getElementById('k5cant').textContent=p5fil.reduce((s,r)=>s+r.cant,0).toLocaleString();
-  renderP5Table();
-}
-function semReq(e){
-  const l=(e||'').toLowerCase();
-  if(l.includes('enviado a obra')||l.includes('recibido en obra'))return{c:'#16a34a',bg:'#f0fdf4',t:'Completado — material en obra'};
-  if(l.includes('pedido'))return{c:'#d97706',bg:'#fffbeb',t:'En proceso — enviado a pedido'};
-  if(l.includes('revisi'))return{c:'#dc2626',bg:'#fef2f2',t:'Pendiente — en revisión de almacén'};
-  return{c:'#94a3b8',bg:'#f1f5f9',t:e||'Sin estado'};
-}
-function renderP5Table(){
-  const sz=50, rows=p5fil.slice(p5pg*sz,(p5pg+1)*sz);
-  document.getElementById('tb5').innerHTML=rows.map(r=>`<tr>
-    <td style="white-space:nowrap;color:#64748b">${r.fecha||'—'}</td>
-    <td><div class="avrow">${avHtml(r.resp)}<span>${r.resp}</span></div></td>
-    <td style="white-space:nowrap"><span style="font-size:10px;font-weight:700;color:#0891b2;background:#e0f2fe;padding:2px 7px;border-radius:5px">${r.idproy||'—'}</span></td>
-    <td style="white-space:normal;font-size:11px;line-height:1.4" title="${r.proy}">${r.proy||'—'}</td>
-    <td style="white-space:nowrap"><span class="cl">${r.cod||'—'}</span></td>
-    <td style="white-space:normal;line-height:1.4;font-size:12px;font-weight:500;color:#1e293b">${r.prod||'—'}</td>
-    <td style="white-space:nowrap;text-align:right;font-weight:700;color:#1e3a5f">${r.cant}</td>
-    <td style="white-space:nowrap;color:#64748b;font-size:11px">${r.unid||'—'}</td>
-    <td style="white-space:nowrap"><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${r.req||'—'}</span></td>
-    <td style="white-space:nowrap;color:#64748b;font-size:11px">${r.freq||'—'}</td>
-    <td style="text-align:center">${(()=>{const s=semReq(r.estado);return`<span title="${s.t}" style="display:inline-block;width:13px;height:13px;border-radius:50%;background:${s.c};box-shadow:0 0 0 3px ${s.bg}"></span>`;})()}</td>
-    <td style="white-space:nowrap">${(()=>{const s=semReq(r.estado);return r.estado?`<span style="background:${s.bg};color:${s.c};padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;white-space:nowrap">${r.estado}</span>`:'—';})()}</td>
-  </tr>`).join('');
-  const tot=p5fil.length, pages=Math.ceil(tot/sz);
-  document.getElementById('p5info').textContent=`Mostrando ${p5pg*sz+1}–${Math.min((p5pg+1)*sz,tot)} de ${tot}`;
-  renderPag('p5pag',pages,p5pg,p=>{p5pg=p;renderP5Table();});
-}
-function clearF5(){
-  resetMsel('f5respDrop','f5respBtn','f5respLbl','Responsable: Todos');
-  resetMsel('f5estDrop','f5estBtn','f5estLbl','Estado: Todos');
-  document.getElementById('f5proj').value='';
-  document.getElementById('f5q').value='';
-  renderP5();
-}
+// Página 5 "Req. sin Pedido" removida de Compras — D.p5reqs se sigue construyendo
+// más abajo y Almacén lo lee directamente de data.json (Requerimientos/Picking).
 
 // ── PAGE 1 — GERENCIAL KPIs ──────────────────────────────────────────────────
 function initP1(){
@@ -4821,7 +4679,7 @@ try{if(localStorage.getItem('fp_dark')==='1'){document.body.classList.add('dark'
     }
   };
   // Hook all render/init functions
-  ['renderP2','renderP2Table','renderP3','renderP3Table','renderP5','renderP5Table','initP1','initP2','initP3','initP5'].forEach(fn=>{
+  ['renderP2','renderP2Table','renderP3','renderP3Table','initP1','initP2','initP3'].forEach(fn=>{
     if(window[fn]){
       const orig=window[fn];
       window[fn]=function(){
@@ -5519,7 +5377,7 @@ function importMaestro(wb){
   const msg=`✅ MAESTRO importado (${Math.round(t1-t0)}ms)\n\n` +
     `• ${ocData.length} OC (Pág. OC Pendientes)\n` +
     `• ${sinOcData.length} Sin OC — Cotización\n` +
-    `• ${p5Data.length} Req. sin Pedido\n` +
+    `• ${p5Data.length} Req. pendientes (Almacén — Requerimientos/Picking)\n` +
     `• ${projData.length} Proyectos PMO\n` +
     `• ${Object.keys(skusMap).length} SKU detalle`;
   alert(msg);
@@ -5741,15 +5599,13 @@ function refreshAllPages(){
   try{document.getElementById('bdg2').textContent=D.oc.length;}catch(e){}
   try{document.getElementById('bdg3').textContent=D.sinoc.length;}catch(e){}
   try{document.getElementById('bdg4').textContent=D.p4?D.p4.length:0;}catch(e){}
-  try{document.getElementById('bdg5').textContent=D.p5reqs.length;}catch(e){}
   try{document.getElementById('bdg6').textContent=D.proj.length;}catch(e){}
   // Update home card counts
   const cards=document.querySelectorAll('.hcs');
-  if(cards.length>=6){
+  if(cards.length>=5){
     cards[0].textContent=D.oc.length+' órdenes';
     cards[1].textContent=D.sinoc.length+' pedidos';
-    cards[3].textContent='Sin pedido asignado';
-    cards[4].textContent=D.proj.length+' proyectos';
+    cards[3].textContent=D.proj.length+' proyectos';
   }
   // P2 — repopulate options, preserve filters, re-render
   try{
@@ -5780,14 +5636,6 @@ function refreshAllPages(){
     drawDonut4Charts();
     renderP4();
   }catch(e){console.log('p4 skip',e);}
-  // P5 — repopulate options, preserve filters, re-render
-  try{
-    softSelect('f5resp',[...new Set(D.p5reqs.map(r=>r.resp).filter(Boolean))].sort(),'Responsable: Todos');
-    softSelect('f5proj',[...new Set(D.p5reqs.map(r=>r.proy).filter(Boolean))].sort(),'Proyecto: Todos');
-    document.getElementById('bdg5').textContent=D.p5reqs.length;
-    document.getElementById('hc5').textContent=D.p5reqs.length+' requerimientos';
-    renderP5();
-  }catch(e){console.log('p5 skip',e);}
   try{if(typeof initP1==='function'){initP1();renderGerencial();}}catch(e){}
   try{
     // Re-parse GPS for new D.proj data and rebuild map markers
@@ -5839,14 +5687,6 @@ setInterval(function(){
     var k4 = document.getElementById('k4tot');
     if(k4 && (k4.textContent === '—' || k4.textContent === '')){
       try{ clearF4(); }catch(e){}
-    }
-  }
-  // P5 check
-  var p5el = document.getElementById('pp5');
-  if(p5el && p5el.classList.contains('act')){
-    var k5 = document.getElementById('k5tot');
-    if(k5 && (k5.textContent === '—' || k5.textContent === '')){
-      try{ clearF5(); }catch(e){}
     }
   }
 }, 500);
