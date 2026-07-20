@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Almacén — FRIOPACKING</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -88,6 +89,9 @@ tr:hover td{background:#f8fafc}
 .codform input,.codform select{padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:12px;font-family:inherit;min-width:180px}
 .matchbox{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-top:8px;font-size:11.5px;color:#92400e}
 .matchbox b{color:#78350f}
+.autofill{border-color:#22c55e!important;background:#f0fdf4!important}
+.pdfbox{background:#f0f9ff;border:1px solid #7dd3fc;border-radius:8px;padding:10px 12px;margin-top:8px;font-size:11.5px;color:#075985}
+.pdfbox b{color:#0c4a6e}
 .chk{width:15px;height:15px;cursor:pointer}
 .strike td{text-decoration:line-through;color:#94a3b8}
 /* PICKING — agrupado por requerimiento */
@@ -216,9 +220,9 @@ tr:hover td{background:#f8fafc}
     <table>
       <thead><tr>
         <th>Fecha</th><th>Responsable</th><th>Id Proyecto</th><th>Proyecto</th>
-        <th>Código</th><th>Descripción</th><th class="num">Cant.</th><th>Unidad</th>
-        <th>Req.</th><th>F. Req.</th><th style="text-align:center">🚦</th><th>Estado</th>
-        <th class="num">Cant. a Picking</th><th class="num">Cant. a Pedido</th>
+        <th>N° Req.</th><th>F. Req.</th><th style="text-align:center">Ítems</th>
+        <th style="text-align:center">🚦</th><th>Estado</th>
+        <th class="num">Cant. Total</th><th class="num">Cant. a Picking</th><th class="num">Cant. a Pedido</th>
       </tr></thead>
       <tbody id="tbreq"></tbody>
     </table>
@@ -339,7 +343,8 @@ tr:hover td{background:#f8fafc}
     <div class="row">
       <div style="flex:1">
         <label>📎 Adjuntar cotización (PDF o imagen — se sube al repositorio, no ocupa espacio en data.json)</label>
-        <input id="cf-file" type="file" accept=".pdf,.jpg,.jpeg,.png" style="min-width:100%;padding:7px">
+        <input id="cf-file" type="file" accept=".pdf,.jpg,.jpeg,.png" style="min-width:100%;padding:7px" onchange="autoDetectCotizacion(this)">
+        <div id="cf-pdfinfo"></div>
       </div>
     </div>
     <div id="cf-matches"></div>
@@ -369,7 +374,7 @@ tr:hover td{background:#f8fafc}
 
 <!-- MODAL FICHA TÉCNICA -->
 <div id="fichaBg" onclick="if(event.target===this)cerrarFicha()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;width:100%;max-width:720px;max-height:calc(100vh - 40px);border-radius:14px;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+  <div style="background:#fff;width:100%;max-width:900px;max-height:calc(100vh - 40px);border-radius:14px;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)">
     <div id="fichaBody"></div>
   </div>
 </div>
@@ -848,46 +853,111 @@ function renderReq(){
 }
 function renderReqTable(){
   const f=window._reqFil||[];
-  const sz=50, rows=f.slice(reqPage*sz,(reqPage+1)*sz);
-  document.getElementById('tbreq').innerHTML=rows.map(r=>{
-    const s=semReq(r.estado);
-    const enRevision=r.estado.toLowerCase().includes('revisi');
-    const key=r.req+'|'+r.cod;
-    let pickCell,pedCell;
-    if(enRevision){
-      const auto=AUTO_MAP[key]||0;
-      const picking=getDecision(key,auto);
-      const pedido=r.cant-picking;
-      pickCell=`<input type="number" min="0" max="${r.cant}" value="${picking}" style="width:64px;padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setDecision('${key}',this.value,${r.cant})">`;
-      pedCell=`${pedido}${pedido>0?' <span class="pill p-crit">PEDIDO</span>':' <span class="pill p-ok">COMPLETO</span>'}`;
-    }else{
-      pickCell='<span style="color:#cbd5e1">—</span>';
-      pedCell='<span style="color:#cbd5e1">—</span>';
-    }
+  // Agrupa por N° de requerimiento — cada requerimiento puede traer varios SKUs
+  const groups={};
+  const order=[];
+  f.forEach(r=>{
+    if(!groups[r.req]){groups[r.req]=[];order.push(r.req);}
+    groups[r.req].push(r);
+  });
+  window._reqGroups=groups;
+  const sz=50, pageReqs=order.slice(reqPage*sz,(reqPage+1)*sz);
+  document.getElementById('tbreq').innerHTML=pageReqs.map(rk=>{
+    const items=groups[rk];
+    const g0=items[0];
+    const estados=[...new Set(items.map(i=>i.estado))];
+    const s=estados.length===1?semReq(estados[0]):{c:'#64748b',bg:'#f1f5f9',t:'Mixto'};
+    const estadoLbl=estados.length===1?(estados[0]||'—'):`Mixto (${estados.length} estados)`;
+    const cantTotal=items.reduce((a,i)=>a+(i.cant||0),0);
+    let pickTotal=0,pedTotal=0;
+    items.forEach(i=>{
+      const enRevision=i.estado.toLowerCase().includes('revisi');
+      if(enRevision){
+        const key=i.req+'|'+i.cod;
+        const auto=AUTO_MAP[key]||0;
+        const picking=getDecision(key,auto);
+        pickTotal+=picking;
+        pedTotal+=(i.cant-picking);
+      }
+    });
     return `<tr>
-    <td style="color:#64748b">${r.fecha||'—'}</td>
-    <td>${r.resp||'—'}</td>
-    <td><span style="font-size:10px;font-weight:700;color:#0891b2;background:#e0f2fe;padding:2px 7px;border-radius:5px">${r.idproy||'—'}</span></td>
-    <td style="white-space:normal;font-size:11px;max-width:220px" title="${r.proy||''}">${r.proy||'—'}</td>
-    <td class="mono">${r.cod||'—'}</td>
-    <td style="white-space:normal;max-width:280px;font-weight:500">${r.prod||'—'}</td>
-    <td class="num" style="font-weight:700">${(r.cant||0).toLocaleString('es-PE')}</td>
-    <td style="color:#64748b">${r.unid||'—'}</td>
-    <td><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${r.req||'—'}</span></td>
-    <td style="color:#64748b">${r.freq||'—'}</td>
-    <td style="text-align:center"><span class="dot" style="background:${s.c};box-shadow:0 0 0 3px ${s.bg}" title="${s.t}"></span></td>
-    <td><span class="pill" style="background:${s.bg};color:${s.c}">${r.estado||'—'}</span></td>
-    <td class="num">${pickCell}</td>
-    <td class="num">${pedCell}</td>
+    <td style="color:#64748b">${g0.fecha||'—'}</td>
+    <td>${g0.resp||'—'}</td>
+    <td><span style="font-size:10px;font-weight:700;color:#0891b2;background:#e0f2fe;padding:2px 7px;border-radius:5px">${g0.idproy||'—'}</span></td>
+    <td style="white-space:normal;font-size:11px;max-width:220px" title="${g0.proy||''}">${g0.proy||'—'}</td>
+    <td><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${rk||'—'}</span></td>
+    <td style="color:#64748b">${g0.freq||'—'}</td>
+    <td style="text-align:center"><button class="btn br" style="padding:4px 10px;font-size:10.5px" onclick="verReqItems('${rk}')">📄 ${items.length} SKU</button></td>
+    <td style="text-align:center"><span class="dot" style="background:${s.c};box-shadow:0 0 0 3px ${s.bg}" title="${estadoLbl}"></span></td>
+    <td><span class="pill" style="background:${s.bg};color:${s.c}">${estadoLbl}</span></td>
+    <td class="num" style="font-weight:700">${cantTotal.toLocaleString('es-PE')}</td>
+    <td class="num">${pickTotal.toLocaleString('es-PE')}</td>
+    <td class="num">${pedTotal.toLocaleString('es-PE')}</td>
   </tr>`;
-  }).join('') || `<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
-  const tot=f.length,pages=Math.max(1,Math.ceil(tot/sz));
-  document.getElementById('reqInfo').textContent=tot?`Mostrando ${reqPage*sz+1}–${Math.min((reqPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')}`:'Sin resultados';
+  }).join('') || `<tr><td colspan="12" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
+  const tot=order.length,pages=Math.max(1,Math.ceil(tot/sz));
+  document.getElementById('reqInfo').textContent=tot?`Mostrando ${reqPage*sz+1}–${Math.min((reqPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} requerimientos`:'Sin resultados';
   const pagEl=document.getElementById('reqPag');
   let h='';
   for(let i=0;i<Math.min(pages,10);i++)h+=`<button class="pbt${i===reqPage?' pact':''}" onclick="reqPage=${i};renderReqTable()">${i+1}</button>`;
   pagEl.innerHTML=h;
   updateDirtyLabels();
+}
+
+/* Modal emergente con el detalle de todos los ítems (SKU) de un requerimiento — igual al de "OC — N item(s)" de Compras */
+function verReqItems(rk){
+  const items=(window._reqGroups||{})[rk]||[];
+  if(!items.length)return;
+  const g0=items[0];
+  document.getElementById('fichaBody').innerHTML=`
+    <div style="background:#0d9488;color:#fff;padding:16px 20px">
+      <div style="font-size:15px;font-weight:800">Requerimiento ${rk} — ${items.length} ítem(s)</div>
+      <div style="font-size:11.5px;color:#ccfbf1;margin-top:2px">${g0.proy||'—'} · ${g0.resp||'—'} · ${g0.fecha||'—'}</div>
+    </div>
+    <div style="overflow-x:auto">
+    <table style="width:100%;font-size:12px">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">#</th>
+        <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Código</th>
+        <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Descripción</th>
+        <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0">Cant.</th>
+        <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Unidad</th>
+        <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Estado</th>
+        <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0">Cant. a Picking</th>
+        <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0">Cant. a Pedido</th>
+      </tr></thead>
+      <tbody>
+        ${items.map((r,i)=>{
+          const s=semReq(r.estado);
+          const enRevision=r.estado.toLowerCase().includes('revisi');
+          const key=r.req+'|'+r.cod;
+          let pickCell,pedCell;
+          if(enRevision){
+            const auto=AUTO_MAP[key]||0;
+            const picking=getDecision(key,auto);
+            const pedido=r.cant-picking;
+            pickCell=`<input type="number" min="0" max="${r.cant}" value="${picking}" style="width:64px;padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setDecision('${key}',this.value,${r.cant});verReqItems('${rk}')">`;
+            pedCell=`${pedido}${pedido>0?' <span class="pill p-crit">PEDIDO</span>':' <span class="pill p-ok">COMPLETO</span>'}`;
+          }else{
+            pickCell='<span style="color:#cbd5e1">—</span>';
+            pedCell='<span style="color:#cbd5e1">—</span>';
+          }
+          return `<tr>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8">${i+1}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9" class="mono">${r.cod||'—'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;white-space:normal;max-width:260px;font-weight:500">${r.prod||'—'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700">${(r.cant||0).toLocaleString('es-PE')}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#64748b">${r.unid||'—'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9"><span class="pill" style="background:${s.bg};color:${s.c}">${r.estado||'—'}</span></td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${pickCell}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${pedCell}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div style="padding:12px 20px 18px"><button class="btn br" onclick="cerrarFicha()">Cerrar</button></div>`;
+  document.getElementById('fichaBg').style.display='flex';
 }
 
 /* ═══════════════ PÁGINA PICKING — reparto por CANTIDAD ═══════════════ */
@@ -1137,8 +1207,9 @@ function renderCod(){
 function toggleCodForm(){
   document.getElementById('codForm').classList.toggle('open');
   document.getElementById('cf-matches').innerHTML='';
+  document.getElementById('cf-pdfinfo').innerHTML='';
   ['cf-desc','cf-nom','cf-subgrupo','cf-marca','cf-um','cf-prov','cf-doc','cf-precio','cf-nota','cf-file'].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.value='';
+    const el=document.getElementById(id);if(el){el.value='';el.classList.remove('autofill');}
   });
 }
 // Lee un archivo local y lo devuelve en base64 (sin el prefijo "data:...;base64,")
@@ -1149,6 +1220,73 @@ function leerArchivoBase64(file){
     reader.onerror=()=>reject(new Error('No se pudo leer el archivo'));
     reader.readAsDataURL(file);
   });
+}
+/* ═══════════════ LECTURA AUTOMÁTICA DE COTIZACIONES PDF (mejor esfuerzo) ═══════════════ */
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+async function extraerTextoPDF(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let text='';
+  for(let p=1;p<=Math.min(pdf.numPages,5);p++){
+    const page=await pdf.getPage(p);
+    const content=await page.getTextContent();
+    text+=content.items.map(it=>it.str).join(' ')+'\n';
+  }
+  return text;
+}
+// Heurísticas de detección — funcionan mejor cuando el PDF trae texto real (no escaneado).
+function detectarCamposCotizacion(text){
+  const out={};
+  const rucIdx=text.search(/RUC[:\s]/i);
+  const rucM=text.match(/RUC[:\s]*([0-9]{11})/i);
+  if(rucM)out.ruc=rucM[1];
+  const sufijoRe=/(S\.?A\.?C\.?|S\.?A\.?|E\.?I\.?R\.?L\.?|S\.?R\.?L\.?)$/i;
+  if(rucIdx>0){
+    let antes=text.slice(Math.max(0,rucIdx-90),rucIdx).trim();
+    antes=antes.split(/\s+/).filter(w=>!/\d/.test(w)).join(' ');
+    const palabras=antes.split(/\s+/).slice(-5).join(' ').replace(/^(PROVEEDOR|SE[ÑN]ORES?|RAZ[OÓ]N SOCIAL)[:\s]*/i,'').trim();
+    if(sufijoRe.test(palabras))out.prov=palabras;
+  }
+  if(!out.prov){
+    const provM=text.match(/\b([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑ0-9&.,'\-\s]{2,50}(?:S\.?A\.?C\.?|S\.?A\.?|E\.?I\.?R\.?L\.?|S\.?R\.?L\.?))\b/);
+    if(provM)out.prov=provM[1].replace(/\s+/g,' ').trim();
+  }
+  const cotM=text.match(/\b(COT[-\s]?\d{2,4}[-\s]?\d{2,6})\b/i)||text.match(/N[°º]?\s?cotizaci[oó]n[:\s]*([A-Z0-9\-]+)/i);
+  if(cotM)out.doc=(cotM[1]||'').trim();
+  out.moneda=(/US\$|USD|D[oó]lares americanos/i.test(text)&&!/S\/\.?\s?\d/.test(text))?'US$':'S/.';
+  const precioM=text.match(/(?:precio\s*unitario|p\.?\s?u\.?)[:\s]*(?:S\/\.?|US\$|USD)?\s*([\d,]+\.\d{2})/i)
+    ||text.match(/(?:S\/\.?|US\$|USD)\s*([\d,]+\.\d{2})/);
+  if(precioM)out.precio=precioM[1].replace(/,/g,'');
+  return out;
+}
+async function autoDetectCotizacion(input){
+  const info=document.getElementById('cf-pdfinfo');
+  const file=input.files[0];
+  ['cf-prov','cf-doc','cf-precio'].forEach(id=>document.getElementById(id).classList.remove('autofill'));
+  if(!file){info.innerHTML='';return;}
+  if(file.type!=='application/pdf'){
+    info.innerHTML=`<div class="pdfbox">📎 ${file.name} adjuntado. La lectura automática solo funciona con PDFs (no imágenes) — completa los campos manualmente.</div>`;
+    return;
+  }
+  info.innerHTML=`<div class="pdfbox">⏳ Leyendo ${file.name}…</div>`;
+  try{
+    if(!window.pdfjsLib)throw new Error('librería PDF no disponible');
+    const text=await extraerTextoPDF(file);
+    const campos=detectarCamposCotizacion(text);
+    const detectados=[];
+    const elProv=document.getElementById('cf-prov'),elDoc=document.getElementById('cf-doc'),elPrecio=document.getElementById('cf-precio');
+    if(campos.prov && !elProv.value){elProv.value=campos.prov;elProv.classList.add('autofill');detectados.push('Proveedor');}
+    if(campos.doc && !elDoc.value){elDoc.value=campos.doc;elDoc.classList.add('autofill');detectados.push('N° cotización');}
+    if(campos.precio && !elPrecio.value){elPrecio.value=campos.precio;elPrecio.classList.add('autofill');detectados.push('Precio');}
+    if(campos.moneda)document.getElementById('cf-moneda').value=campos.moneda;
+    if(campos.ruc)detectados.push('RUC '+campos.ruc);
+    info.innerHTML=detectados.length
+      ?`<div class="pdfbox">✅ Detectado automáticamente de <b>${file.name}</b>: ${detectados.join(', ')}. Verifica que sea correcto antes de confirmar — los campos resaltados en verde vienen del PDF.</div>`
+      :`<div class="pdfbox">⚠️ No se pudo detectar información en <b>${file.name}</b> (puede ser un PDF escaneado, sin texto seleccionable). Completa los campos manualmente.</div>`;
+  }catch(e){
+    console.error(e);
+    info.innerHTML=`<div class="pdfbox">⚠️ No se pudo leer ${file.name} automáticamente (${e.message}). El archivo igual se adjuntará al generar el código — completa los campos a mano.</div>`;
+  }
 }
 // Sube un archivo binario al repositorio (no a data.json) vía GitHub Contents API.
 async function subirArchivoGitHub(path,base64Content,commitMsg){
