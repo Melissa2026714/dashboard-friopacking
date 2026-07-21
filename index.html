@@ -514,9 +514,6 @@ body.dark .g-rank-card{background:#111b2b!important}
         <li><strong>Buscador libre</strong> — Busca por N° pedido, código, descripción o proyecto</li>
       </ul>
 
-      <h4>👁 Botón Visual</h4>
-      <p>Abre una ventana con la vista imprimible de todos los pedidos visibles en la tabla. Útil para revisar o compartir el listado completo en formato PDF.</p>
-
       <h4>Checkboxes — Selección de pedidos</h4>
       <p>Cada fila tiene un casillero a la izquierda para seleccionarla. Puedes seleccionar individualmente o usar <strong>Seleccionar todos</strong> para marcar todos los pedidos visibles de una vez. Una vez seleccionados, se habilitan los botones de acción:</p>
       <ul>
@@ -546,10 +543,10 @@ body.dark .g-rank-card{background:#111b2b!important}
       <div class="itip"><span class="itip-icon">💡</span><p>Si deseas previsualizar el correo antes de enviarlo, usa <strong>👁 Ver correo formateado</strong> en el consolidado para ver exactamente cómo lo recibirá el proveedor.</p></div>
 
       <h4>☑ Marcar como "En Cotización" — columna COTIZ. (paso obligatorio)</h4>
-      <p>La columna <strong>COTIZ.</strong> (fondo verde, extremo derecho del Visual) es el mecanismo que <strong>actualiza el Estado</strong> de cada pedido en la tabla principal de Sin OC. Cuando marcas ese checkbox y guardas, el estado del pedido cambia automáticamente de <span style="background:#fee2e2;color:#b91c1c;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700">Pendiente</span> a <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700">En cotización</span>. Así los supervisores y todo el equipo pueden ver en tiempo real qué pedidos ya están siendo gestionados.</p>
+      <p>La columna <strong>COTIZ.</strong> (fondo verde, extremo derecho de la tabla) es el mecanismo que <strong>actualiza el Estado</strong> de cada pedido en la tabla principal de Sin OC. Cuando marcas ese checkbox y guardas, el estado del pedido cambia automáticamente de <span style="background:#fee2e2;color:#b91c1c;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700">Pendiente</span> a <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700">En cotización</span>. Así los supervisores y todo el equipo pueden ver en tiempo real qué pedidos ya están siendo gestionados.</p>
       <div class="istep"><div class="istep-n">1</div><p>Envía el correo de cotización al proveedor (ver pasos anteriores)</p></div>
-      <div class="istep"><div class="istep-n">2</div><p>Abre el <strong>👁 Visual</strong> y marca el checkbox de la columna <strong>COTIZ.</strong> en las filas correspondientes</p></div>
-      <div class="istep"><div class="istep-n">3</div><p>Cierra el Visual y verifica que en la tabla principal el Estado ya muestra <strong>"En cotización"</strong></p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Marca el checkbox de la columna <strong>COTIZ.</strong> (fondo verde, al final de cada fila) en las filas correspondientes</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>Verifica que la columna Estado ya muestra <strong>"En cotización"</strong></p></div>
       <div class="istep"><div class="istep-n">4</div><p>Haz clic en <strong>💾 GUARDAR</strong> en la barra superior para que el cambio quede registrado y todos los usuarios lo vean</p></div>
       <div class="iwarn"><p>⚠️ <strong>Este paso es la fuente del estado.</strong> La columna Estado en Sin OC se alimenta directamente de este checkbox — si no lo marcas, el pedido seguirá apareciendo como "Pendiente" aunque ya esté siendo cotizado. Si no das GUARDAR, el cambio se pierde al cerrar el dashboard.</p></div>
     </div>
@@ -1050,10 +1047,19 @@ function instNav(id){
     <button class="fclr" onclick="clearF3()">✕ Limpiar</button>
     <span class="fcnt" id="f3cnt">— registros</span>
   </div>
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <div style="font-size:12px;color:#64748b;flex:1;min-width:200px"><strong id="p3selcnt" style="color:#1e40af;font-size:13px">0</strong> pedidos seleccionados &nbsp;&middot;&nbsp; <span id="p3viscnt">—</span></div>
+    <button onclick="p3ToggleAll(true)" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">☑ Seleccionar todos</button>
+    <button onclick="p3Deselect()" id="p3btndesel" style="display:none;background:transparent;color:#94a3b8;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit">☐ Quitar selección</button>
+    <button onclick="abrirModalExport()" style="background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">📥 Exportar Excel</button>
+    <button onclick="openConsolidar()" style="background:linear-gradient(135deg,#1e40af,#2563eb);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">📋 Consolidar selección</button>
+  </div>
   <div class="tw">
-    <div class="th"><span class="thtt">Pedidos sin OC — En Cotización</span><div class="thr"><button class="thb" onclick="exportSinOcXls()" style="background:#16A34A;color:#fff;font-weight:600;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;margin-right:6px;">⬇ EXPORTAR</button><button class="thb" onclick="exportP3HTML()" title="Exportar reporte HTML" style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">👁 Visual</button></div></div>
+    <div class="th"><span class="thtt">Pedidos sin OC — En Cotización</span><div class="thr"><button class="thb" onclick="exportSinOcXls()" style="background:#16A34A;color:#fff;font-weight:600;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;margin-right:6px;">⬇ EXPORTAR</button></div></div>
     <table class="ttbl"><thead><tr>
+      <th style="width:36px;text-align:center"><input type="checkbox" id="p3chkall" onchange="p3ToggleAll(this.checked)" title="Seleccionar todos los visibles" style="width:15px;height:15px;accent-color:#2563eb;cursor:pointer"></th>
       <th>N° PEDIDO</th><th>FECHA PEDIDO</th><th>RESP. PEDIDO</th><th>RESPONSABLE / SOLICITANTE</th><th>ID PROYECTO</th><th>PROYECTO</th><th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>CANT.</th><th>UNIDAD</th><th>REQUERIMIENTO</th><th>FECHA REQ.</th><th style="white-space:nowrap">EN TRÁNSITO</th><th>ESTADO</th>
+      <th style="background:#16a34a;color:#fff;text-align:center;white-space:nowrap;position:sticky;right:0;z-index:5;box-shadow:-5px 0 8px -3px rgba(0,0,0,.25)"><div style="display:flex;align-items:center;justify-content:center;gap:5px"><input type="checkbox" onchange="p3ToggleAllCotiz(this.checked)" title="Marcar todos los visibles" style="width:14px;height:14px;cursor:pointer;accent-color:#fff"> COTIZ.</div></th>
     </tr></thead><tbody id="tb3"></tbody></table>
     <div class="pag"><span id="p3info">—</span><div class="pbts" id="p3pag"></div></div>
   </div>
@@ -2106,7 +2112,12 @@ function esEnTransito(cod){
 }
 function renderP3Table(){
   const sz=50, rows=p3fil.slice(p3pg*sz,(p3pg+1)*sz);
-  document.getElementById('tb3').innerHTML=rows.map(r=>`<tr>
+  document.getElementById('tb3').innerHTML=rows.map(r=>{
+    const _i=(D.sinoc||[]).indexOf(r);
+    const _k=(r.ped||'')+'_'+(r.cod||'');
+    const _isSel=p3sel.has(_i);
+    return `<tr style="${_isSel?'background:#dbeafe':''}">
+    <td style="text-align:center"><input type="checkbox" class="p3rowcb" data-i="${_i}" ${_isSel?'checked':''} onchange="p3ToggleRow(this)" style="width:15px;height:15px;accent-color:#2563eb;cursor:pointer"></td>
     <td><strong>${r.ped}</strong></td>
     <td>${r.fecha||'—'}</td>
     <td style="font-size:11px;color:#334155">${r.respPed||'—'}</td>
@@ -2121,10 +2132,12 @@ function renderP3Table(){
     <td style="font-size:11px;color:#475569">${r.freq||'—'}</td>
     <td style="text-align:center">${esEnTransito(r.cod)?'<span style="background:#0891b2;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">SÍ</span>':'<span style="color:#94a3b8;font-size:10px">—</span>'}</td>
     <td>${r.parcial?'<span style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">⚠ OC Parcial</span>':(()=>{var k=(r.ped||'')+'_'+(r.cod||'');return(D.cotMeta&&D.cotMeta[k])?'<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">En cotización</span>':badgeReq(r.estado);})()}</td>
-  </tr>`).join('');
+    <td style="text-align:center;background:#f0fdf4;position:sticky;right:0;z-index:1;box-shadow:-5px 0 8px -3px rgba(0,0,0,.12)"><input type="checkbox" ${(D.cotMeta&&D.cotMeta[_k])?'checked':''} onchange="p3SetCotiz('${_k}',this.checked)" title="Marcar como En cotización" style="width:15px;height:15px;cursor:pointer;accent-color:#16a34a"></td>
+  </tr>`;}).join('');
   const tot=p3fil.length, pages=Math.ceil(tot/sz);
   document.getElementById('p3info').textContent=`Mostrando ${p3pg*sz+1}–${Math.min((p3pg+1)*sz,tot)} de ${tot}`;
   renderPag('p3pag',pages,p3pg,p=>{p3pg=p;renderP3Table();});
+  p3UpdateSelBar();
 }
 var _xlScriptsLoaded=false;
 function _ldScriptParent(src,cb){var s=document.createElement('script');s.src=src;s.onload=function(){cb();};s.onerror=function(){alert('Error cargando: '+src);};document.head.appendChild(s);}
@@ -2410,1018 +2423,698 @@ function exportSinOcXls(){
     a.click();
   });
 }
-function exportP3HTML(){
-  var exportData=[];
-  try{if(p3fil&&p3fil.length)exportData=p3fil;}catch(e){}
-  if(!exportData.length){try{if(D.sinoc&&D.sinoc.length)exportData=D.sinoc;}catch(e){}}
-  if(!exportData.length){alert('No hay datos para exportar. Importe primero el archivo MAESTRO.xlsx.');return;}
-  var now=new Date();
-  var fechaGen=now.toLocaleDateString('es-PE',{day:'2-digit',month:'long',year:'numeric'})+' · '+now.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
-  var dd=now.toISOString().slice(0,10);
-  var jsonData=JSON.stringify(exportData.map(function(r,i){
-    var key=(r.ped||'')+'_'+(r.cod||'');
-    return{
-      i:i,ped:r.ped||'',fecha:r.fecha||'',respPed:r.respPed||'',resp:r.resp||'',
-      idproy:r.idproy||'',proy:r.proy||'',cod:r.cod||'',prod:r.prod||'',
-      cant:r.cant||0,unid:r.unid||'',req:r.req||'',freq:r.freq||'',estado:r.estado||'',
-      key:key,cotiz:!!(D.cotMeta&&D.cotMeta[key])
-    };
-  })).replace(/</g,'\\u003c');
-  // Build HTML using string parts — NO nested backtick template literals
-  var S='';
-  S+='<!DOCTYPE html><html lang="es"><head>';
-  S+='<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
-  S+='<title>Sin OC — Cotización · FRIOPACKING S.A.</title>';
-  S+='<link rel="preconnect" href="https://fonts.googleapis.com">';
-  S+='<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">';
-  S+='<style>';
-  S+='*{box-sizing:border-box;margin:0;padding:0}';
-  S+='body{font-family:\'Inter\',Arial,sans-serif;background:#f0f4f8;color:#0f172a;font-size:13px}';
-  S+='.page{width:97%;max-width:1900px;margin:0 auto;padding:24px 22px;box-sizing:border-box}';
-  S+='.hdr{background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 60%,#2563eb 100%);border-radius:16px;padding:26px 32px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;box-shadow:0 8px 32px rgba(30,64,175,.3)}';
-  S+='.hdr-left{display:flex;align-items:center;gap:18px}';
-  S+='.hdr-logo{background:rgba(255,255,255,.15);border-radius:12px;padding:10px 16px;font-size:20px;font-weight:900;color:#fff;letter-spacing:1px;border:1px solid rgba(255,255,255,.25)}';
-  S+='.hdr-title h1{font-size:21px;font-weight:800;color:#fff;letter-spacing:-.3px;line-height:1.15}';
-  S+='.hdr-title p{font-size:12px;color:rgba(255,255,255,.65);margin-top:3px}';
-  S+='.hdr-right{display:flex;gap:12px}';
-  S+='.hdr-stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:10px 18px;text-align:center;color:#fff}';
-  S+='.hdr-stat .n{font-size:28px;font-weight:800;line-height:1}';
-  S+='.hdr-stat .l{font-size:9px;text-transform:uppercase;letter-spacing:.8px;opacity:.7;margin-top:2px}';
-  S+='.kstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}';
-  S+='.kcard{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:13px 16px;border-top:3px solid #2563eb}';
-  S+='.kcard:nth-child(2){border-top-color:#dc2626}.kcard:nth-child(3){border-top-color:#0891b2}.kcard:nth-child(4){border-top-color:#16a34a}';
-  S+='.kcard .kv{font-size:26px;font-weight:800;color:#0f172a;line-height:1;margin-bottom:2px}';
-  S+='.kcard .kl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8}';
-  S+='.fbar{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px}';
-  S+='.fbar-group{display:flex;flex-direction:column;gap:5px;min-width:0}';
-  S+='.fbar-group label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#64748b}';
-  S+='.msd{position:relative;min-width:190px}';
-  S+='.msd-btn{display:flex;align-items:center;justify-content:space-between;background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12px;font-weight:500;color:#334155;gap:8px;user-select:none}';
-  S+='.msd-btn:hover,.msd-btn.open{border-color:#2563eb;background:#eff6ff}';
-  S+='.msd-btn .arr{font-size:9px;color:#94a3b8;transition:transform .2s;display:inline-block}';
-  S+='.msd-btn.open .arr{transform:rotate(180deg)}';
-  S+='.msd-drop{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:100%;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:100;max-height:220px;overflow-y:auto;padding:5px}';
-  S+='.msd-drop.open{display:block}';
-  S+='.msd-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:7px;cursor:pointer;font-size:12px;color:#334155}';
-  S+='.msd-item:hover{background:#eff6ff}';
-  S+='.msd-item input[type=checkbox]{width:15px;height:15px;accent-color:#2563eb;cursor:pointer;flex-shrink:0}';
-  S+='.fsrch{background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 12px;font-size:12px;color:#334155;outline:none;min-width:220px;font-family:inherit}';
-  S+='.fsrch:focus{border-color:#2563eb;background:#fff}';
-  S+='.abar{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:12px;margin-bottom:10px}';
-  S+='.abar-info{font-size:12px;color:#64748b;flex:1}';
-  S+='.abar-info strong{color:#1e40af;font-size:13px}';
-  S+='.btn-primary{background:linear-gradient(135deg,#1e40af,#2563eb);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}';
-  S+='.btn-primary:hover{opacity:.88}.btn-primary:disabled{background:#cbd5e1;cursor:default}';
-  S+='.btn-sec{background:transparent;color:#94a3b8;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit}';
-  S+='.btn-sec:hover{border-color:#dc2626;color:#dc2626}';
-  S+='.tw{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06)}';
-  S+='.tw-hdr{background:#f8fafc;border-bottom:2px solid #e2e8f0;padding:12px 18px;display:flex;align-items:center;justify-content:space-between}';
-  S+='.tw-hdr h2{font-size:12px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px}';
-  S+='.tw-hdr span{font-size:11px;color:#94a3b8}';
-  S+='.tw-wrap{overflow-x:auto}';
-  S+='table{width:100%;border-collapse:collapse;min-width:900px}';
-  S+='thead tr{background:linear-gradient(135deg,#1e3a8a,#1e40af)}';
-  S+='thead th{color:#fff;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:11px 9px;text-align:left;white-space:nowrap;border-right:1px solid rgba(255,255,255,.1)}';
-  S+='thead th:first-child{width:40px;text-align:center}';
-  S+='tbody tr.even{background:#fff}tbody tr.odd{background:#f8fafc}';
-  S+='tbody tr.sel{background:#dbeafe!important}';
-  S+='tbody tr:hover{background:#eff6ff!important}';
-  S+='tbody td{padding:8px 9px;border-bottom:1px solid #e8edf3;vertical-align:middle;line-height:1.4}';
-  S+='tbody td:first-child{text-align:center}';
-  S+='.row-cb{width:15px;height:15px;accent-color:#2563eb;cursor:pointer}';
-  S+='.badge{display:inline-block;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700;white-space:nowrap;border:1px solid transparent}';
-  S+='.modal-bg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px)}';
-  S+='.modal-bg.open{display:flex}';
-  S+='.modal{background:#fff;border-radius:16px;width:96%;max-width:1280px;max-height:94vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.25)}';
-  S+='.modal-hdr{background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:18px 24px;display:flex;align-items:center;justify-content:space-between}';
-  S+='.modal-hdr h3{color:#fff;font-size:15px;font-weight:700}';
-  S+='.modal-hdr-sub{color:rgba(255,255,255,.7);font-size:11px;margin-top:2px}';
-  S+='.modal-close{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit}';
-  S+='.modal-body{padding:20px 24px;overflow-y:auto;flex:1}';
-  S+='.modal-footer{padding:14px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px}';
-  S+='.btn-print{background:linear-gradient(135deg,#065f46,#16a34a);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}';
-  S+='.cgroup{margin-bottom:18px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}';
-  S+='.cgroup-hdr{background:#f0f7ff;border-bottom:1px solid #dbeafe;padding:10px 16px;display:flex;align-items:center;justify-content:space-between}';
-  S+='.cgroup-hdr h4{font-size:12px;font-weight:700;color:#1e40af}';
-  S+='.cgroup-hdr span{font-size:11px;color:#64748b}';
-  S+='.cgroup table{min-width:0}';
-  S+='.cgroup thead tr{background:linear-gradient(135deg,#1e3a8a,#2563eb)}';
-  S+='.cgroup thead th{font-size:9px;padding:8px 9px}';
-  S+='.footer{margin-top:20px;text-align:center;font-size:11px;color:#94a3b8;padding-bottom:12px}';
-  S+='@media print{.fbar,.abar,.modal-bg{display:none!important}body{background:#fff}.tw{box-shadow:none}}';
-  S+='</style></head><body>';
-  S+='<div class="page">';
-  // Header
-  S+='<div class="hdr"><div class="hdr-left"><div class="hdr-logo">FP</div>';
-  S+='<div class="hdr-title"><h1>Sin OC — Cotización</h1>';
-  S+='<p>FRIOPACKING S.A. &nbsp;&middot;&nbsp; Pedidos en cotización sin Orden de Compra asignada</p></div></div>';
-  S+='<div class="hdr-right"><div class="hdr-stat"><div class="n" id="hdr-tot">—</div><div class="l">Pedidos visibles</div></div>';
-  S+='<div class="hdr-stat"><div class="n" id="hdr-sel">0</div><div class="l">Seleccionados</div></div></div></div>';
-  // KPIs
-  S+='<div class="kstrip">';
-  S+='<div class="kcard"><div class="kv" id="kv1">—</div><div class="kl">Total Pedidos</div></div>';
-  S+='<div class="kcard"><div class="kv" id="kv2">—</div><div class="kl">Responsables</div></div>';
-  S+='<div class="kcard"><div class="kv" id="kv3">—</div><div class="kl">Proyectos</div></div>';
-  S+='<div class="kcard"><div class="kv" id="kv4">—</div><div class="kl">Unidades Totales</div></div>';
-  S+='</div>';
-  // Filters
-  S+='<div class="fbar">';
-  S+='<div class="fbar-group"><label>Resp. Pedido</label><div class="msd" id="msd-rp"><div class="msd-btn" onclick="toggleMsd(\'msd-rp\')"><span id="lbl-rp">Todos</span><span class="arr">▼</span></div><div class="msd-drop" id="drop-rp"></div></div></div>';
-  S+='<div class="fbar-group"><label>Responsable / Solicitante</label><div class="msd" id="msd-re"><div class="msd-btn" onclick="toggleMsd(\'msd-re\')"><span id="lbl-re">Todos</span><span class="arr">▼</span></div><div class="msd-drop" id="drop-re"></div></div></div>';
-  S+='<div class="fbar-group"><label>Estado</label><div class="msd" id="msd-es"><div class="msd-btn" onclick="toggleMsd(\'msd-es\')"><span id="lbl-es">Todos</span><span class="arr">▼</span></div><div class="msd-drop" id="drop-es"></div></div></div>';
-  S+='<div class="fbar-group" style="flex:1"><label>Buscar</label><input class="fsrch" id="srch" oninput="applyFilters()" placeholder="Código / descripción / pedido / proyecto…"></div>';
-  S+='<button class="btn-sec" onclick="clearAllFilters()">✕ Limpiar filtros</button>';
-  S+='</div>';
-  // Action bar
-  S+='<div class="abar"><div class="abar-info"><strong id="sel-cnt">0</strong> pedidos seleccionados &nbsp;&middot;&nbsp; <span id="vis-cnt">—</span> visibles</div>';
-  S+='<button onclick="toggleAll(true)" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">☑ Seleccionar todos</button>';
-  S+='<button class="btn-sec" onclick="deselectAll()" id="btn-desel" style="display:none">☐ Quitar selección</button>';
-  S+='<button onclick="abrirModalExport()" style="background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">📥 Exportar Excel</button>';
-  S+='<button class="btn-primary" onclick="openConsolidar()" id="btn-consol">📋 Consolidar selección</button>';
-  S+='<button id="btn-guardar" onclick="guardarTodo()" title="Guardar y sincronizar con todos los usuarios (sin salir del Visual)" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;box-shadow:0 2px 8px rgba(22,163,74,.35)">💾 GUARDAR</button></div>';
-  // Table
-  S+='<div class="tw"><div class="tw-hdr"><h2>Detalle de Pedidos en Cotización</h2><span>Generado: '+fechaGen+'</span></div>';
-  S+='<div class="tw-wrap"><table id="main-table">';
-  S+='<thead><tr><th><input type="checkbox" id="chk-all" onchange="toggleAll(this.checked)" title="Seleccionar todos los visibles"></th>';
-  S+='<th>N° Pedido</th><th>F. Pedido</th><th>Resp. Pedido</th><th>Responsable / Solicitante</th>';
-  S+='<th>ID Proyecto</th><th>Proyecto</th><th>Código</th><th>Descripción Producto</th>';
-  S+='<th>Cant.</th><th>Unidad</th><th>Requerimiento</th><th>Fecha Req.</th><th>Estado</th>';
-  S+='<th style="background:#16a34a;color:#fff;text-align:center;white-space:nowrap;position:sticky;right:0;z-index:5;box-shadow:-5px 0 8px -3px rgba(0,0,0,.25)"><div style="display:flex;align-items:center;justify-content:center;gap:5px"><input type="checkbox" id="chk-cotiz-all" onchange="toggleAllCotiz(this.checked)" title="Marcar todos los visibles" style="width:14px;height:14px;cursor:pointer;accent-color:#fff"> COTIZ.</div></th>';
-  S+='</tr></thead><tbody id="tbody"></tbody></table></div></div>';
-  S+='<div class="footer">Documento generado automáticamente &nbsp;&middot;&nbsp; <strong>FRIOPACKING S.A.</strong> &nbsp;&middot;&nbsp; Plataforma de Seguimiento de Compras 2026</div>';
-  S+='</div>';
-  // Modal
-  S+='<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeConsolidar()">';
-  S+='<div class="modal"><div class="modal-hdr"><div><h3>📋 Consolidado de Cotización</h3>';
-  S+='<div class="modal-hdr-sub">FRIOPACKING S.A. &nbsp;&middot;&nbsp; Pedidos seleccionados para cotizar</div></div>';
-  S+='<button class="modal-close" onclick="closeConsolidar()">✕ Cerrar</button></div>';
-  S+='<div class="modal-body" id="modal-body"></div>';
-  S+='<div class="modal-footer"><button class="btn-sec" onclick="closeConsolidar()">Cerrar</button><button class="btn-sec" onclick="limpiarSeleccion()" style="color:#dc2626;border-color:#dc2626">🗑 Limpiar selección</button>';
-  S+='<button class="btn-mail" onclick="enviarCorreo()" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✉ Enviar por correo</button>';
-  S+='<button onclick="verCorreoFormateado()" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📧 Ver correo formateado</button>';
-  S+='<button class="btn-print" onclick="printConsolidar()">🖨 Imprimir / Guardar PDF</button></div></div></div>';
-  // Embedded script — uses ONLY single-quoted strings, no backtick template literals
-  S+='<script>';
-  S+='var DATA='+jsonData+';';
-  S+='var sel=new Set();';
-  S+='function saveCotiz(cb){try{if(window.opener&&window.opener.toggleCotiz)window.opener.toggleCotiz(cb.dataset.key,cb.checked);}catch(e){}}';
-  S+='function toggleAllCotiz(checked){document.querySelectorAll("[data-key]").forEach(function(cb){cb.checked=checked;saveCotiz(cb);});}';
-  S+='function guardarTodo(){';
-  S+='  var b=document.getElementById("btn-guardar");';
-  S+='  if(!window.opener||window.opener.closed||typeof window.opener.manualSave!=="function"){alert("No se puede guardar: vuelve a abrir el Visual desde el dashboard principal.");return;}';
-  S+='  if(b){b.dataset.o=b.innerHTML;b.disabled=true;b.innerHTML="⏳ Guardando…";}';
-  S+='  Promise.resolve(window.opener.manualSave()).then(function(){';
-  S+='    if(b){b.innerHTML="✔ Guardado y sincronizado";b.style.background="#15803d";setTimeout(function(){b.innerHTML=b.dataset.o||"💾 GUARDAR";b.style.background="#16a34a";b.disabled=false;},2600);}';
-  S+='  }).catch(function(){if(b){b.innerHTML=b.dataset.o||"💾 GUARDAR";b.style.background="#16a34a";b.disabled=false;}});';
-  S+='}';
-  // SharePoint upload — delega al MSAL de la ventana principal (funciona desde localhost:8080)
-  S+='var SP_SHARE="https://friopacking-my.sharepoint.com/:f:/g/personal/plinares_friopacking_pe/IgC3g_rPetACQbbVlGitrWDzAaij5_jYvP9KDELBMlbWXzY?e=hfb3jh";';
-  S+='function _spNotif(fn){var nb=document.createElement("div");nb.style.cssText="position:fixed;bottom:20px;right:20px;background:#16A34A;color:#fff;padding:14px 18px;border-radius:10px;font-size:13px;font-family:Arial,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3)";nb.innerHTML="<strong>✓ Subido a SharePoint</strong><br><span style=\'font-size:11px;opacity:0.85\'>"+fn+"</span>";document.body.appendChild(nb);setTimeout(function(){nb.remove();},7000);}';
-  S+='function _spExport(buf,fn){var b=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});var u=URL.createObjectURL(b);var old=document.getElementById("_dlbar");if(old)old.remove();var bar=document.createElement("div");bar.id="_dlbar";bar.style.cssText="position:fixed;bottom:0;left:0;right:0;background:#166534;padding:18px 24px;z-index:99999;display:flex;align-items:center;justify-content:center;gap:16px;box-shadow:0 -4px 24px rgba(0,0,0,.4)";var lnk=document.createElement("a");lnk.href=u;lnk.download=fn;lnk.style.cssText="color:#fff;font-weight:800;font-size:16px;text-decoration:none;background:rgba(255,255,255,0.15);padding:10px 28px;border-radius:8px;border:2px solid rgba(255,255,255,0.4)";lnk.textContent="📥 DESCARGAR "+fn;var cls=document.createElement("button");cls.textContent="✕";cls.style.cssText="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:18px;cursor:pointer;padding:6px 10px;border-radius:6px;margin-left:12px";cls.onclick=function(){bar.remove();URL.revokeObjectURL(u);};bar.appendChild(lnk);bar.appendChild(cls);document.body.appendChild(bar);}';
-  S+='function _ldScript(src,cb){var s=document.createElement("script");s.src=src;s.onload=function(){cb();};s.onerror=function(){alert("Error cargando: "+src);};document.head.appendChild(s);}';
-  /* SHAREPOINT COTIZACIONES — en stand by hasta resolver permisos con plinares */
-  S+='<\/script><script>';
-  S+='var _nProv=6;';
-  S+='function setNProv(n){';
-  S+='  _nProv=n;';
-  S+='  for(var i=2;i<=6;i++){';
-  S+='    var btn=document.getElementById("np-"+i);';
-  S+='    var div=document.getElementById("np-div-"+i);';
-  S+='    if(btn){btn.style.background=i===n?"#1d4ed8":"#fff";btn.style.color=i===n?"#fff":"#334155";btn.style.borderColor=i===n?"#1d4ed8":"#cbd5e1";}';
-  S+='    if(div&&i>2)div.style.display=i<=n?"":"none";';
-  S+='  }';
-  S+='}';
-  S+='function exportarExcel(opts){opts=opts||{};';
-  S+='var tcVal=opts.tc||(parseFloat((document.getElementById("me-tc")||{value:"3.75"}).value)||3.75);';
-  S+='var _allPN=[(document.getElementById("me-n1")||{value:""}).value||"PROVEEDOR 1",(document.getElementById("me-n2")||{value:""}).value||"PROVEEDOR 2",(document.getElementById("me-n3")||{value:""}).value||"PROVEEDOR 3",(document.getElementById("me-n4")||{value:""}).value||"PROVEEDOR 4",(document.getElementById("me-n5")||{value:""}).value||"PROVEEDOR 5",(document.getElementById("me-n6")||{value:""}).value||"PROVEEDOR 6"];';
-  S+='var pNames=opts.provNames||_allPN.slice(0,typeof _nProv!=="undefined"?_nProv:6);';
-  S+='var precios=opts.precios||null;';
-  S+='if(!window.opener||typeof window.opener._popupExport!=="function"){alert("Error: funcion no disponible.");return;}';
-  S+='var btn=document.getElementById("btn-genxl");if(btn){btn.disabled=true;btn.textContent="⏳ Generando...";}';
-  S+='window.opener._popupExport({tc:tcVal,provNames:pNames,precios:precios,ph:window._exportPH||[]},window,function(){if(btn){btn.disabled=false;btn.textContent="📥 Generar Excel vacío";}});';
-  S+='}';
-  S+='<\/script><script>';
+/* ══════════════ SIN OC — selección, COTIZ., consolidado, correo y exportación ══════════════
+   Antes vivían en la ventana "Visual" (exportP3HTML); ahora están integradas en la página principal. */
+var p3sel=new Set();
+var _pdfUrls=[null,null,null,null,null,null];
+var _nProv=6;
+function p3RowObj(r,i){var key=(r.ped||'')+'_'+(r.cod||'');return{i:i,ped:r.ped||'',fecha:r.fecha||'',respPed:r.respPed||'',resp:r.resp||'',idproy:r.idproy||'',proy:r.proy||'',cod:r.cod||'',prod:r.prod||'',cant:r.cant||0,unid:r.unid||'',req:r.req||'',freq:r.freq||'',estado:r.estado||'',key:key,cotiz:!!(D.cotMeta&&D.cotMeta[key])};}
+function p3AllRows(){return (D.sinoc||[]).map(p3RowObj);}
+function p3VisRows(){return (p3fil||[]).map(function(r){return p3RowObj(r,(D.sinoc||[]).indexOf(r));});}
+function p3SelRows(){return p3sel.size>0?p3AllRows().filter(function(r){return p3sel.has(r.i);}):p3VisRows();}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function ec(e){if(!e)return'#94a3b8';var l=e.toLowerCase();if(l==='finalizado')return'#16a34a';if(l==='pendiente')return'#dc2626';return'#d97706';}
+function p3ToggleRow(cb){var i=parseInt(cb.dataset.i,10);if(cb.checked)p3sel.add(i);else p3sel.delete(i);var tr=cb.closest('tr');if(tr)tr.style.background=cb.checked?'#dbeafe':'';p3UpdateSelBar();}
+function p3ToggleAll(checked){p3VisRows().forEach(function(r){if(checked)p3sel.add(r.i);else p3sel.delete(r.i);});renderP3Table();}
+function p3Deselect(){p3sel.clear();var c=document.getElementById('p3chkall');if(c)c.checked=false;renderP3Table();}
+function p3UpdateSelBar(){var n=p3sel.size;var e1=document.getElementById('p3selcnt');if(e1)e1.textContent=n;var e2=document.getElementById('p3viscnt');if(e2)e2.textContent=(p3fil?p3fil.length:0)+' visibles';var bd=document.getElementById('p3btndesel');if(bd)bd.style.display=n>0?'':'none';}
+function p3SetCotiz(key,checked){toggleCotiz(key,checked);renderP3();}
+function p3ToggleAllCotiz(checked){p3VisRows().forEach(function(r){toggleCotiz(r.key,checked);});renderP3();}
 
-  S+='var visibleData=DATA.slice();';
-  S+='function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}';
-  S+='function ec(e){if(!e)return"#94a3b8";var l=e.toLowerCase();if(l==="finalizado")return"#16a34a";if(l==="pendiente")return"#dc2626";return"#d97706";}';
-  // ── Dropdown helpers — NO inline event handlers (avoids nested quote bugs) ──
-  S+='var lblMap={"drop-rp":"lbl-rp","drop-re":"lbl-re","drop-es":"lbl-es"};';
-  S+='function uniq(k){var s=new Set();DATA.forEach(function(r){if(r[k])s.add(r[k]);});return Array.from(s).sort();}';
-  S+='function oChg(dropId){';
-  S+='  var opts=Array.from(document.querySelectorAll(".opt-"+dropId));';
-  S+='  var all=opts.every(function(c){return c.checked;});';
-  S+='  var none=opts.every(function(c){return!c.checked;});';
-  S+='  var allCb=document.getElementById(dropId+"-all");';
-  S+='  if(allCb){allCb.checked=all;allCb.indeterminate=!all&&!none;}';
-  S+='  var lbl=document.getElementById(lblMap[dropId]);';
-  S+='  if(lbl)lbl.textContent=all?"Todos":none?"(ninguno)":(opts.filter(function(c){return c.checked;}).length)+" seleccionados";';
-  S+='  applyFilters();';
-  S+='}';
-  S+='function tAll(cb,dropId){document.querySelectorAll(".opt-"+dropId).forEach(function(c){c.checked=cb.checked;});oChg(dropId);}';
-  // buildMsd — uses addEventListener, zero inline handlers
-  S+='function buildMsd(dropId,opts){';
-  S+='  var d=document.getElementById(dropId);';
-  S+='  if(!d)return;';
-  S+='  var h="";';
-  S+='  h+=\'<div class="msd-item"><input type="checkbox" id="\'+dropId+\'-all" data-drop="\'+dropId+\'" data-isall="1" checked> \';';
-  S+='  h+=\'<label for="\'+dropId+\'-all" style="cursor:pointer;flex:1;font-weight:600">Todos</label></div>\';';
-  S+='  opts.forEach(function(v){';
-  S+='    h+=\'<div class="msd-item"><input type="checkbox" class="opt-\'+dropId+\'" data-drop="\'+dropId+\'" value="\'+esc(v)+\'" checked> \';';
-  S+='    h+=\'<label style="cursor:pointer;flex:1">\'+esc(v)+\'</label></div>\';';
-  S+='  });';
-  S+='  d.innerHTML=h;';
-  S+='}';
-  // Single delegated listener — handles ALL dropdown checkboxes
-  S+='document.addEventListener("change",function(e){';
-  S+='  var cb=e.target;';
-  S+='  if(cb.tagName!=="INPUT"||cb.type!=="checkbox"||!cb.dataset.drop)return;';
-  S+='  var dropId=cb.dataset.drop;';
-  S+='  if(cb.dataset.isall)tAll(cb,dropId);';
-  S+='  else oChg(dropId);';
-  S+='});';
-  // Init dropdowns
-  S+='buildMsd("drop-rp",uniq("respPed"));';
-  S+='buildMsd("drop-re",uniq("resp"));';
-  S+='buildMsd("drop-es",uniq("estado"));';
-  // toggleMsd
-  S+='function toggleMsd(id){';
-  S+='  var btn=document.querySelector("#"+id+" .msd-btn");';
-  S+='  var drop=document.querySelector("#"+id+" .msd-drop");';
-  S+='  var isOpen=drop.classList.contains("open");';
-  S+='  document.querySelectorAll(".msd-drop.open").forEach(function(d){d.classList.remove("open");});';
-  S+='  document.querySelectorAll(".msd-btn.open").forEach(function(b){b.classList.remove("open");});';
-  S+='  if(!isOpen){drop.classList.add("open");btn.classList.add("open");}';
-  S+='}';
-  S+='document.addEventListener("click",function(e){if(!e.target.closest(".msd")){document.querySelectorAll(".msd-drop.open").forEach(function(d){d.classList.remove("open");});document.querySelectorAll(".msd-btn.open").forEach(function(b){b.classList.remove("open");});}});';
-  // getChecked
-  S+='function getChecked(dropId){var opts=Array.from(document.querySelectorAll(".opt-"+dropId));if(opts.every(function(c){return c.checked;}))return null;return opts.filter(function(c){return c.checked;}).map(function(c){return c.value;});}';
-  // renderRows
-  S+='function renderRows(data){';
-  S+='  var tb=document.getElementById("tbody");';
-  S+='  var h="";';
-  S+='  data.forEach(function(r,idx){';
-  S+='    var c=ec(r.estado);';
-  S+='    var chk=sel.has(r.i)?"checked":"";';
-  S+='    var sc=sel.has(r.i)?" sel":"";';
-  S+='    h+=\'<tr class="\'+(idx%2===0?"even":"odd")+sc+\'" data-i="\'+r.i+\'">\';';
-  S+='    h+=\'<td><input type="checkbox" class="row-cb" data-i="\'+r.i+\'" \'+chk+\' onchange="toggleRow(this)"></td>\';';
-  S+='    h+=\'<td style="font-weight:700;color:#1e40af;white-space:nowrap">\'+esc(r.ped||"—")+\'</td>\';';
-  S+='    h+=\'<td style="white-space:nowrap;color:#64748b;font-size:12px">\'+esc(r.fecha||"—")+\'</td>\';';
-  S+='    h+=\'<td style="font-size:11px;color:#334155">\'+esc(r.respPed||"—")+\'</td>\';';
-  S+='    h+=\'<td>\'+esc(r.resp||"—")+\'</td>\';';
-  S+='    h+=\'<td style="font-size:11px;color:#0891b2;font-weight:600;text-align:center">\'+esc(r.idproy||"—")+\'</td>\';';
-  S+='    h+=\'<td style="font-size:11px">\'+esc(r.proy||"—")+\'</td>\';';
-  S+='    h+=\'<td style="font-family:monospace;font-size:11px;color:#7c3aed;font-weight:600">\'+esc(r.cod||"—")+\'</td>\';';
-  S+='    h+=\'<td style="font-size:12px;text-align:left">\'+esc(r.prod||"—")+\'</td>\';';
-  S+='    h+=\'<td style="text-align:right;font-weight:700">\'+Number(r.cant||0).toLocaleString()+\'</td>\';';
-  S+='    h+=\'<td style="text-align:center;color:#64748b;font-size:11px">\'+esc(r.unid||"—")+\'</td>\';';
-  S+='    h+=\'<td style="font-size:11px;color:#475569">\'+esc(r.req||"—")+\'</td>\';';
-  S+='    h+=\'<td style="white-space:nowrap;color:#64748b;font-size:11px">\'+esc(r.freq||"—")+\'</td>\';';
-  S+='    h+=\'<td style="text-align:center"><span class="badge" style="background:\'+c+\'20;color:\'+c+\';border-color:\'+c+\'55">\'+esc(r.estado||"—")+\'</span></td>\';';
-  S+='    var cotChk=r.cotiz?"checked":"";';
-  S+='    h+=\'<td style="text-align:center;background:#f0fdf4;position:sticky;right:0;z-index:1;box-shadow:-5px 0 8px -3px rgba(0,0,0,.12)"><input type="checkbox" \'+cotChk+\' data-key="\'+esc(r.key)+\'" onchange="saveCotiz(this)" style="width:15px;height:15px;cursor:pointer;accent-color:#16a34a"></td>\';';
-  S+='    h+="</tr>";';
-  S+='  });';
-  S+='  tb.innerHTML=h;';
-  S+='}';
-  // applyFilters
-  S+='function applyFilters(){';
-  S+='  var fRP=getChecked("drop-rp"),fR=getChecked("drop-re"),fE=getChecked("drop-es");';
-  S+='  var q=(document.getElementById("srch").value||"").toLowerCase();';
-  S+='  visibleData=DATA.filter(function(r){';
-  S+='    if(fRP&&fRP.indexOf(r.respPed)===-1)return false;';
-  S+='    if(fR&&fR.indexOf(r.resp)===-1)return false;';
-  S+='    if(fE&&fE.indexOf(r.estado)===-1)return false;';
-  S+='    if(q&&(r.ped+" "+r.cod+" "+r.prod+" "+r.proy+" "+r.req+" "+r.resp+" "+r.respPed).toLowerCase().indexOf(q)===-1)return false;';
-  S+='    return true;';
-  S+='  });';
-  S+='  renderRows(visibleData);updateKpis(visibleData);updateSelBar();';
-  S+='}';
-  S+='function clearAllFilters(){["drop-rp","drop-re","drop-es"].forEach(function(id){document.querySelectorAll(".opt-"+id).forEach(function(c){c.checked=true;});document.getElementById(id+"-all").checked=true;document.getElementById(id+"-all").indeterminate=false;var l=document.getElementById(lblMap[id]);if(l)l.textContent="Todos";});document.getElementById("srch").value="";applyFilters();}';
-  // updateKpis
-  S+='function updateKpis(data){';
-  S+='  var rSet=new Set(),pSet=new Set(),tot=0;';
-  S+='  data.forEach(function(r){if(r.resp)rSet.add(r.resp);if(r.proy)pSet.add(r.proy);tot+=r.cant||0;});';
-  S+='  document.getElementById("kv1").textContent=data.length;';
-  S+='  document.getElementById("kv2").textContent=rSet.size;';
-  S+='  document.getElementById("kv3").textContent=pSet.size;';
-  S+='  document.getElementById("kv4").textContent=Math.round(tot).toLocaleString();';
-  S+='  document.getElementById("hdr-tot").textContent=data.length;';
-  S+='  document.getElementById("vis-cnt").textContent=data.length+" visibles";';
-  S+='}';
-  // Selection
-  S+='function toggleRow(cb){var i=parseInt(cb.dataset.i);if(cb.checked){sel.add(i);cb.closest("tr").classList.add("sel");}else{sel.delete(i);cb.closest("tr").classList.remove("sel");}updateSelBar();}';
-  S+='function toggleAll(checked){visibleData.forEach(function(r){if(checked)sel.add(r.i);else sel.delete(r.i);});document.querySelectorAll(".row-cb").forEach(function(cb){cb.checked=checked;cb.closest("tr").classList.toggle("sel",checked);});updateSelBar();}';
-  S+='function deselectAll(){sel.clear();document.querySelectorAll(".row-cb").forEach(function(cb){cb.checked=false;cb.closest("tr").classList.remove("sel");});document.getElementById("chk-all").checked=false;updateSelBar();}';
-  S+='function updateSelBar(){var n=sel.size;document.getElementById("sel-cnt").textContent=n;document.getElementById("hdr-sel").textContent=n;document.getElementById("btn-desel").style.display=n>0?"":"none";}';
-  // Consolidar
-  S+='function openConsolidar(){';
-  S+='  var selRows=sel.size>0?DATA.filter(function(r){return sel.has(r.i);}):visibleData.slice();';
-  S+='  var groups={};';
-  S+='  selRows.forEach(function(r){var k=r.respPed||"Sin asignar";if(!groups[k])groups[k]=[];groups[k].push(r);});';
-  S+='  var body="";';
-  S+='  var genFecha="'+fechaGen+'";';
-  S+='  Object.keys(groups).forEach(function(resp){';
-  S+='    var rows=groups[resp];';
-  S+='    var unid=Math.round(rows.reduce(function(s,r){return s+(r.cant||0);},0)).toLocaleString();';
-  S+='    body+=\'<div class="cgroup"><div class="cgroup-hdr"><h4>\u{1F464} Resp. Pedido: \'+esc(resp)+\'</h4><span>\'+rows.length+\' pedido\'+( rows.length>1?"s":"")+\' &nbsp;&middot;&nbsp; \'+unid+\' unidades</span></div>\';';
-  S+='    body+=\'<table><thead><tr><th>N° Pedido</th><th>F. Pedido</th><th>Responsable</th><th>ID Proyecto</th><th>Proyecto</th><th>Código</th><th>Descripción</th><th>Cant.</th><th>Unid.</th><th>Estado</th></tr></thead><tbody>\';';
-  S+='    rows.forEach(function(r,i){';
-  S+='      var c=ec(r.estado);';
-  S+='      body+=\'<tr class="\'+(i%2===0?"even":"odd")+\'">\';';
-  S+='      body+=\'<td style="font-weight:700;color:#1e40af">\'+esc(r.ped)+\'</td>\';';
-  S+='      body+=\'<td style="font-size:11px">\'+esc(r.fecha)+\'</td>\';';
-  S+='      body+=\'<td style="font-size:11px">\'+esc(r.resp)+\'</td>\';';
-  S+='      body+=\'<td style="font-size:11px;color:#0891b2;font-weight:600;text-align:center">\'+esc(r.idproy)+\'</td>\';';
-  S+='      body+=\'<td style="font-size:11px">\'+esc(r.proy)+\'</td>\';';
-  S+='      body+=\'<td style="font-family:monospace;font-size:11px;color:#7c3aed;font-weight:600">\'+esc(r.cod)+\'</td>\';';
-  S+='      body+=\'<td style="font-size:11px">\'+esc(r.prod)+\'</td>\';';
-  S+='      body+=\'<td style="text-align:right;font-weight:700">\'+Number(r.cant||0).toLocaleString()+\'</td>\';';
-  S+='      body+=\'<td style="text-align:center;font-size:11px">\'+esc(r.unid)+\'</td>\';';
-  S+='      body+=\'<td style="text-align:center"><span class="badge" style="background:\'+c+\'20;color:\'+c+\';border-color:\'+c+\'55">\'+esc(r.estado)+\'</span></td>\';';
-  S+='      body+="</tr>";';
-  S+='    });';
-  S+='    body+="</tbody></table></div>";';
-  S+='  });';
-  S+='  var info=\'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1e40af"><strong>\'+selRows.length+\' pedidos consolidados</strong> &nbsp;&middot;&nbsp; \'+Object.keys(groups).length+\' responsable\'+(Object.keys(groups).length>1?"s":"")+\' &nbsp;&middot;&nbsp; Generado: \'+genFecha+\'</div>\';';
-  S+='  document.getElementById("modal-body").innerHTML=info+body;';
-  S+='  document.getElementById("modal-bg").classList.add("open");';
-  S+='}';
-  S+='function printConsolidar(){';
-  S+='  var body=document.getElementById("modal-body");';
-  S+='  if(!body||!body.innerHTML.trim()){alert("No hay contenido para imprimir.");return;}';
-  S+='  var w=window.open("","_blank","width=900,height=700");';
-  S+='  if(!w){alert("El navegador bloqueó la ventana emergente. Habilítala e intenta nuevamente.");return;}';
-  S+='  var h="<!DOCTYPE html><html><head><meta charset=\'utf-8\'><title>Consolidado Cotización — FRIOPACKING</title>";';
-  S+='  h+="<style>";';
-  S+='  h+="body{font-family:\'Segoe UI\',sans-serif;font-size:12px;color:#1e293b;margin:24px 32px;}";';
-  S+='  h+=".hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #0369a1;padding-bottom:12px;margin-bottom:20px;}";';
-  S+='  h+=".hdr-logo{font-size:18px;font-weight:800;color:#0369a1;letter-spacing:1px;}";';
-  S+='  h+=".hdr-sub{font-size:10px;color:#64748b;margin-top:2px;}";';
-  S+='  h+=".hdr-date{font-size:10px;color:#64748b;text-align:right;}";';
-  S+='  h+=".section{margin-bottom:24px;page-break-inside:avoid;}";';
-  S+='  h+=".resp-title{background:#0369a1;color:#fff;padding:8px 14px;font-size:12px;font-weight:700;border-radius:6px 6px 0 0;margin-bottom:0;}";';
-  S+='  h+="table{width:100%;border-collapse:collapse;font-size:11px;}";';
-  S+='  h+="th{background:#e0f2fe;color:#0369a1;font-weight:700;padding:7px 10px;text-align:left;border-bottom:2px solid #bae6fd;}";';
-  S+='  h+="td{padding:6px 10px;border-bottom:1px solid #e2e8f0;}";';
-  S+='  h+="tr:nth-child(even)td{background:#f8fafc;}";';
-  S+='  h+=".badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;color:#fff;}";';
-  S+='  h+=".footer{margin-top:28px;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:10px;}";';
-  S+='  h+="@media print{@page{margin:15mm;}body{margin:0;}}";';
-  S+='  h+="</style></head><body>";';
-  S+='  var now=new Date();';
-  S+='  var dd=now.getDate().toString().padStart(2,"0")+"/"+( (now.getMonth()+1).toString().padStart(2,"0") )+"/"+now.getFullYear();';
-  S+='  var hh=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");';
-  S+='  h+="<div class=\'hdr\'><div><div class=\'hdr-logo\'>FRIOPACKING S.A.</div><div class=\'hdr-sub\'>Consolidado de Pedidos para Cotización</div></div><div class=\'hdr-date\'>Generado: "+dd+" "+hh+"</div></div>";';
-  S+='  h+=body.innerHTML;';
-  S+='  h+="<div class=\'footer\'>Documento generado automáticamente por el sistema de compras · FRIOPACKING S.A.</div>";';
-  S+='  h+="</body></html>";';
-  S+='  w.document.write(h);';
-  S+='  w.document.close();';
-  S+='  w.focus();';
-  S+='  setTimeout(function(){w.print();},400);';
-  S+='}';
-  S+='function closeConsolidar(){document.getElementById("modal-bg").classList.remove("open");}';
-  S+='var _CC_COT_BASE="msihuairo@friopacking.pe;ccheca@friopacking.pe;plinares@friopacking.pe;jaltamirano@friopacking.pe;jpomez@friopacking.pe";';
-  S+='var _CC_COT=_CC_COT_BASE;';
-  S+='function enviarCorreo(){';
-  S+='  var items=DATA.filter(function(r){return sel.has(r.i);});';
-  S+='  if(!items.length){alert("No hay pedidos seleccionados.");return;}';
-  // Agregar automáticamente a los responsables de los pedidos seleccionados si
-  // están en la base de Supervisores (uno o varios, sin duplicar el CC base)
-  S+='  _CC_COT=_CC_COT_BASE;';
-  S+='  if(window.opener&&window.opener.buscarSupervisor){';
-  S+='    var _respsVistos=[];';
-  S+='    items.forEach(function(r){';
-  S+='      if(!r.resp||_respsVistos.indexOf(r.resp)>=0)return;';
-  S+='      _respsVistos.push(r.resp);';
-  S+='      var sup=window.opener.buscarSupervisor(r.resp);';
-  S+='      if(sup&&sup.correo&&!_CC_COT.toLowerCase().includes(sup.correo))_CC_COT+=";"+sup.correo;';
-  S+='    });';
-  S+='  }';
-  S+='  var grupos={};';
-  S+='  items.forEach(function(r){var k=r.ped||"Sin pedido";if(!grupos[k])grupos[k]=[];grupos[k].push(r);});';
-  S+='  var pedidos=Object.keys(grupos);';
-  S+='  var asuntoParts=["Solicitud de Cotización - FRIOPACKING S.A."];';
-  S+='  pedidos.forEach(function(ped){';
-  S+='    asuntoParts.push(ped);';
-  S+='    var idp=grupos[ped][0].idproy||"";var pr=grupos[ped][0].proy||"";';
-  S+='    if(idp)asuntoParts.push(idp);if(pr)asuntoParts.push(pr);';
-  S+='  });';
-  S+='  var asunto=asuntoParts.join(" // ");';
-  // Mostrar overlay con campos antes de enviar
-  S+='  var ov=document.getElementById("mail-overlay");';
-  S+='  if(!ov){';
-  S+='    ov=document.createElement("div");ov.id="mail-overlay";';
-  S+='    ov.style.cssText="position:fixed;inset:0;background:rgba(10,20,40,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";';
-  S+='    var card=document.createElement("div");';
-  S+='    card.style.cssText="background:#fff;border-radius:18px;width:580px;max-width:96vw;box-shadow:0 32px 90px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden";';
-  S+='    var ccChips=_CC_COT.split(";").map(function(e){return\'<span style="display:inline-flex;align-items:center;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin:2px 4px 2px 0">\'+e.trim()+\'</span>\';}).join("");';
-  // Header
-  S+='    var h2=\'<div style="background:linear-gradient(135deg,#1e3a5f 0%,#0369a1 100%);padding:22px 28px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0">\';';
-  S+='    h2+=\'<div><div style="color:#fff;font-size:16px;font-weight:700;letter-spacing:.2px">✉ Enviar Solicitud de Cotización</div><div style="color:#bfdbfe;font-size:12px;margin-top:4px">Complete los campos para generar el correo</div></div>\';';
-  S+='    h2+=\'<button onclick="document.getElementById(\\\'mail-overlay\\\').remove()" style="background:rgba(255,255,255,.18);border:none;color:#fff;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0">✕</button></div>\';';
-  // Body
-  S+='    var b2=\'<div style="padding:28px;display:flex;flex-direction:column;gap:18px">\';';
-  // PARA
-  S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Para</div><div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:9px;padding:11px 16px;font-size:13px;color:#15803d;font-weight:700">📧 mlujan@friopacking.pe</div></div>\';';
-  // CCO — chip input multi-proveedor
-  S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Copia Oculta (CCO) — Proveedores <span style="color:#dc2626">*</span><span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:6px;text-transform:none">Escribe el nombre (si está registrado) o el correo, y presiona Enter</span></div><div id="cco-chip-box" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;border:2px solid #e2e8f0;border-radius:9px;padding:8px 12px;min-height:46px;cursor:text;transition:border .2s" onclick="document.getElementById(\\\'cco-input\\\').focus()"><input id="cco-input" list="dlProveedoresCot" type="text" placeholder="Nombre del proveedor o correo@proveedor.com" style="border:none;outline:none;font-size:13px;font-family:inherit;flex:1;min-width:180px;padding:3px 0" onkeydown="addCotChip(event)" onblur="addCotChipBlur()"/><datalist id="dlProveedoresCot">'+(D.proveedores||[]).filter(function(p){return p.correo;}).map(function(p){return '<option value="'+String(p.nombre).replace(/["']/g,'')+'">';}).join('')+'</datalist></div></div>\';';
-  // CC chips
-  S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">CC (precargado)</div><div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px 14px;line-height:2.2">\'+ccChips+\'</div></div>\';';
-  // FECHA
-  S+='    b2+=\'<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Fecha Límite de Cotización <span style="color:#dc2626">*</span></div><input id="cot-fecha" type="date" style="width:100%;padding:11px 16px;border:2px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border .2s;cursor:pointer" onfocus="this.style.borderColor=\\\'#0369a1\\\'" onblur="this.style.borderColor=\\\'#e2e8f0\\\'" onchange="chkCotForm()"/></div>\';';
-  // Buttons
-  S+='    b2+=\'<div style="display:flex;gap:12px;justify-content:flex-end;padding-top:4px"><button onclick="document.getElementById(\\\'mail-overlay\\\').remove()" style="padding:11px 26px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:#475569">Cancelar</button><button id="btn-send-cot" disabled onclick="dispararCorreoCot()" style="padding:11px 30px;background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;opacity:.4;display:flex;align-items:center;gap:8px">✉ Abrir Outlook</button></div>\';';
-  S+='    b2+=\'</div>\';';
-  S+='    card.innerHTML=h2+b2;';
-  S+='    ov.appendChild(card);document.body.appendChild(ov);';
-  S+='  }';
-  S+='  window._cotCcoList=[];';
-  S+='  var box=document.getElementById("cco-chip-box");';
-  S+='  if(box){Array.from(box.querySelectorAll("span")).forEach(function(s){s.remove();});document.getElementById("cco-input").value="";}';
-  S+='  document.getElementById("btn-send-cot").disabled=true;document.getElementById("btn-send-cot").style.opacity="0.4";';
-  S+='  ov.style.display="flex";';
-  // Guardar asunto y grupos en variables accesibles para dispararCorreoCot
-  S+='  window._cotAsunto=asunto;window._cotGrupos=grupos;window._cotPedidos=pedidos;';
-  S+='}';
-  S+='window._cotCcoList=[];';
-  S+='function addCotChip(e){';
-  S+='  if(e.key!=="Enter"&&e.key!==","&&e.key!==";")return;';
-  S+='  e.preventDefault();';
-  S+='  var val=document.getElementById("cco-input").value.trim().replace(/[,;]/g,"");';
-  S+='  if(!val){document.getElementById("cco-input").value="";return;}';
-  // Si lo que escribió no es un correo (no tiene @), busca el proveedor por
-  // nombre en la base y usa su correo real; si no está registrado, se deja
-  // tal cual para que lo agreguen manualmente (como ya funcionaba antes)
-  S+='  if(val.indexOf("@")<0&&window.opener&&window.opener.buscarProveedor){';
-  S+='    var provMatch=window.opener.buscarProveedor(null,val);';
-  S+='    if(provMatch&&provMatch.correo)val=provMatch.correo;';
-  S+='  }';
-  S+='  if(window._cotCcoList.indexOf(val)>=0){document.getElementById("cco-input").value="";return;}';
-  S+='  window._cotCcoList.push(val);';
-  S+='  var chip=document.createElement("span");';
-  S+='  chip.style.cssText="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;font-size:12px;font-weight:600;padding:3px 10px 3px 12px;border-radius:20px;white-space:nowrap";';
-  S+='  chip.innerHTML=\'📧 \'+val+\'<button onclick="removeCotChip(this,\\\'\'+val+\'\\\')" style="background:none;border:none;cursor:pointer;color:#3b82f6;font-size:14px;line-height:1;padding:0 0 0 2px">✕</button>\';';
-  S+='  var box=document.getElementById("cco-chip-box");';
-  S+='  box.insertBefore(chip,document.getElementById("cco-input"));';
-  S+='  document.getElementById("cco-input").value="";';
-  S+='  chkCotForm();';
-  S+='}';
-  S+='function addCotChipBlur(){';
-  S+='  var val=document.getElementById("cco-input").value.trim();';
-  S+='  if(val&&window._cotCcoList.indexOf(val)<0){';
-  S+='    var fakeEv={key:"Enter",preventDefault:function(){}};addCotChip(fakeEv);';
-  S+='  }';
-  S+='}';
-  S+='function removeCotChip(btn,email){';
-  S+='  window._cotCcoList=window._cotCcoList.filter(function(e){return e!==email;});';
-  S+='  btn.parentNode.remove();';
-  S+='  chkCotForm();';
-  S+='}';
-  S+='function chkCotForm(){';
-  S+='  var fecha=document.getElementById("cot-fecha").value.trim();';
-  S+='  var btn=document.getElementById("btn-send-cot");';
-  S+='  var ok=window._cotCcoList.length>0&&fecha;';
-  S+='  btn.disabled=!ok;btn.style.opacity=ok?"1":"0.4";';
-  S+='  var box=document.getElementById("cco-chip-box");';
-  S+='  if(box)box.style.borderColor=window._cotCcoList.length>0?"#0369a1":"#e2e8f0";';
-  S+='}';
-  S+='function dispararCorreoCot(){';
-  S+='  var cco=window._cotCcoList.join(";");';
-  S+='  var fechaRaw=document.getElementById("cot-fecha").value.trim();';
-  S+='  if(!cco||!fechaRaw)return;';
-  S+='  var _dias=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];';
-  S+='  var _meses=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];';
-  S+='  var _dp=fechaRaw.split("-");var _dObj=new Date(_dp[0],_dp[1]-1,_dp[2]);';
-  S+='  var fechaLim=_dias[_dObj.getDay()]+" "+_dp[2]+" de "+_meses[_dObj.getMonth()]+" de "+_dp[0];';
-  S+='  var grupos=window._cotGrupos;var pedidos=window._cotPedidos;var asunto=window._cotAsunto;';
-  // Construir cuerpo texto plano para mailto
-  S+='  var L=[];';
-  S+='  L.push("Estimado Proveedor,");';
-  S+='  L.push("");';
-  S+='  L.push("Reciba un cordial saludo de parte del equipo de Compras de FRIOPACKING S.A.");';
-  S+='  L.push("");';
-  S+='  L.push("Por medio del presente correo, nos ponemos en contacto con usted para solicitar su valioso apoyo con la cotización de los materiales detallados en las siguientes solicitudes de pedido:");';
-  S+='  L.push("");';
-  S+='  pedidos.forEach(function(ped){';
-  S+='    L.push("Pedido N° "+ped+":");';
-  S+='    grupos[ped].forEach(function(r,idx){';
-  S+='      L.push("  "+(idx+1)+". ["+r.cod+"] "+r.prod);';
-  S+='      L.push("     Cantidad requerida: "+r.cant+" "+r.unid);';
-  S+='    });';
-  S+='    L.push("");';
-  S+='  });';
-  S+='  L.push("Para poder avanzar con la evaluación interna y procesar la compra a tiempo, le agradeceremos enviarnos su propuesta comercial detallando los siguientes puntos:");';
-  S+='  L.push("");';
-  S+='  L.push("  • Estructura de precios: especificar precio unitario e indicar si los valores incluyen o no el IGV.");';
-  S+='  L.push("  • Moneda: indicar la divisa de facturación (soles o dólares).");';
-  S+='  L.push("  • Plazo de entrega: días estimados para la entrega del producto una vez confirmada la Orden de Compra.");';
-  S+='  L.push("  • Condición de pago: indicar la forma de pago solicitada.");';
-  S+='  L.push("  • Vigencia: período de validez de los precios cotizados.");';
-  S+='  L.push("");';
-  S+='  L.push("Plazo de recepción: le agradeceremos hacernos llegar la cotización a más tardar el "+fechaLim+" hasta las 17:00 horas, de manera que podamos incluir su propuesta en el cuadro comparativo correspondiente.");';
-  S+='  L.push("");';
-  S+='  L.push("Quedamos atentos a sus comentarios y, ante cualquier consulta o duda técnica, estamos a su entera disposición.");';
-  S+='  L.push("");';
-  S+='  L.push("Desde ya, agradecemos el constante soporte que nos brindan como socios estratégicos.");';
-  S+='  L.push("");';
-  S+='  L.push("Saludos cordiales,");';
-  S+='  L.push("Área de Compras — FRIOPACKING S.A.");';
-  S+='  var cuerpo=L.join("\\r\\n");';
-  // Construir versión HTML del cuerpo — agrupado por proyecto, luego por pedido
-  S+='  var gruposProy={};';
-  S+='  pedidos.forEach(function(ped){';
-  S+='    var idp=grupos[ped][0].idproy||"";var pr=grupos[ped][0].proy||"Sin Proyecto";';
-  S+='    var pk=(idp?idp+" — ":"")+pr;';
-  S+='    if(!gruposProy[pk])gruposProy[pk]=[];';
-  S+='    gruposProy[pk].push(ped);';
-  S+='  });';
-  S+='  var tablasTodas="";';
-  S+='  var THEAD=\'<thead><tr style="background:#e0f2fe"><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:30px">#</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;white-space:nowrap">Código</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;min-width:240px">Descripción del Artículo</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:50px">Cant.</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:60px">Unidad</th></tr></thead>\';';
-  S+='  Object.keys(gruposProy).forEach(function(pk){';
-  S+='    tablasTodas+=\'<div style="margin:20px 0 8px"><span style="font-size:14px;font-weight:800;color:#1e3a5f;border-bottom:2px solid #0369a1;padding-bottom:4px">🏗 Proyecto: \'+pk+\'</span></div>\';';
-  S+='    gruposProy[pk].forEach(function(ped){';
-  S+='      var rows=grupos[ped];var tblRows="";';
-  S+='      rows.forEach(function(r,idx){';
-  S+='        var bg=idx%2===0?"#ffffff":"#f0f9ff";';
-  S+='        tblRows+=\'<tr style="background:\'+bg+\'"><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;color:#64748b;font-size:13px;width:30px">\'+( idx+1)+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:600;font-size:13px;white-space:nowrap">\'+r.cod+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;min-width:240px">\'+r.prod+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;font-weight:700;font-size:13px;width:50px">\'+r.cant+\'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;width:60px">\'+( r.unid||\'—\')+\'</td></tr>\';';
-  S+='      });';
-  S+='      tablasTodas+=\'<p style="margin:12px 0 4px;font-size:12px;font-weight:700;color:#0369a1">Pedido N° \'+ped+\'</p>\';';
-  S+='      tablasTodas+=\'<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-bottom:8px">\'+THEAD+\'<tbody>\'+tblRows+\'</tbody></table>\';';
-  S+='    });';
-  S+='  });';
-  S+='  var htmlCot=\'<div style="font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:2;color:#1e293b;max-width:760px">\';';
-  S+='  htmlCot+=\'<p>Estimado Proveedor,</p>\';';
-  S+='  htmlCot+=\'<p>Reciba un cordial saludo de parte del equipo de Compras de <strong>FRIOPACKING S.A.</strong></p>\';';
-  S+='  htmlCot+=\'<p>Por medio del presente correo, nos ponemos en contacto con usted para solicitar su valioso apoyo con la cotización de los materiales detallados en los siguientes pedidos:</p>\';';
-  S+='  htmlCot+=tablasTodas;';
-  S+='  htmlCot+=\'<p style="margin-top:18px">Para poder avanzar con la evaluación interna y procesar la compra a tiempo, le agradeceremos enviarnos su propuesta comercial detallando los siguientes puntos:</p>\';';
-  S+='  htmlCot+=\'<ul><li>Estructura de precios: especificar precio unitario e indicar si los valores incluyen o no el IGV.</li><li>Moneda: indicar la divisa de facturación (soles o dólares).</li><li>Plazo de entrega: días estimados para la entrega del producto una vez confirmada la Orden de Compra.</li><li>Condición de pago: indicar la forma de pago solicitada.</li><li>Vigencia: período de validez de los precios cotizados.</li></ul>\';';
-  S+='  htmlCot+=\'<p>Le agradeceremos hacernos llegar la cotización a más tardar el <strong>\'+fechaLim+\'</strong> hasta las 17:00 horas, de manera que podamos incluir su propuesta en el cuadro comparativo correspondiente.</p>\';';
-  S+='  htmlCot+=\'<p>Quedamos atentos a sus comentarios y, ante cualquier consulta o duda técnica, estamos a su entera disposición.</p>\';';
-  S+='  htmlCot+=\'<p>Desde ya, agradecemos el constante soporte que nos brindan como socios estratégicos.</p>\';';
-  S+='  htmlCot+=\'<p>Saludos cordiales,<br><strong>Área de Compras — FRIOPACKING S.A.</strong></p></div>\';';
-  S+='  function abrirMailCot(){';
-  S+='    var url="mailto:mlujan@friopacking.pe?subject="+encodeURIComponent(asunto)+"&cc="+encodeURIComponent(_CC_COT)+"&bcc="+encodeURIComponent(cco);';
-  S+='    var a=document.createElement("a");a.href=url;document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);},200);';
-  S+='  }';
-  S+='  document.getElementById("mail-overlay").remove();';
-  S+='  var _para="mlujan@friopacking.pe";';
-  S+='  var _cc=_CC_COT;';
-  S+='  fetch("http://127.0.0.1:5100/ping",{method:"GET",headers:{"Access-Control-Request-Private-Network":"true"}})';
-  S+='  .then(function(r){return r.json();})';
-  S+='  .then(function(d){';
-  S+='    if(!d.ok)throw new Error("sin servidor");';
-  S+='    return fetch("http://127.0.0.1:5100/send-cot",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:_para,cc:_cc,bcc:cco,subject:asunto,htmlBody:htmlCot})});';
-  S+='  })';
-  S+='  .then(function(r){return r.json();})';
-  S+='  .then(function(d){';
-  S+='    if(d.ok){';
-  S+='      var t=document.createElement("div");';
-  S+='      t.style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 28px;border-radius:8px;font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.4)";';
-  S+='      t.textContent="✅ Correo de cotización abierto en Outlook";';
-  S+='      document.body.appendChild(t);setTimeout(function(){t.remove();},4000);';
-  S+='    }else{throw new Error(d.error||"error");}';
-  S+='  })';
-  S+='  .catch(function(){';
-  S+='    if(window.opener&&window.opener.sendMailViaGraph){';
-  S+='      window.opener.sendMailViaGraph(_para,_cc,cco,asunto,htmlCot,function(ok){';
-  S+='        if(ok){';
-  S+='          var t=document.createElement("div");';
-  S+='          t.style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 28px;border-radius:8px;font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.4)";';
-  S+='          t.textContent="✅ Correo de cotización enviado (Microsoft 365)";';
-  S+='          document.body.appendChild(t);setTimeout(function(){t.remove();},4000);';
-  S+='        }else{fallbackClipboardCot();}';
-  S+='      });';
-  S+='    }else{fallbackClipboardCot();}';
-  S+='  });';
-  S+='  function fallbackClipboardCot(){';
-  S+='    if(navigator.clipboard&&window.ClipboardItem){';
-  S+='      var blob=new Blob([htmlCot],{type:"text/html"});';
-  S+='      var item=new ClipboardItem({"text/html":blob});';
-  S+='      navigator.clipboard.write([item]).then(function(){';
-  S+='        setTimeout(abrirMailCot,300);';
-  S+='      },function(){abrirMailCot();});';
-  S+='    }else{abrirMailCot();}';
-  S+='  }';
-  S+='}';
-
-  S+='function verCorreoFormateado(){';
-  S+='  var items=DATA.filter(function(r){return sel.has(r.i);});';
-  S+='  if(!items.length){alert("No hay pedidos seleccionados.");return;}';
-  S+='  var grupos={};';
-  S+='  items.forEach(function(r){var k=r.ped||"Sin pedido";if(!grupos[k])grupos[k]=[];grupos[k].push(r);});';
-  S+='  var pedidos=Object.keys(grupos);';
-  S+='  var sep=" // ";';
-  S+='  var asuntoParts=["Solicitud de Cotización - FRIOPACKING S.A."];';
-  S+='  pedidos.forEach(function(ped){';
-  S+='    asuntoParts.push(ped);';
-  S+='    var idp=grupos[ped][0].idproy||"";var pr=grupos[ped][0].proy||"";';
-  S+='    if(idp)asuntoParts.push(idp);if(pr)asuntoParts.push(pr);';
-  S+='  });';
-  S+='  var asunto=asuntoParts.join(sep);';
-  S+='  var w=window.open("","_blank","width=820,height=700");';
-  S+='  var h="<!DOCTYPE html><html><head><meta charset=\'UTF-8\'><title>Correo Cotizacion</title><style>";';
-  S+='  h+="body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:32px;max-width:780px;margin:0 auto}";';
-  S+='  h+=".logo{font-size:20px;font-weight:800;color:#0369a1;letter-spacing:1px}";';
-  S+='  h+=".sublogo{font-size:11px;color:#64748b;margin-bottom:24px}";';
-  S+='  h+=".subject-box{background:#f0f9ff;border-left:4px solid #0369a1;padding:10px 16px;font-size:12px;color:#0369a1;font-weight:600;margin-bottom:20px;border-radius:0 6px 6px 0}";';
-  S+='  h+=".pedido-hdr{background:#0369a1;color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;margin-top:20px}";';
-  S+='  h+=".pedido-meta{background:#e0f2fe;padding:8px 16px;font-size:12px;color:#0c4a6e;border-left:1px solid #bae6fd;border-right:1px solid #bae6fd}";';
-  S+='  h+="table{width:100%;border-collapse:collapse;margin:0}";';
-  S+='  h+="thead tr{background:#e0f2fe}";';
-  S+='  h+="th{padding:8px 12px;text-align:left;font-size:11px;color:#0369a1;font-weight:700;border-bottom:2px solid #bae6fd;border:1px solid #bae6fd}";';
-  S+='  h+="td{padding:7px 12px;border:1px solid #e2e8f0;font-size:12px}";';
-  S+='  h+="tr:nth-child(even) td{background:#f8fafc}";';
-  S+='  h+=".num{text-align:center;color:#64748b;font-size:11px}";';
-  S+='  h+=".cod{color:#0369a1;font-weight:600}";';
-  S+='  h+=".cant{text-align:center;font-weight:700;color:#0f172a}";';
-  S+='  h+=".footer-mail{margin-top:28px;padding-top:16px;border-top:2px solid #e2e8f0;font-size:12px;color:#475569}";';
-  S+='  h+=".footer-firma{font-weight:700;color:#0369a1;font-size:13px}";';
-  S+='  h+=".btn-send{display:inline-block;margin:6px 4px;padding:10px 22px;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif}";';
-  S+='  h+=".btn-img{background:linear-gradient(135deg,#7c3aed,#a855f7)}";';
-  S+='  h+=".btn-mail2{background:linear-gradient(135deg,#0369a1,#0891b2)}";';
-  S+='  h+=".btn-pdf{background:linear-gradient(135deg,#dc2626,#ef4444)}";';
-  S+='  h+=".toolbar{margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap}";';
-  S+='  h+=".toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;display:none}";';
-  S+="  h+=\"@media print{.toolbar,.toast{display:none!important}@page{margin:15mm}}\";";
-  S+='  h+="</style><script src=\'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js\'><\\/script></head><body>";';
-  S+='  h+="<div class=\'toast\' id=\'toast\'>✅ Imagen copiada — pega con Ctrl+V en Outlook</div>";';
-  S+='  h+="<div class=\'toolbar\'>";';
-  S+='  h+="<button class=\'btn-send btn-img\' onclick=\'copiarImagen()\'>📷 Copiar como imagen</button>";';
-  S+='  h+="<button class=\'btn-send btn-mail2\' onclick=\'window.opener&&window.opener.location?void(0):void(0);window.location.href=\\"mailto:?subject="+encodeURIComponent(asunto)+"\\"\'>✉ Abrir Outlook</button>";';
-  S+='  h+="<button class=\'btn-send btn-pdf\' onclick=\'window.print()\'>🖨 Guardar PDF</button>";';
-  S+='  h+="</div>";';
-  S+='  h+="<div id=\'contenido-correo\' style=\'font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:2;color:#1e293b;max-width:760px\'>";';
-  S+='  h+="<div class=\'logo\'>FRIOPACKING S.A.</div>";';
-  S+='  h+="<div class=\'sublogo\'>Área de Compras &nbsp;|&nbsp; Solicitud de Cotización</div>";';
-  S+='  h+="<div class=\'subject-box\'>Asunto: "+asunto+"</div>";';
-  S+='  h+="<p>Estimado Proveedor,</p>";';
-  S+='  h+="<p>Reciba un cordial saludo de parte del equipo de Compras de <strong>FRIOPACKING S.A.</strong></p>";';
-  S+='  h+="<p>Por medio del presente correo, nos ponemos en contacto con usted para solicitar su valioso apoyo con la cotización de los materiales detallados en los siguientes pedidos:</p>";';
-  S+='  var gruposProy2={};';
-  S+='  pedidos.forEach(function(ped){';
-  S+='    var idp=grupos[ped][0].idproy||"";var pr=grupos[ped][0].proy||"Sin Proyecto";';
-  S+='    var pk=(idp?idp+" — ":"")+pr;';
-  S+='    if(!gruposProy2[pk])gruposProy2[pk]=[];';
-  S+='    gruposProy2[pk].push(ped);';
-  S+='  });';
-  S+='  var THEAD2="<thead><tr style=\'background:#e0f2fe\'><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:30px\'>#</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;white-space:nowrap\'>Código</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;min-width:240px\'>Descripción del Artículo</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:50px\'>Cant.</th><th style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:60px\'>Unidad</th></tr></thead>";';
-  S+='  Object.keys(gruposProy2).forEach(function(pk){';
-  S+='    h+="<div style=\'margin:20px 0 8px\'><span style=\'font-size:14px;font-weight:800;color:#1e3a5f;border-bottom:2px solid #0369a1;padding-bottom:4px\'>🏗 Proyecto: "+pk+"</span></div>";';
-  S+='    gruposProy2[pk].forEach(function(ped){';
-  S+='      var rows=grupos[ped];var tblRows="";';
-  S+='      rows.forEach(function(r,idx){';
-  S+='        var bg=idx%2===0?"#ffffff":"#f0f9ff";';
-  S+='        tblRows+="<tr style=\'background:"+bg+"\'><td style=\'padding:9px 12px;border:1px solid #bae6fd;text-align:center;color:#64748b;font-size:13px;width:30px\'>"+(idx+1)+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:600;font-size:13px;white-space:nowrap\'>"+r.cod+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;font-size:13px;min-width:240px\'>"+r.prod+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;text-align:center;font-weight:700;font-size:13px;width:50px\'>"+r.cant+"</td><td style=\'padding:9px 12px;border:1px solid #bae6fd;font-size:13px;width:60px\'>"+(r.unid||"—")+"</td></tr>";';
-  S+='      });';
-  S+='      h+="<p style=\'margin:12px 0 4px;font-size:12px;font-weight:700;color:#0369a1\'>Pedido N° "+ped+"</p>";';
-  S+='      h+="<table style=\'border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-bottom:8px\'>"+THEAD2+"<tbody>"+tblRows+"</tbody></table>";';
-  S+='    });';
-  S+='  });';
-  S+='  h+="<p style=\'margin-top:18px\'>Para poder avanzar con la evaluación interna y procesar la compra a tiempo, le agradeceremos enviarnos su propuesta comercial detallando los siguientes puntos:</p>";';
-  S+='  h+="<ul><li>Estructura de precios: especificar precio unitario e indicar si los valores incluyen o no el IGV.</li><li>Moneda: indicar la divisa de facturación (soles o dólares).</li><li>Plazo de entrega: días estimados para la entrega del producto una vez confirmada la Orden de Compra.</li><li>Condición de pago: indicar la forma de pago solicitada.</li><li>Vigencia: período de validez de los precios cotizados.</li></ul>";';
-  S+='  h+="<p>Le agradeceremos hacernos llegar la cotización a más tardar el <strong>[FECHA LÍMITE]</strong> hasta las 17:00 horas, de manera que podamos incluir su propuesta en el cuadro comparativo correspondiente.</p>";';
-  S+='  h+="<p>Quedamos atentos a sus comentarios y, ante cualquier consulta o duda técnica, estamos a su entera disposición.</p>";';
-  S+='  h+="<p>Desde ya, agradecemos el constante soporte que nos brindan como socios estratégicos.</p>";';
-  S+='  h+="<p>Saludos cordiales,<br><strong>Área de Compras — FRIOPACKING S.A.</strong></p>";';
-  S+='  h+="</div>";';
-  S+='  h+="<script>";';
-  S+='  h+="function copiarImagen(){";';
-  S+='  h+="  var el=document.getElementById(\'contenido-correo\');";';
-  S+='  h+="  html2canvas(el,{scale:2,backgroundColor:\'#ffffff\'}).then(function(canvas){";';
-  S+='  h+="    canvas.toBlob(function(blob){";';
-  S+='  h+="      try{";';
-  S+='  h+="        var ci=new ClipboardItem({\'image/png\':blob});";';
-  S+='  h+="        navigator.clipboard.write([ci]).then(function(){";';
-  S+='  h+="          var t=document.getElementById(\'toast\');t.style.display=\'block\';setTimeout(function(){t.style.display=\'none\';},3000);";';
-  S+='  h+="        });";';
-  S+='  h+="      }catch(e){";';
-  S+='  h+="        var url=canvas.toDataURL();var a=document.createElement(\'a\');a.href=url;a.download=\'cotizacion.png\';a.click();";';
-  S+='  h+="      }";';
-  S+='  h+="    },\'image/png\');";';
-  S+='  h+="  });";';
-  S+='  h+="}";';
-  S+='  h+="<\\/script>";';
-  S+='  h+="</body></html>";';
-  S+='  w.document.write(h);w.document.close();w.focus();';
-  S+='}';
-  S+='function limpiarSeleccion(){';
-  S+='  sel.clear();';
-  S+='  document.querySelectorAll(".row-cb").forEach(function(cb){cb.checked=false;});';
-  S+='  var hdr=document.getElementById("cb-all");if(hdr)hdr.checked=false;';
-  S+='  closeConsolidar();';
-  S+='  applyFilters();';
-  S+='}';
-
-  // ── MODAL EXPORTAR ───────────────────────────────────────────────────────
-  S+='var _pdfUrls=[null,null,null];';
-  S+='function abrirModalExport(){';
-  S+='  var it=sel.size>0?DATA.filter(function(r){return sel.has(r.i);}):visibleData;';
-  S+='  if(!it.length){alert("No hay ítems para exportar.");return;}';
-  S+='  window._exportIt=it;';
-  S+='  var _cns=(window.opener&&window.opener.D&&window.opener.D.consultas)?window.opener.D.consultas:[];';
-  S+='  window._exportPH=it.map(function(r){';
-  S+='    var ph=null;';
-  S+='    for(var ci=0;ci<_cns.length;ci++){';
-  S+='      if(_cns[ci].codigo===(r.cod||"")){var _v=Number(_cns[ci].valor);if(!isNaN(_v)&&_v>0){ph=_cns[ci];break;}}';
-  S+='    }';
-  S+='    if(!ph)return{txt:"—",fec:"—"};';
-  S+='    var mon=(String(ph.moneda||"").toUpperCase().indexOf("USD")>=0||ph.moneda==="US$")?"US$ ":"S/ ";';
-  S+='    return{txt:mon+Number(ph.valor).toFixed(2),fec:ph.fecha||"—"};';
-  S+='  });';
-  S+='  construirTablaPrecio(it);';
-  S+='  document.getElementById("me-bg").style.display="flex";';
-  S+='  var lbl=document.getElementById("tc-fuente");';
-  S+='  if(lbl)lbl.textContent="Actualizando TC...";';
-  S+='  fetch("https://open.er-api.com/v6/latest/USD")';
-  S+='    .then(function(r){return r.json();})';
-  S+='    .then(function(d){';
-  S+='      if(d.rates&&d.rates.PEN){';
-  S+='        var tc=Math.round(d.rates.PEN*1000)/1000;';
-  S+='        var e1=document.getElementById("me-tc");var e2=document.getElementById("me-tc2");';
-  S+='        if(e1)e1.value=tc;if(e2)e2.value=tc;';
-  S+='        var today=new Date();var dd=today.getDate().toString().padStart(2,"0");var mm=(today.getMonth()+1).toString().padStart(2,"0");var yy=today.getFullYear();';
-  S+='        if(lbl)lbl.textContent="TC del "+dd+"/"+mm+"/"+yy+" (SBS/BCRP referencial)";';
-  S+='      }';
-  S+='    })';
-  S+='    .catch(function(){if(lbl)lbl.textContent="No se pudo obtener TC automático";});';
-  S+='}';
-
-  S+='function cerrarModalExport(){document.getElementById("me-bg").style.display="none";}';
-  S+='function switchTabExport(n){';
-  S+='  ["me-c1","me-c2"].forEach(function(id,i){document.getElementById(id).style.display=(i+1===n)?"block":"none";});';
-  S+='  ["me-t1","me-t2"].forEach(function(id,i){var a=i+1===n;document.getElementById(id).style.background=a?"#1d4ed8":"#334155";document.getElementById(id).style.color=a?"#fff":"#94a3b8";});';
-  S+='}';
-  S+='function triggerPDF(p){document.getElementById("me-pf"+p).click();}';
-  S+='function adjuntarPDF(p){';
-  S+='  var inp=document.getElementById("me-pf"+p);';
-  S+='  if(!inp||!inp.files||!inp.files[0])return;';
-  S+='  var f=inp.files[0];';
-  S+='  if(_pdfUrls[p])URL.revokeObjectURL(_pdfUrls[p]);';
-  S+='  _pdfUrls[p]=URL.createObjectURL(f);';
-  S+='  document.getElementById("me-pfn"+p).textContent=f.name;';
-  S+='  var pi=document.getElementById("me-pi"+p);pi.style.cssText="display:flex;align-items:center;gap:6px;margin-top:8px";';
-  S+='  extraerPreciosPDF(p,f);';
-  S+='}';
-  S+='function verPDF(p){if(_pdfUrls[p])window.open(_pdfUrls[p],"_blank");}';
-  S+='function normTxt(t){return t.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\\s+/g," ").trim();}';
-  S+='function similaridad(a,b){';
-  S+='  var wa=normTxt(a).split(" ").filter(function(x){return x.length>2;});';
-  S+='  var wb=normTxt(b);';
-  S+='  var hits=wa.filter(function(w){return wb.indexOf(w)>=0;}).length;';
-  S+='  return wa.length?hits/wa.length:0;';
-  S+='}';
-  S+='function extraerPreciosPDF(p,file){';
-  S+='  if(typeof pdfjsLib==="undefined"){_ldScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",function(){extraerPreciosPDF(p,file);});return;}';
-  S+='  pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";';
-  S+='  var statusEl=document.getElementById("me-pfn"+p);';
-  S+='  statusEl.textContent="⏳ Leyendo PDF...";';
-  S+='  var reader=new FileReader();';
-  S+='  reader.onload=function(e){';
-  S+='    pdfjsLib.getDocument({data:e.target.result}).promise.then(function(pdf){';
-  S+='      var pages=[];';
-  S+='      for(var pg=1;pg<=pdf.numPages;pg++)pages.push(pg);';
-  S+='      return Promise.all(pages.map(function(n){return pdf.getPage(n).then(function(page){return page.getTextContent();});}));';
-  S+='    }).then(function(contents){';
-  // Extraer todos los items de texto con su posición Y aproximada
-  S+='      var items=[];';
-  S+='      contents.forEach(function(c,pi2){';
-  S+='        c.items.forEach(function(it){items.push({str:it.str,y:pi2*10000+(it.transform?it.transform[5]:0)});});';
-  S+='      });';
-  // Construir líneas agrupando items con Y similar
-  S+='      items.sort(function(a,b){return b.y-a.y;});';
-  S+='      var lines=[],curY=null,curLine=[];';
-  S+='      items.forEach(function(it){';
-  S+='        if(curY===null||Math.abs(it.y-curY)>4){if(curLine.length)lines.push(curLine.map(function(x){return x.str;}).join(" "));curLine=[it];curY=it.y;}';
-  S+='        else curLine.push(it);';
-  S+='      });';
-  S+='      if(curLine.length)lines.push(curLine.map(function(x){return x.str;}).join(" "));';
-  // Patrón de precio: número con punto/coma decimal
-  S+='      var numRe=/(?<![\\d,])(\\d{1,3}(?:[,]\\d{3})*[.]\\d{2,4}|\\d{1,3}(?:[.]\\d{3})*[,]\\d{2,4}|\\d+[.,]\\d{2,4})(?![\\d.,])/g;';
-  S+='      function parseNum(s){return parseFloat(s.replace(/,(?=\\d{3})/g,"").replace(/\\.(?=\\d{3})/g,"").replace(",","."));}';
-  S+='      var it2=window._exportIt||[];';
-  S+='      var encontrados=0;';
-  // Pre-construir corpus: línea → palabras normalizadas
-  S+='      var corpus=lines.map(function(ln){return normTxt(ln);});';
-  S+='      it2.forEach(function(row,ri){';
-  S+='        var desc=row.prod||"";';
-  S+='        var cant=parseFloat(row.cant)||0;';
-  S+='        var cod=normTxt(row.cod||"");';
-  // Buscar la línea con mayor similitud — también considera código de producto
-  S+='        var bestScore=0,bestLine=-1;';
-  S+='        corpus.forEach(function(ln,li){';
-  S+='          if(ln.length<3)return;';
-  S+='          var sc=similaridad(desc,ln);';
-  S+='          if(cod.length>3&&ln.indexOf(cod)>=0)sc=Math.max(sc,0.8);';
-  S+='          if(sc>bestScore){bestScore=sc;bestLine=li;}';
-  S+='        });';
-  S+='        if(bestScore<0.2)return;';
-  // Buscar números en la línea hallada y hasta 5 líneas siguientes
-  S+='        var candidatos=[];';
-  S+='        for(var lx=bestLine;lx<=Math.min(bestLine+5,lines.length-1);lx++){';
-  S+='          var ms=lines[lx].match(numRe);';
-  S+='          if(ms)ms.forEach(function(m){';
-  S+='            var v=parseNum(m);';
-  // Excluir: 0, negativos, > 500000, números de ítem (enteros 1-200), cantidad exacta
-  S+='            if(v<=0.01||v>500000)return;';
-  S+='            if(Math.abs(v-cant)<0.01)return;';
-  S+='            if(Number.isInteger(v)&&v<=200&&v===Math.round(v))return;';
-  S+='            candidatos.push(v);';
-  S+='          });';
-  S+='        }';
-  S+='        if(!candidatos.length)return;';
-  // Preferir el valor con decimal .xx que más se repita o el primero razonable
-  S+='        candidatos.sort(function(a,b){return a-b;});';
-  // Descartar outliers extremos (> 10x el menor)
-  S+='        var base=candidatos[0];';
-  S+='        candidatos=candidatos.filter(function(v){return v<=base*20;});';
-  S+='        var pu=candidatos[0];';
-  S+='        var inpS=document.querySelector("[data-item=\'"+ri+"\'][data-prov=\'"+p+"\'][data-cur=\'S\']");';
-  S+='        if(inpS){inpS.value=pu.toFixed(2);inpS.style.borderColor="#16a34a";inpS.style.borderWidth="2px";inpS.style.color="#1e293b";inpS.title="✅ Auto-detectado del PDF — verifica antes de generar";encontrados++;}';
-  S+='      });';
-  S+='      statusEl.textContent=file.name+(encontrados?" ✅ "+encontrados+" precios detectados":" ⚠️ sin coincidencias");';
-  S+='    }).catch(function(err){statusEl.textContent=file.name+" ⚠️ Error al leer PDF";console.error(err);});';
-  S+='  };';
-  S+='  reader.readAsArrayBuffer(file);';
-  S+='}';
-
-  S+='function construirTablaPrecio(items){';
-  S+='  var cls=["#1d4ed8","#22c55e","#7c3aed","#d97706","#be123c","#0e7490"];';
-  S+='  var clsBg=["#eff6ff","#f0fdf4","#faf5ff","#fffbeb","#fff1f2","#f0fdfa"];';
-  S+='  var clsBd=["#bfdbfe","#bbf7d0","#ddd6fe","#fde68a","#fecdd3","#99f6e4"];';
-  S+='  var pn=[0,1,2,3,4,5].map(function(p){var el=document.getElementById("me-pn"+p);return(el&&el.value.trim())||("PROVEEDOR "+(p+1));});';
-  S+='  var h=\'<table style="width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed">\';';
-  S+='  h+=\'<colgroup><col style="width:40px"><col style="width:110px"><col><col style="width:65px"><col style="width:55px">\';';
-  S+='  for(var q=0;q<6;q++)h+=\'<col style="width:130px"><col style="width:130px">\';';
-  S+='  h+=\'</colgroup>\';';
-  S+='  h+=\'<thead><tr style="background:#1e3a5f;position:sticky;top:0;z-index:2">\';';
-  S+='  h+=\'<th style="padding:12px 6px;color:#93c5fd;text-align:center;font-size:12px">#</th>\';';
-  S+='  h+=\'<th style="padding:12px 8px;color:#bfdbfe;text-align:left;font-size:12px;font-weight:700;letter-spacing:.3px">CÓDIGO</th>\';';
-  S+='  h+=\'<th style="padding:12px 12px;color:#fff;text-align:left;font-size:13px;font-weight:700">DESCRIPCIÓN</th>\';';
-  S+='  h+=\'<th style="padding:12px 6px;color:#bfdbfe;text-align:center;font-size:12px;font-weight:700">CANT.</th>\';';
-  S+='  h+=\'<th style="padding:12px 6px;color:#bfdbfe;text-align:center;font-size:12px;font-weight:700">UND</th>\';';
-  S+='  for(var q=0;q<6;q++){h+=\'<th colspan="2" style="padding:12px 6px;color:\'+cls[q]+\';text-align:center;border-left:3px solid \'+cls[q]+\';background:\'+clsBg[q]+\';font-size:13px;font-weight:800;letter-spacing:.4px">\'+pn[q]+\'</th>\';}';
-  S+='  h+=\'</tr><tr style="background:#f8fafc;position:sticky;top:47px;z-index:2;border-bottom:2px solid #e2e8f0">\';';
-  S+='  h+=\'<th colspan="5" style="padding:5px"></th>\';';
-  S+='  for(var q=0;q<6;q++){h+=\'<th style="padding:8px 6px;color:\'+cls[q]+\';font-size:12px;font-weight:700;text-align:center;border-left:3px solid \'+cls[q]+\';background:\'+clsBg[q]+\'">P.U. S/</th><th style="padding:8px 6px;color:\'+cls[q]+\';font-size:12px;font-weight:700;text-align:center;background:\'+clsBg[q]+\'">P.U. US$</th>\';}';
-  S+='  h+=\'</tr></thead><tbody>\';';
-  S+='  items.forEach(function(r,i){';
-  S+='    var bg=i%2===0?"#ffffff":"#f8fafc";';
-  S+='    h+=\'<tr style="background:\'+bg+\';border-bottom:1px solid #e2e8f0">\';';
-  S+='    h+=\'<td style="color:#94a3b8;padding:11px 6px;text-align:center;font-size:13px;font-weight:700;border-right:1px solid #e2e8f0">\'+(i+1)+\'</td>\';';
-  S+='    h+=\'<td style="color:#64748b;padding:11px 8px;font-size:12px;font-family:monospace;white-space:nowrap" title="\'+esc(r.cod||"")+\'">\'+esc(r.cod||"—")+\'</td>\';';
-  S+='    h+=\'<td style="color:#1e293b;padding:11px 12px;font-size:14px;font-weight:500;line-height:1.5;white-space:normal;word-wrap:break-word;min-width:200px" title="\'+esc(r.prod||"")+\'">\'+esc(r.prod||"—")+\'</td>\';';
-  S+='    h+=\'<td style="color:#0f172a;padding:11px 6px;text-align:center;font-weight:800;font-size:15px">\'+Number(r.cant||0).toLocaleString()+\'</td>\';';
-  S+='    h+=\'<td style="color:#475569;padding:11px 6px;text-align:center;font-size:13px;font-weight:600">\'+esc(r.unid||"")+\'</td>\';';
-  S+='    for(var p=0;p<6;p++){';
-  S+='      h+=\'<td style="padding:6px 5px;border-left:3px solid \'+cls[p]+\';background:\'+clsBg[p]+\'">\';';
-  S+='      h+=\'<input type="number" data-item="\'+i+\'" data-prov="\'+p+\'" data-cur="S" step="0.01" min="0" placeholder="—" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#fff;border:1px solid \'+clsBd[p]+\';border-radius:6px;color:#1e293b;font-size:14px;font-weight:600;text-align:right;font-family:monospace;outline:none">\';';
-  S+='      h+=\'</td>\';';
-  S+='      h+=\'<td style="padding:6px 5px;background:\'+clsBg[p]+\'">\';';
-  S+='      h+=\'<input type="number" data-item="\'+i+\'" data-prov="\'+p+\'" data-cur="D" step="0.01" min="0" placeholder="—" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#fff;border:1px solid \'+clsBd[p]+\';border-radius:6px;color:#1e293b;font-size:14px;font-weight:600;text-align:right;font-family:monospace;outline:none">\';';
-  S+='      h+=\'</td>\';';
-  S+='    }';
-  S+='    h+=\'</tr>\';';
-  S+='  });';
-  S+='  h+=\'</tbody></table>\';';
-  S+='  document.getElementById("me-tbl-wrap").innerHTML=h;';
-  S+='}';
-  S+='function exportarExcelConDatos(){';
-  S+='  var it=window._exportIt;';
-  S+='  if(!it||!it.length){alert("No hay ítems.");return;}';
-  S+='  var tc=parseFloat(document.getElementById("me-tc2").value)||3.75;';
-  S+='  var pNames=[0,1,2,3,4,5].map(function(p){return(document.getElementById("me-pn"+p).value||"").trim()||("PROVEEDOR "+(p+1));});';
-  S+='  var precios=it.map(function(r,i){return[0,1,2,3,4,5].map(function(p){';
-  S+='    var sEl=document.querySelector("[data-item=\'"+i+"\'][data-prov=\'"+p+"\'][data-cur=\'S\']");';
-  S+='    var dEl=document.querySelector("[data-item=\'"+i+"\'][data-prov=\'"+p+"\'][data-cur=\'D\']");';
-  S+='    var sv=sEl&&sEl.value?parseFloat(sEl.value):null;var dv=dEl&&dEl.value?parseFloat(dEl.value):null;';
-  S+='    return{puS:(sv!==null&&sv>0)?sv:null,puD:(dv!==null&&dv>0)?dv:null};';
-  S+='  });});';
-  S+='  exportarExcel({tc:tc,provNames:pNames,precios:precios});';
-  S+='}';
-  S+='applyFilters();';
-  S+='setTimeout(function(){try{_ldScript("https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js",function(){if(typeof JSZip==="undefined")_ldScript("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",function(){});});}catch(e){}},800);';
-  S+='<\/script>';
-  S+='<div id="me-bg" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:8000;align-items:center;justify-content:center;padding:4px" onclick="if(event.target.id===\'me-bg\')cerrarModalExport()">';
-  S+='<div style="background:#f0f4f8;border-radius:14px;width:99vw;max-width:1700px;height:97vh;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.4)">';
-  // Header
-  S+='<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 28px;background:#1e3a5f;border-radius:14px 14px 0 0;flex-shrink:0">';
-  S+='<div><div style="font-weight:800;font-size:18px;color:#ffffff">📊 Exportar Cuadro Comparativo de Cotizaciones</div>';
-  S+='<div style="font-size:13px;color:#93c5fd;margin-top:3px">FRIOPACKING S.A. — Área de Compras</div></div>';
-  S+='<button onclick="cerrarModalExport()" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;cursor:pointer;line-height:1">✕</button>';
-  S+='</div>';
-  // Tabs
-  S+='<div style="display:flex;background:#1e3a5f;padding:0 28px;flex-shrink:0">';
-  S+='<button id="me-t1" onclick="switchTabExport(1)" style="padding:12px 24px;border:none;border-radius:8px 8px 0 0;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:#2563eb;color:#fff;margin-right:6px;margin-top:10px">📋 Modo Manual</button>';
-  S+='<button id="me-t2" onclick="switchTabExport(2)" style="padding:12px 24px;border:none;border-radius:8px 8px 0 0;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:rgba(255,255,255,.1);color:#bfdbfe;margin-top:10px">📎 Adjuntar PDFs de Proveedores</button>';
-  S+='</div>';
-  // Body
-  S+='<div style="overflow-y:auto;flex:1;padding:28px;background:#f0f4f8">';
-  // TAB 1
-  S+='<div id="me-c1">';
-  S+='<p style="color:#475569;font-size:14px;margin:0 0 22px">Genera el cuadro comparativo con los ítems seleccionados. Abre el Excel descargado e ingresa los precios de cada proveedor directamente en el archivo.</p>';
-  S+='<div style="margin-bottom:18px;display:flex;align-items:center;gap:12px">';
-  S+='<span style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px">N° de Proveedores:</span>';
-  S+='<div style="display:flex;gap:6px">';
-  S+='<button type="button" onclick="setNProv(2)" id="np-2" style="width:36px;height:36px;border-radius:50%;border:2px solid #cbd5e1;background:#fff;font-weight:700;font-size:14px;cursor:pointer;color:#334155" title="2 proveedores">2</button>';
-  S+='<button type="button" onclick="setNProv(3)" id="np-3" style="width:36px;height:36px;border-radius:50%;border:2px solid #cbd5e1;background:#fff;font-weight:700;font-size:14px;cursor:pointer;color:#334155" title="3 proveedores">3</button>';
-  S+='<button type="button" onclick="setNProv(4)" id="np-4" style="width:36px;height:36px;border-radius:50%;border:2px solid #cbd5e1;background:#fff;font-weight:700;font-size:14px;cursor:pointer;color:#334155" title="4 proveedores">4</button>';
-  S+='<button type="button" onclick="setNProv(5)" id="np-5" style="width:36px;height:36px;border-radius:50%;border:2px solid #cbd5e1;background:#fff;font-weight:700;font-size:14px;cursor:pointer;color:#334155" title="5 proveedores">5</button>';
-  S+='<button type="button" onclick="setNProv(6)" id="np-6" style="width:36px;height:36px;border-radius:50%;border:2px solid #1d4ed8;background:#1d4ed8;font-weight:700;font-size:14px;cursor:pointer;color:#fff" title="6 proveedores">6</button>';
-  S+='</div></div>';
-  S+='<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:26px">';
-  S+='<div><label style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">TC S/ × US$</label>';
-  S+='<input id="me-tc" type="number" value="3.75" step="0.01" min="1" style="width:110px;padding:10px 12px;background:#fff;border:2px solid #d97706;border-radius:8px;color:#92400e;font-size:16px;font-weight:700"><span id="tc-fuente" style="display:block;font-size:10px;color:#94a3b8;margin-top:3px">Actualizando...</span></div>';
-  S+='<div><label style="font-size:12px;color:#1d4ed8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor 1</label>';
-  S+='<input id="me-n1" type="text" placeholder="PROVEEDOR 1" style="width:210px;padding:10px 12px;background:#fff;border:2px solid #1d4ed8;border-radius:8px;color:#1e293b;font-size:14px"></div>';
-  S+='<div><label style="font-size:12px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor 2</label>';
-  S+='<input id="me-n2" type="text" placeholder="PROVEEDOR 2" style="width:210px;padding:10px 12px;background:#fff;border:2px solid #16a34a;border-radius:8px;color:#1e293b;font-size:14px"></div>';
-  S+='<div id="np-div-3"><label style="font-size:12px;color:#7c3aed;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor 3</label>';
-  S+='<input id="me-n3" type="text" placeholder="PROVEEDOR 3" style="width:210px;padding:10px 12px;background:#fff;border:2px solid #7c3aed;border-radius:8px;color:#1e293b;font-size:14px"></div>';
-  S+='<div id="np-div-4"><label style="font-size:12px;color:#d97706;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor 4</label>';
-  S+='<input id="me-n4" type="text" placeholder="PROVEEDOR 4" style="width:210px;padding:10px 12px;background:#fff;border:2px solid #d97706;border-radius:8px;color:#1e293b;font-size:14px"></div>';
-  S+='<div id="np-div-5"><label style="font-size:12px;color:#be123c;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor 5</label>';
-  S+='<input id="me-n5" type="text" placeholder="PROVEEDOR 5" style="width:210px;padding:10px 12px;background:#fff;border:2px solid #be123c;border-radius:8px;color:#1e293b;font-size:14px"></div>';
-  S+='<div id="np-div-6"><label style="font-size:12px;color:#0e7490;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor 6</label>';
-  S+='<input id="me-n6" type="text" placeholder="PROVEEDOR 6" style="width:210px;padding:10px 12px;background:#fff;border:2px solid #0e7490;border-radius:8px;color:#1e293b;font-size:14px"></div>';
-  S+='</div>';
-  S+='<button id="btn-genxl" onclick="if(typeof exportarExcel!==\'function\'){alert(\'Error: exportarExcel no cargado. Espere 3 segundos y reintente.\');return;}this.disabled=true;this.textContent=\'⏳ Generando...\';exportarExcel({});" style="background:linear-gradient(135deg,#166534,#16a34a);color:#fff;border:none;border-radius:10px;padding:13px 32px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(22,163,74,.35)">📥 Generar Excel vacío</button>';
-  S+='</div>';
-  // TAB 2
-  S+='<div id="me-c2" style="display:none">';
-  S+='<p style="color:#475569;font-size:14px;margin:0 0 20px">Adjunta los PDFs de cada proveedor para consultarlos como referencia. Ingresa los precios en la tabla y genera el comparativo ya llenado.</p>';
-  S+='<div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:20px">';
-  S+='<div><label style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">TC S/ × US$</label>';
-  S+='<input id="me-tc2" type="number" value="3.75" step="0.01" min="1" style="width:110px;padding:10px 12px;background:#fff;border:2px solid #d97706;border-radius:8px;color:#92400e;font-size:16px;font-weight:700"></div>';
-  S+='</div>';
-  S+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
-  // Card P1
-  S+='<div style="background:#fff;border:2px solid #bfdbfe;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(29,78,216,.08)">';
-  S+='<div style="font-size:13px;color:#1d4ed8;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">▸ Proveedor 1</div>';
-  S+='<input id="me-pn0" type="text" placeholder="Nombre del proveedor" style="width:100%;box-sizing:border-box;padding:9px 11px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;color:#1e293b;font-size:13px;margin-bottom:10px">';
-  S+='<input id="me-pf0" type="file" accept=".pdf" style="display:none" onchange="adjuntarPDF(0)">';
-  S+='<button onclick="triggerPDF(0)" style="width:100%;padding:9px;background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;color:#1d4ed8;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📎 Adjuntar PDF</button>';
-  S+='<div id="me-pi0" style="display:none;align-items:center;gap:8px;margin-top:10px"><span id="me-pfn0" style="flex:1;font-size:12px;color:#16a34a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600"></span>';
-  S+='<button onclick="verPDF(0)" style="background:#1d4ed8;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">👁 Ver</button></div>';
-  S+='</div>';
-  // Card P2
-  S+='<div style="background:#fff;border:2px solid #bbf7d0;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(22,163,74,.08)">';
-  S+='<div style="font-size:13px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">▸ Proveedor 2</div>';
-  S+='<input id="me-pn1" type="text" placeholder="Nombre del proveedor" style="width:100%;box-sizing:border-box;padding:9px 11px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;color:#1e293b;font-size:13px;margin-bottom:10px">';
-  S+='<input id="me-pf1" type="file" accept=".pdf" style="display:none" onchange="adjuntarPDF(1)">';
-  S+='<button onclick="triggerPDF(1)" style="width:100%;padding:9px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;color:#16a34a;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📎 Adjuntar PDF</button>';
-  S+='<div id="me-pi1" style="display:none;align-items:center;gap:8px;margin-top:10px"><span id="me-pfn1" style="flex:1;font-size:12px;color:#16a34a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600"></span>';
-  S+='<button onclick="verPDF(1)" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">👁 Ver</button></div>';
-  S+='</div>';
-  // Card P3
-  S+='<div style="background:#fff;border:2px solid #ddd6fe;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(124,58,237,.08)">';
-  S+='<div style="font-size:13px;color:#7c3aed;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">▸ Proveedor 3</div>';
-  S+='<input id="me-pn2" type="text" placeholder="Nombre del proveedor" style="width:100%;box-sizing:border-box;padding:9px 11px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;color:#1e293b;font-size:13px;margin-bottom:10px">';
-  S+='<input id="me-pf2" type="file" accept=".pdf" style="display:none" onchange="adjuntarPDF(2)">';
-  S+='<button onclick="triggerPDF(2)" style="width:100%;padding:9px;background:#faf5ff;border:1px solid #c4b5fd;border-radius:8px;color:#7c3aed;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📎 Adjuntar PDF</button>';
-  S+='<div id="me-pi2" style="display:none;align-items:center;gap:8px;margin-top:10px"><span id="me-pfn2" style="flex:1;font-size:12px;color:#16a34a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600"></span>';
-  S+='<button onclick="verPDF(2)" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">👁 Ver</button></div>';
-  S+='</div>';
-  S+='<div style="background:#fff;border:2px solid #fde68a;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(217,119,6,.08)">';
-  S+='<div style="font-size:13px;color:#d97706;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">▸ Proveedor 4</div>';
-  S+='<input id="me-pn3" type="text" placeholder="Nombre del proveedor" style="width:100%;box-sizing:border-box;padding:9px 11px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;color:#1e293b;font-size:13px;margin-bottom:10px">';
-  S+='<input id="me-pf3" type="file" accept=".pdf" style="display:none" onchange="adjuntarPDF(3)">';
-  S+='<button onclick="triggerPDF(3)" style="width:100%;padding:9px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;color:#d97706;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📎 Adjuntar PDF</button>';
-  S+='<div id="me-pi3" style="display:none;align-items:center;gap:8px;margin-top:10px"><span id="me-pfn3" style="flex:1;font-size:12px;color:#16a34a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600"></span>';
-  S+='<button onclick="verPDF(3)" style="background:#d97706;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">👁 Ver</button></div>';
-  S+='</div>';
-  S+='<div style="background:#fff;border:2px solid #fecdd3;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(190,18,60,.08)">';
-  S+='<div style="font-size:13px;color:#be123c;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">▸ Proveedor 5</div>';
-  S+='<input id="me-pn4" type="text" placeholder="Nombre del proveedor" style="width:100%;box-sizing:border-box;padding:9px 11px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;color:#1e293b;font-size:13px;margin-bottom:10px">';
-  S+='<input id="me-pf4" type="file" accept=".pdf" style="display:none" onchange="adjuntarPDF(4)">';
-  S+='<button onclick="triggerPDF(4)" style="width:100%;padding:9px;background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;color:#be123c;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📎 Adjuntar PDF</button>';
-  S+='<div id="me-pi4" style="display:none;align-items:center;gap:8px;margin-top:10px"><span id="me-pfn4" style="flex:1;font-size:12px;color:#16a34a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600"></span>';
-  S+='<button onclick="verPDF(4)" style="background:#be123c;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">👁 Ver</button></div>';
-  S+='</div>';
-  S+='<div style="background:#fff;border:2px solid #99f6e4;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(14,116,144,.08)">';
-  S+='<div style="font-size:13px;color:#0e7490;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">▸ Proveedor 6</div>';
-  S+='<input id="me-pn5" type="text" placeholder="Nombre del proveedor" style="width:100%;box-sizing:border-box;padding:9px 11px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;color:#1e293b;font-size:13px;margin-bottom:10px">';
-  S+='<input id="me-pf5" type="file" accept=".pdf" style="display:none" onchange="adjuntarPDF(5)">';
-  S+='<button onclick="triggerPDF(5)" style="width:100%;padding:9px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;color:#0e7490;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📎 Adjuntar PDF</button>';
-  S+='<div id="me-pi5" style="display:none;align-items:center;gap:8px;margin-top:10px"><span id="me-pfn5" style="flex:1;font-size:12px;color:#16a34a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600"></span>';
-  S+='<button onclick="verPDF(5)" style="background:#0e7490;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">👁 Ver</button></div>';
-  S+='</div>';
-  S+='</div>';
-  S+='<div id="me-tbl-wrap" style="overflow-x:auto;border-radius:10px;border:1px solid #cbd5e1;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.06)"></div>';
-  S+='<button onclick="exportarExcelConDatos()" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;border:none;border-radius:10px;padding:13px 32px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(37,99,235,.35)">📊 Generar Comparativo Llenado</button>';
-  S+='</div>';
-  S+='</div>';
-  S+='</div>';
-  S+='</div>';
-  S+='</body></html>';
-  var w=window.open('','_blank','width=1200,height=800,scrollbars=yes,resizable=yes');
-  w.document.write(S);
-  w.document.close();
-  w.focus();
+/* ── Estilos y contenedores de los modales (se inyectan una sola vez) ── */
+function p3EnsureUI(){
+  if(document.getElementById('p3xstyles'))return;
+  var st=document.createElement('style');st.id='p3xstyles';
+  st.textContent=
+    '#modal-bg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px)}'+
+    '#modal-bg.open{display:flex}'+
+    '#modal-bg .modal{background:#fff;border-radius:16px;width:96%;max-width:1280px;max-height:94vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.25)}'+
+    '#modal-bg .modal-hdr{background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:18px 24px;display:flex;align-items:center;justify-content:space-between}'+
+    '#modal-bg .modal-hdr h3{color:#fff;font-size:15px;font-weight:700;margin:0}'+
+    '#modal-bg .modal-hdr-sub{color:rgba(255,255,255,.7);font-size:11px;margin-top:2px}'+
+    '#modal-bg .modal-close{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit}'+
+    '#modal-bg .modal-body{padding:20px 24px;overflow-y:auto;flex:1}'+
+    '#modal-bg .modal-footer{padding:14px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}'+
+    '#modal-bg .btn-sec{background:transparent;color:#94a3b8;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit}'+
+    '#modal-bg .btn-sec:hover{border-color:#dc2626;color:#dc2626}'+
+    '#modal-bg .btn-print{background:linear-gradient(135deg,#065f46,#16a34a);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}'+
+    '#modal-bg .cgroup{margin-bottom:18px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}'+
+    '#modal-bg .cgroup-hdr{background:#f0f7ff;border-bottom:1px solid #dbeafe;padding:10px 16px;display:flex;align-items:center;justify-content:space-between}'+
+    '#modal-bg .cgroup-hdr h4{font-size:12px;font-weight:700;color:#1e40af;margin:0}'+
+    '#modal-bg .cgroup-hdr span{font-size:11px;color:#64748b}'+
+    '#modal-bg .cgroup table{width:100%;border-collapse:collapse}'+
+    '#modal-bg .cgroup thead tr{background:linear-gradient(135deg,#1e3a8a,#2563eb)}'+
+    '#modal-bg .cgroup thead th{color:#fff;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:8px 9px;text-align:left;white-space:nowrap}'+
+    '#modal-bg .cgroup tbody td{padding:8px 9px;border-bottom:1px solid #e8edf3;vertical-align:middle;line-height:1.4;font-size:12px}'+
+    '#modal-bg .cgroup tbody tr.even{background:#fff}#modal-bg .cgroup tbody tr.odd{background:#f8fafc}'+
+    '#modal-bg .badge{display:inline-block;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700;white-space:nowrap;border:1px solid transparent}';
+  document.head.appendChild(st);
+  var wrap=document.createElement('div');
+  wrap.innerHTML=
+    '<div id="modal-bg" onclick="if(event.target===this)closeConsolidar()">'+
+    '<div class="modal"><div class="modal-hdr"><div><h3>📋 Consolidado de Cotización</h3>'+
+    '<div class="modal-hdr-sub">FRIOPACKING S.A. &nbsp;&middot;&nbsp; Pedidos seleccionados para cotizar</div></div>'+
+    '<button class="modal-close" onclick="closeConsolidar()">✕ Cerrar</button></div>'+
+    '<div class="modal-body" id="modal-body"></div>'+
+    '<div class="modal-footer"><button class="btn-sec" onclick="closeConsolidar()">Cerrar</button><button class="btn-sec" onclick="limpiarSeleccion()" style="color:#dc2626;border-color:#dc2626">🗑 Limpiar selección</button>'+
+    '<button onclick="enviarCorreo()" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✉ Enviar por correo</button>'+
+    '<button onclick="verCorreoFormateado()" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📧 Ver correo formateado</button>'+
+    '<button class="btn-print" onclick="printConsolidar()">🖨 Imprimir / Guardar PDF</button></div></div></div>';
+  while(wrap.firstChild)document.body.appendChild(wrap.firstChild);
+  p3EnsureExportModal();
 }
+
+/* ── Consolidado ── */
+function openConsolidar(){
+  p3EnsureUI();
+  var selRows=p3SelRows();
+  if(!selRows.length){alert('No hay pedidos para consolidar.');return;}
+  var now=new Date();
+  var genFecha=now.toLocaleDateString('es-PE',{day:'2-digit',month:'long',year:'numeric'})+' · '+now.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+  var groups={};
+  selRows.forEach(function(r){var k=r.respPed||'Sin asignar';if(!groups[k])groups[k]=[];groups[k].push(r);});
+  var body='';
+  Object.keys(groups).forEach(function(resp){
+    var rows=groups[resp];
+    var unid=Math.round(rows.reduce(function(s,r){return s+(r.cant||0);},0)).toLocaleString();
+    body+='<div class="cgroup"><div class="cgroup-hdr"><h4>👤 Resp. Pedido: '+esc(resp)+'</h4><span>'+rows.length+' pedido'+(rows.length>1?'s':'')+' &nbsp;&middot;&nbsp; '+unid+' unidades</span></div>';
+    body+='<table><thead><tr><th>N° Pedido</th><th>F. Pedido</th><th>Responsable</th><th>ID Proyecto</th><th>Proyecto</th><th>Código</th><th>Descripción</th><th>Cant.</th><th>Unid.</th><th>Estado</th></tr></thead><tbody>';
+    rows.forEach(function(r,i){
+      var c=ec(r.estado);
+      body+='<tr class="'+(i%2===0?'even':'odd')+'">';
+      body+='<td style="font-weight:700;color:#1e40af">'+esc(r.ped)+'</td>';
+      body+='<td style="font-size:11px">'+esc(r.fecha)+'</td>';
+      body+='<td style="font-size:11px">'+esc(r.resp)+'</td>';
+      body+='<td style="font-size:11px;color:#0891b2;font-weight:600;text-align:center">'+esc(r.idproy)+'</td>';
+      body+='<td style="font-size:11px">'+esc(r.proy)+'</td>';
+      body+='<td style="font-family:monospace;font-size:11px;color:#7c3aed;font-weight:600">'+esc(r.cod)+'</td>';
+      body+='<td style="font-size:11px">'+esc(r.prod)+'</td>';
+      body+='<td style="text-align:right;font-weight:700">'+Number(r.cant||0).toLocaleString()+'</td>';
+      body+='<td style="text-align:center;font-size:11px">'+esc(r.unid)+'</td>';
+      body+='<td style="text-align:center"><span class="badge" style="background:'+c+'20;color:'+c+';border-color:'+c+'55">'+esc(r.estado)+'</span></td>';
+      body+='</tr>';
+    });
+    body+='</tbody></table></div>';
+  });
+  var info='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1e40af"><strong>'+selRows.length+' pedidos consolidados</strong> &nbsp;&middot;&nbsp; '+Object.keys(groups).length+' responsable'+(Object.keys(groups).length>1?'s':'')+' &nbsp;&middot;&nbsp; Generado: '+genFecha+'</div>';
+  document.getElementById('modal-body').innerHTML=info+body;
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeConsolidar(){var m=document.getElementById('modal-bg');if(m)m.classList.remove('open');}
+function limpiarSeleccion(){p3sel.clear();closeConsolidar();renderP3Table();}
+function printConsolidar(){
+  var body=document.getElementById('modal-body');
+  if(!body||!body.innerHTML.trim()){alert('No hay contenido para imprimir.');return;}
+  var w=window.open('','_blank','width=900,height=700');
+  if(!w){alert('El navegador bloqueó la ventana emergente. Habilítala e intenta nuevamente.');return;}
+  var h='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Consolidado Cotización — FRIOPACKING</title><style>';
+  h+='body{font-family:"Segoe UI",sans-serif;font-size:12px;color:#1e293b;margin:24px 32px;}';
+  h+='.hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #0369a1;padding-bottom:12px;margin-bottom:20px;}';
+  h+='.hdr-logo{font-size:18px;font-weight:800;color:#0369a1;letter-spacing:1px;}';
+  h+='.hdr-sub{font-size:10px;color:#64748b;margin-top:2px;}';
+  h+='.hdr-date{font-size:10px;color:#64748b;text-align:right;}';
+  h+='table{width:100%;border-collapse:collapse;font-size:11px;}';
+  h+='th{background:#e0f2fe;color:#0369a1;font-weight:700;padding:7px 10px;text-align:left;border-bottom:2px solid #bae6fd;}';
+  h+='td{padding:6px 10px;border-bottom:1px solid #e2e8f0;}';
+  h+='tr:nth-child(even) td{background:#f8fafc;}';
+  h+='.cgroup{margin-bottom:24px;page-break-inside:avoid;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden}';
+  h+='.cgroup-hdr{background:#0369a1;color:#fff;padding:8px 14px;font-size:12px;font-weight:700}';
+  h+='.cgroup-hdr h4{margin:0;display:inline}.cgroup-hdr span{float:right;font-weight:400;font-size:10px}';
+  h+='.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;}';
+  h+='.footer{margin-top:28px;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:10px;}';
+  h+='@media print{@page{margin:15mm;}body{margin:0;}}';
+  h+='</style></head><body>';
+  var now=new Date();
+  var dd=now.getDate().toString().padStart(2,'0')+'/'+((now.getMonth()+1).toString().padStart(2,'0'))+'/'+now.getFullYear();
+  var hh=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  h+='<div class="hdr"><div><div class="hdr-logo">FRIOPACKING S.A.</div><div class="hdr-sub">Consolidado de Pedidos para Cotización</div></div><div class="hdr-date">Generado: '+dd+' '+hh+'</div></div>';
+  h+=body.innerHTML;
+  h+='<div class="footer">Documento generado automáticamente por el sistema de compras · FRIOPACKING S.A.</div>';
+  h+='</body></html>';
+  w.document.write(h);w.document.close();w.focus();
+  setTimeout(function(){w.print();},400);
+}
+
+/* ── Enviar correo de cotización (overlay con CCO de proveedores y fecha límite) ── */
+var _CC_COT_BASE='msihuairo@friopacking.pe;ccheca@friopacking.pe;plinares@friopacking.pe;jaltamirano@friopacking.pe;jpomez@friopacking.pe';
+var _CC_COT=_CC_COT_BASE;
+window._cotCcoList=[];
+function enviarCorreo(){
+  var items=p3AllRows().filter(function(r){return p3sel.has(r.i);});
+  if(!items.length){alert('No hay pedidos seleccionados.');return;}
+  _CC_COT=_CC_COT_BASE;
+  var _respsVistos=[];
+  items.forEach(function(r){
+    if(!r.resp||_respsVistos.indexOf(r.resp)>=0)return;
+    _respsVistos.push(r.resp);
+    var sup=(typeof buscarSupervisor==='function')?buscarSupervisor(r.resp):null;
+    if(sup&&sup.correo&&!_CC_COT.toLowerCase().includes(sup.correo))_CC_COT+=';'+sup.correo;
+  });
+  var grupos={};
+  items.forEach(function(r){var k=r.ped||'Sin pedido';if(!grupos[k])grupos[k]=[];grupos[k].push(r);});
+  var pedidos=Object.keys(grupos);
+  var asuntoParts=['Solicitud de Cotización - FRIOPACKING S.A.'];
+  pedidos.forEach(function(ped){
+    asuntoParts.push(ped);
+    var idp=grupos[ped][0].idproy||'';var pr=grupos[ped][0].proy||'';
+    if(idp)asuntoParts.push(idp);if(pr)asuntoParts.push(pr);
+  });
+  var asunto=asuntoParts.join(' // ');
+  var ov=document.getElementById('mail-overlay');
+  if(!ov){
+    ov=document.createElement('div');ov.id='mail-overlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(10,20,40,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+    var card=document.createElement('div');
+    card.style.cssText='background:#fff;border-radius:18px;width:580px;max-width:96vw;box-shadow:0 32px 90px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden';
+    var ccChips=_CC_COT.split(';').map(function(e){return '<span style="display:inline-flex;align-items:center;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin:2px 4px 2px 0">'+e.trim()+'</span>';}).join('');
+    var h2='<div style="background:linear-gradient(135deg,#1e3a5f 0%,#0369a1 100%);padding:22px 28px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0">';
+    h2+='<div><div style="color:#fff;font-size:16px;font-weight:700;letter-spacing:.2px">✉ Enviar Solicitud de Cotización</div><div style="color:#bfdbfe;font-size:12px;margin-top:4px">Complete los campos para generar el correo</div></div>';
+    h2+='<button onclick="document.getElementById(\'mail-overlay\').remove()" style="background:rgba(255,255,255,.18);border:none;color:#fff;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0">✕</button></div>';
+    var b2='<div style="padding:28px;display:flex;flex-direction:column;gap:18px">';
+    b2+='<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Para</div><div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:9px;padding:11px 16px;font-size:13px;color:#15803d;font-weight:700">📧 mlujan@friopacking.pe</div></div>';
+    b2+='<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Copia Oculta (CCO) — Proveedores <span style="color:#dc2626">*</span><span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:6px;text-transform:none">Escribe el nombre (si está registrado) o el correo, y presiona Enter</span></div><div id="cco-chip-box" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;border:2px solid #e2e8f0;border-radius:9px;padding:8px 12px;min-height:46px;cursor:text;transition:border .2s" onclick="document.getElementById(\'cco-input\').focus()"><input id="cco-input" list="dlProveedoresCot" type="text" placeholder="Nombre del proveedor o correo@proveedor.com" style="border:none;outline:none;font-size:13px;font-family:inherit;flex:1;min-width:180px;padding:3px 0" onkeydown="addCotChip(event)" onblur="addCotChipBlur()"/><datalist id="dlProveedoresCot">'+(D.proveedores||[]).filter(function(p){return p.correo;}).map(function(p){return '<option value="'+String(p.nombre).replace(/["\']/g,'')+'">';}).join('')+'</datalist></div></div>';
+    b2+='<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">CC (precargado)</div><div id="cc-precargado" style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px 14px;line-height:2.2">'+ccChips+'</div></div>';
+    b2+='<div><div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px">Fecha Límite de Cotización <span style="color:#dc2626">*</span></div><input id="cot-fecha" type="date" style="width:100%;padding:11px 16px;border:2px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border .2s;cursor:pointer" onfocus="this.style.borderColor=\'#0369a1\'" onblur="this.style.borderColor=\'#e2e8f0\'" onchange="chkCotForm()"/></div>';
+    b2+='<div style="display:flex;gap:12px;justify-content:flex-end;padding-top:4px"><button onclick="document.getElementById(\'mail-overlay\').remove()" style="padding:11px 26px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:#475569">Cancelar</button><button id="btn-send-cot" disabled onclick="dispararCorreoCot()" style="padding:11px 30px;background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;opacity:.4;display:flex;align-items:center;gap:8px">✉ Abrir Outlook</button></div>';
+    b2+='</div>';
+    card.innerHTML=h2+b2;
+    ov.appendChild(card);document.body.appendChild(ov);
+  }else{
+    var ccBox=document.getElementById('cc-precargado');
+    if(ccBox)ccBox.innerHTML=_CC_COT.split(';').map(function(e){return '<span style="display:inline-flex;align-items:center;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin:2px 4px 2px 0">'+e.trim()+'</span>';}).join('');
+  }
+  window._cotCcoList=[];
+  var box=document.getElementById('cco-chip-box');
+  if(box){Array.from(box.querySelectorAll('span')).forEach(function(s){s.remove();});document.getElementById('cco-input').value='';}
+  document.getElementById('btn-send-cot').disabled=true;document.getElementById('btn-send-cot').style.opacity='0.4';
+  ov.style.display='flex';
+  window._cotAsunto=asunto;window._cotGrupos=grupos;window._cotPedidos=pedidos;
+}
+function addCotChip(e){
+  if(e.key!=='Enter'&&e.key!==','&&e.key!==';')return;
+  e.preventDefault();
+  var val=document.getElementById('cco-input').value.trim().replace(/[,;]/g,'');
+  if(!val){document.getElementById('cco-input').value='';return;}
+  if(val.indexOf('@')<0&&typeof buscarProveedor==='function'){
+    var provMatch=buscarProveedor(null,val);
+    if(provMatch&&provMatch.correo)val=provMatch.correo;
+  }
+  if(window._cotCcoList.indexOf(val)>=0){document.getElementById('cco-input').value='';return;}
+  window._cotCcoList.push(val);
+  var chip=document.createElement('span');
+  chip.style.cssText='display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;font-size:12px;font-weight:600;padding:3px 10px 3px 12px;border-radius:20px;white-space:nowrap';
+  chip.innerHTML='📧 '+val+'<button onclick="removeCotChip(this,\''+val+'\')" style="background:none;border:none;cursor:pointer;color:#3b82f6;font-size:14px;line-height:1;padding:0 0 0 2px">✕</button>';
+  var box=document.getElementById('cco-chip-box');
+  box.insertBefore(chip,document.getElementById('cco-input'));
+  document.getElementById('cco-input').value='';
+  chkCotForm();
+}
+function addCotChipBlur(){
+  var val=document.getElementById('cco-input').value.trim();
+  if(val&&window._cotCcoList.indexOf(val)<0){
+    var fakeEv={key:'Enter',preventDefault:function(){}};addCotChip(fakeEv);
+  }
+}
+function removeCotChip(btn,email){
+  window._cotCcoList=window._cotCcoList.filter(function(e){return e!==email;});
+  btn.parentNode.remove();
+  chkCotForm();
+}
+function chkCotForm(){
+  var fecha=document.getElementById('cot-fecha').value.trim();
+  var btn=document.getElementById('btn-send-cot');
+  var ok=window._cotCcoList.length>0&&fecha;
+  btn.disabled=!ok;btn.style.opacity=ok?'1':'0.4';
+  var box=document.getElementById('cco-chip-box');
+  if(box)box.style.borderColor=window._cotCcoList.length>0?'#0369a1':'#e2e8f0';
+}
+function dispararCorreoCot(){
+  var cco=window._cotCcoList.join(';');
+  var fechaRaw=document.getElementById('cot-fecha').value.trim();
+  if(!cco||!fechaRaw)return;
+  var _dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  var _meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var _dp=fechaRaw.split('-');var _dObj=new Date(_dp[0],_dp[1]-1,_dp[2]);
+  var fechaLim=_dias[_dObj.getDay()]+' '+_dp[2]+' de '+_meses[_dObj.getMonth()]+' de '+_dp[0];
+  var grupos=window._cotGrupos;var pedidos=window._cotPedidos;var asunto=window._cotAsunto;
+  var L=[];
+  L.push('Estimado Proveedor,');
+  L.push('');
+  L.push('Reciba un cordial saludo de parte del equipo de Compras de FRIOPACKING S.A.');
+  L.push('');
+  L.push('Por medio del presente correo, nos ponemos en contacto con usted para solicitar su valioso apoyo con la cotización de los materiales detallados en las siguientes solicitudes de pedido:');
+  L.push('');
+  pedidos.forEach(function(ped){
+    L.push('Pedido N° '+ped+':');
+    grupos[ped].forEach(function(r,idx){
+      L.push('  '+(idx+1)+'. ['+r.cod+'] '+r.prod);
+      L.push('     Cantidad requerida: '+r.cant+' '+r.unid);
+    });
+    L.push('');
+  });
+  L.push('Para poder avanzar con la evaluación interna y procesar la compra a tiempo, le agradeceremos enviarnos su propuesta comercial detallando los siguientes puntos:');
+  L.push('');
+  L.push('  • Estructura de precios: especificar precio unitario e indicar si los valores incluyen o no el IGV.');
+  L.push('  • Moneda: indicar la divisa de facturación (soles o dólares).');
+  L.push('  • Plazo de entrega: días estimados para la entrega del producto una vez confirmada la Orden de Compra.');
+  L.push('  • Condición de pago: indicar la forma de pago solicitada.');
+  L.push('  • Vigencia: período de validez de los precios cotizados.');
+  L.push('');
+  L.push('Plazo de recepción: le agradeceremos hacernos llegar la cotización a más tardar el '+fechaLim+' hasta las 17:00 horas, de manera que podamos incluir su propuesta en el cuadro comparativo correspondiente.');
+  L.push('');
+  L.push('Quedamos atentos a sus comentarios y, ante cualquier consulta o duda técnica, estamos a su entera disposición.');
+  L.push('');
+  L.push('Desde ya, agradecemos el constante soporte que nos brindan como socios estratégicos.');
+  L.push('');
+  L.push('Saludos cordiales,');
+  L.push('Área de Compras — FRIOPACKING S.A.');
+  var cuerpo=L.join('\r\n');
+  var gruposProy={};
+  pedidos.forEach(function(ped){
+    var idp=grupos[ped][0].idproy||'';var pr=grupos[ped][0].proy||'Sin Proyecto';
+    var pk=(idp?idp+' — ':'')+pr;
+    if(!gruposProy[pk])gruposProy[pk]=[];
+    gruposProy[pk].push(ped);
+  });
+  var tablasTodas='';
+  var THEAD='<thead><tr style="background:#e0f2fe"><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:30px">#</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;white-space:nowrap">Código</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;min-width:240px">Descripción del Artículo</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:50px">Cant.</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:60px">Unidad</th></tr></thead>';
+  Object.keys(gruposProy).forEach(function(pk){
+    tablasTodas+='<div style="margin:20px 0 8px"><span style="font-size:14px;font-weight:800;color:#1e3a5f;border-bottom:2px solid #0369a1;padding-bottom:4px">🏗 Proyecto: '+pk+'</span></div>';
+    gruposProy[pk].forEach(function(ped){
+      var rows=grupos[ped];var tblRows='';
+      rows.forEach(function(r,idx){
+        var bg=idx%2===0?'#ffffff':'#f0f9ff';
+        tblRows+='<tr style="background:'+bg+'"><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;color:#64748b;font-size:13px;width:30px">'+(idx+1)+'</td><td style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:600;font-size:13px;white-space:nowrap">'+r.cod+'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;min-width:240px">'+r.prod+'</td><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;font-weight:700;font-size:13px;width:50px">'+r.cant+'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;width:60px">'+(r.unid||'—')+'</td></tr>';
+      });
+      tablasTodas+='<p style="margin:12px 0 4px;font-size:12px;font-weight:700;color:#0369a1">Pedido N° '+ped+'</p>';
+      tablasTodas+='<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-bottom:8px">'+THEAD+'<tbody>'+tblRows+'</tbody></table>';
+    });
+  });
+  var htmlCot='<div style="font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:2;color:#1e293b;max-width:760px">';
+  htmlCot+='<p>Estimado Proveedor,</p>';
+  htmlCot+='<p>Reciba un cordial saludo de parte del equipo de Compras de <strong>FRIOPACKING S.A.</strong></p>';
+  htmlCot+='<p>Por medio del presente correo, nos ponemos en contacto con usted para solicitar su valioso apoyo con la cotización de los materiales detallados en los siguientes pedidos:</p>';
+  htmlCot+=tablasTodas;
+  htmlCot+='<p style="margin-top:18px">Para poder avanzar con la evaluación interna y procesar la compra a tiempo, le agradeceremos enviarnos su propuesta comercial detallando los siguientes puntos:</p>';
+  htmlCot+='<ul><li>Estructura de precios: especificar precio unitario e indicar si los valores incluyen o no el IGV.</li><li>Moneda: indicar la divisa de facturación (soles o dólares).</li><li>Plazo de entrega: días estimados para la entrega del producto una vez confirmada la Orden de Compra.</li><li>Condición de pago: indicar la forma de pago solicitada.</li><li>Vigencia: período de validez de los precios cotizados.</li></ul>';
+  htmlCot+='<p>Le agradeceremos hacernos llegar la cotización a más tardar el <strong>'+fechaLim+'</strong> hasta las 17:00 horas, de manera que podamos incluir su propuesta en el cuadro comparativo correspondiente.</p>';
+  htmlCot+='<p>Quedamos atentos a sus comentarios y, ante cualquier consulta o duda técnica, estamos a su entera disposición.</p>';
+  htmlCot+='<p>Desde ya, agradecemos el constante soporte que nos brindan como socios estratégicos.</p>';
+  htmlCot+='<p>Saludos cordiales,<br><strong>Área de Compras — FRIOPACKING S.A.</strong></p></div>';
+  function abrirMailCot(){
+    var url='mailto:mlujan@friopacking.pe?subject='+encodeURIComponent(asunto)+'&cc='+encodeURIComponent(_CC_COT)+'&bcc='+encodeURIComponent(cco);
+    var a=document.createElement('a');a.href=url;document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);},200);
+  }
+  document.getElementById('mail-overlay').remove();
+  var _para='mlujan@friopacking.pe';
+  var _cc=_CC_COT;
+  function _toastOk(msg){
+    var t=document.createElement('div');
+    t.style='position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 28px;border-radius:8px;font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.4)';
+    t.textContent=msg;
+    document.body.appendChild(t);setTimeout(function(){t.remove();},4000);
+  }
+  function fallbackClipboardCot(){
+    if(navigator.clipboard&&window.ClipboardItem){
+      var blob=new Blob([htmlCot],{type:'text/html'});
+      var item=new ClipboardItem({'text/html':blob});
+      navigator.clipboard.write([item]).then(function(){
+        setTimeout(abrirMailCot,300);
+      },function(){abrirMailCot();});
+    }else{abrirMailCot();}
+  }
+  fetch('http://127.0.0.1:5100/ping',{method:'GET',headers:{'Access-Control-Request-Private-Network':'true'}})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(!d.ok)throw new Error('sin servidor');
+    return fetch('http://127.0.0.1:5100/send-cot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:_para,cc:_cc,bcc:cco,subject:asunto,htmlBody:htmlCot})});
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.ok){_toastOk('✅ Correo de cotización abierto en Outlook');}
+    else{throw new Error(d.error||'error');}
+  })
+  .catch(function(){
+    if(typeof window.sendMailViaGraph==='function'){
+      window.sendMailViaGraph(_para,_cc,cco,asunto,htmlCot,function(ok){
+        if(ok){_toastOk('✅ Correo de cotización enviado (Microsoft 365)');}
+        else{fallbackClipboardCot();}
+      });
+    }else{fallbackClipboardCot();}
+  });
+}
+
+/* ── Ver correo formateado (vista previa imprimible / copiar como imagen) ── */
+function verCorreoFormateado(){
+  var items=p3AllRows().filter(function(r){return p3sel.has(r.i);});
+  if(!items.length){alert('No hay pedidos seleccionados.');return;}
+  var grupos={};
+  items.forEach(function(r){var k=r.ped||'Sin pedido';if(!grupos[k])grupos[k]=[];grupos[k].push(r);});
+  var pedidos=Object.keys(grupos);
+  var asuntoParts=['Solicitud de Cotización - FRIOPACKING S.A.'];
+  pedidos.forEach(function(ped){
+    asuntoParts.push(ped);
+    var idp=grupos[ped][0].idproy||'';var pr=grupos[ped][0].proy||'';
+    if(idp)asuntoParts.push(idp);if(pr)asuntoParts.push(pr);
+  });
+  var asunto=asuntoParts.join(' // ');
+  var w=window.open('','_blank','width=820,height=700');
+  if(!w){alert('El navegador bloqueó la ventana emergente. Habilítala e intenta nuevamente.');return;}
+  var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Correo Cotizacion</title><style>';
+  h+='body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:32px;max-width:780px;margin:0 auto}';
+  h+='.logo{font-size:20px;font-weight:800;color:#0369a1;letter-spacing:1px}';
+  h+='.sublogo{font-size:11px;color:#64748b;margin-bottom:24px}';
+  h+='.subject-box{background:#f0f9ff;border-left:4px solid #0369a1;padding:10px 16px;font-size:12px;color:#0369a1;font-weight:600;margin-bottom:20px;border-radius:0 6px 6px 0}';
+  h+='.btn-send{display:inline-block;margin:6px 4px;padding:10px 22px;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif}';
+  h+='.btn-img{background:linear-gradient(135deg,#7c3aed,#a855f7)}';
+  h+='.btn-mail2{background:linear-gradient(135deg,#0369a1,#0891b2)}';
+  h+='.btn-pdf{background:linear-gradient(135deg,#dc2626,#ef4444)}';
+  h+='.toolbar{margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap}';
+  h+='.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;display:none}';
+  h+='@media print{.toolbar,.toast{display:none!important}@page{margin:15mm}}';
+  h+='</style><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script></head><body>';
+  h+='<div class="toast" id="toast">✅ Imagen copiada — pega con Ctrl+V en Outlook</div>';
+  h+='<div class="toolbar">';
+  h+='<button class="btn-send btn-img" onclick="copiarImagen()">📷 Copiar como imagen</button>';
+  h+='<button class="btn-send btn-mail2" onclick="window.location.href=\'mailto:?subject='+encodeURIComponent(asunto)+'\'">✉ Abrir Outlook</button>';
+  h+='<button class="btn-send btn-pdf" onclick="window.print()">🖨 Guardar PDF</button>';
+  h+='</div>';
+  h+='<div id="contenido-correo" style="font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:2;color:#1e293b;max-width:760px">';
+  h+='<div class="logo">FRIOPACKING S.A.</div>';
+  h+='<div class="sublogo">Área de Compras &nbsp;|&nbsp; Solicitud de Cotización</div>';
+  h+='<div class="subject-box">Asunto: '+asunto+'</div>';
+  h+='<p>Estimado Proveedor,</p>';
+  h+='<p>Reciba un cordial saludo de parte del equipo de Compras de <strong>FRIOPACKING S.A.</strong></p>';
+  h+='<p>Por medio del presente correo, nos ponemos en contacto con usted para solicitar su valioso apoyo con la cotización de los materiales detallados en los siguientes pedidos:</p>';
+  var gruposProy2={};
+  pedidos.forEach(function(ped){
+    var idp=grupos[ped][0].idproy||'';var pr=grupos[ped][0].proy||'Sin Proyecto';
+    var pk=(idp?idp+' — ':'')+pr;
+    if(!gruposProy2[pk])gruposProy2[pk]=[];
+    gruposProy2[pk].push(ped);
+  });
+  var THEAD2='<thead><tr style="background:#e0f2fe"><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:30px">#</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;white-space:nowrap">Código</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;min-width:240px">Descripción del Artículo</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:50px">Cant.</th><th style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:700;font-size:13px;width:60px">Unidad</th></tr></thead>';
+  Object.keys(gruposProy2).forEach(function(pk){
+    h+='<div style="margin:20px 0 8px"><span style="font-size:14px;font-weight:800;color:#1e3a5f;border-bottom:2px solid #0369a1;padding-bottom:4px">🏗 Proyecto: '+pk+'</span></div>';
+    gruposProy2[pk].forEach(function(ped){
+      var rows=grupos[ped];var tblRows='';
+      rows.forEach(function(r,idx){
+        var bg=idx%2===0?'#ffffff':'#f0f9ff';
+        tblRows+='<tr style="background:'+bg+'"><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;color:#64748b;font-size:13px;width:30px">'+(idx+1)+'</td><td style="padding:9px 12px;border:1px solid #bae6fd;color:#0369a1;font-weight:600;font-size:13px;white-space:nowrap">'+r.cod+'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;min-width:240px">'+r.prod+'</td><td style="padding:9px 12px;border:1px solid #bae6fd;text-align:center;font-weight:700;font-size:13px;width:50px">'+r.cant+'</td><td style="padding:9px 12px;border:1px solid #bae6fd;font-size:13px;width:60px">'+(r.unid||'—')+'</td></tr>';
+      });
+      h+='<p style="margin:12px 0 4px;font-size:12px;font-weight:700;color:#0369a1">Pedido N° '+ped+'</p>';
+      h+='<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-bottom:8px;width:100%">'+THEAD2+'<tbody>'+tblRows+'</tbody></table>';
+    });
+  });
+  h+='<p style="margin-top:18px">Para poder avanzar con la evaluación interna y procesar la compra a tiempo, le agradeceremos enviarnos su propuesta comercial detallando los siguientes puntos:</p>';
+  h+='<ul><li>Estructura de precios: especificar precio unitario e indicar si los valores incluyen o no el IGV.</li><li>Moneda: indicar la divisa de facturación (soles o dólares).</li><li>Plazo de entrega: días estimados para la entrega del producto una vez confirmada la Orden de Compra.</li><li>Condición de pago: indicar la forma de pago solicitada.</li><li>Vigencia: período de validez de los precios cotizados.</li></ul>';
+  h+='<p>Le agradeceremos hacernos llegar la cotización a más tardar el <strong>[FECHA LÍMITE]</strong> hasta las 17:00 horas, de manera que podamos incluir su propuesta en el cuadro comparativo correspondiente.</p>';
+  h+='<p>Quedamos atentos a sus comentarios y, ante cualquier consulta o duda técnica, estamos a su entera disposición.</p>';
+  h+='<p>Desde ya, agradecemos el constante soporte que nos brindan como socios estratégicos.</p>';
+  h+='<p>Saludos cordiales,<br><strong>Área de Compras — FRIOPACKING S.A.</strong></p>';
+  h+='</div>';
+  h+='<script>';
+  h+='function copiarImagen(){';
+  h+='  var el=document.getElementById("contenido-correo");';
+  h+='  html2canvas(el,{scale:2,backgroundColor:"#ffffff"}).then(function(canvas){';
+  h+='    canvas.toBlob(function(blob){';
+  h+='      try{';
+  h+='        var ci=new ClipboardItem({"image/png":blob});';
+  h+='        navigator.clipboard.write([ci]).then(function(){';
+  h+='          var t=document.getElementById("toast");t.style.display="block";setTimeout(function(){t.style.display="none";},3000);';
+  h+='        });';
+  h+='      }catch(e){';
+  h+='        var url=canvas.toDataURL();var a=document.createElement("a");a.href=url;a.download="cotizacion.png";a.click();';
+  h+='      }';
+  h+='    },"image/png");';
+  h+='  });';
+  h+='}';
+  h+='<\/script>';
+  h+='</body></html>';
+  w.document.write(h);w.document.close();w.focus();
+}
+
+/* ── Exportar Excel — cuadro comparativo de cotizaciones ── */
+function setNProv(n){
+  _nProv=n;
+  for(var i=2;i<=6;i++){
+    var btn=document.getElementById('np-'+i);
+    var div=document.getElementById('np-div-'+i);
+    if(btn){btn.style.background=i===n?'#1d4ed8':'#fff';btn.style.color=i===n?'#fff':'#334155';btn.style.borderColor=i===n?'#1d4ed8':'#cbd5e1';}
+    if(div&&i>2)div.style.display=i<=n?'':'none';
+  }
+}
+function exportarExcel(opts){opts=opts||{};
+  var tcVal=opts.tc||(parseFloat((document.getElementById('me-tc')||{value:'3.75'}).value)||3.75);
+  var _allPN=[(document.getElementById('me-n1')||{value:''}).value||'PROVEEDOR 1',(document.getElementById('me-n2')||{value:''}).value||'PROVEEDOR 2',(document.getElementById('me-n3')||{value:''}).value||'PROVEEDOR 3',(document.getElementById('me-n4')||{value:''}).value||'PROVEEDOR 4',(document.getElementById('me-n5')||{value:''}).value||'PROVEEDOR 5',(document.getElementById('me-n6')||{value:''}).value||'PROVEEDOR 6'];
+  var pNames=opts.provNames||_allPN.slice(0,_nProv);
+  var precios=opts.precios||null;
+  var btn=document.getElementById('btn-genxl');if(btn){btn.disabled=true;btn.textContent='⏳ Generando...';}
+  _popupExport({tc:tcVal,provNames:pNames,precios:precios,ph:window._exportPH||[]},{sel:p3sel,DATA:p3AllRows(),visibleData:p3VisRows()},function(){if(btn){btn.disabled=false;btn.textContent='📥 Generar Excel vacío';}});
+}
+function cerrarModalExport(){document.getElementById('me-bg').style.display='none';}
+function switchTabExport(n){
+  ['me-c1','me-c2'].forEach(function(id,i){document.getElementById(id).style.display=(i+1===n)?'block':'none';});
+  ['me-t1','me-t2'].forEach(function(id,i){var a=i+1===n;document.getElementById(id).style.background=a?'#2563eb':'rgba(255,255,255,.1)';document.getElementById(id).style.color=a?'#fff':'#bfdbfe';});
+}
+function triggerPDF(p){document.getElementById('me-pf'+p).click();}
+function adjuntarPDF(p){
+  var inp=document.getElementById('me-pf'+p);
+  if(!inp||!inp.files||!inp.files[0])return;
+  var f=inp.files[0];
+  if(_pdfUrls[p])URL.revokeObjectURL(_pdfUrls[p]);
+  _pdfUrls[p]=URL.createObjectURL(f);
+  document.getElementById('me-pfn'+p).textContent=f.name;
+  var pi=document.getElementById('me-pi'+p);pi.style.cssText='display:flex;align-items:center;gap:6px;margin-top:8px';
+  extraerPreciosPDF(p,f);
+}
+function verPDF(p){if(_pdfUrls[p])window.open(_pdfUrls[p],'_blank');}
+function normTxt(t){return t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
+function similaridad(a,b){
+  var wa=normTxt(a).split(' ').filter(function(x){return x.length>2;});
+  var wb=normTxt(b);
+  var hits=wa.filter(function(w){return wb.indexOf(w)>=0;}).length;
+  return wa.length?hits/wa.length:0;
+}
+function extraerPreciosPDF(p,file){
+  if(typeof pdfjsLib==='undefined'){_ldScriptParent('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',function(){extraerPreciosPDF(p,file);});return;}
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  var statusEl=document.getElementById('me-pfn'+p);
+  statusEl.textContent='⏳ Leyendo PDF...';
+  var reader=new FileReader();
+  reader.onload=function(e){
+    pdfjsLib.getDocument({data:e.target.result}).promise.then(function(pdf){
+      var pages=[];
+      for(var pg=1;pg<=pdf.numPages;pg++)pages.push(pg);
+      return Promise.all(pages.map(function(n){return pdf.getPage(n).then(function(page){return page.getTextContent();});}));
+    }).then(function(contents){
+      var items=[];
+      contents.forEach(function(c,pi2){
+        c.items.forEach(function(it){items.push({str:it.str,y:pi2*10000+(it.transform?it.transform[5]:0)});});
+      });
+      items.sort(function(a,b){return b.y-a.y;});
+      var lines=[],curY=null,curLine=[];
+      items.forEach(function(it){
+        if(curY===null||Math.abs(it.y-curY)>4){if(curLine.length)lines.push(curLine.map(function(x){return x.str;}).join(' '));curLine=[it];curY=it.y;}
+        else curLine.push(it);
+      });
+      if(curLine.length)lines.push(curLine.map(function(x){return x.str;}).join(' '));
+      var numRe=/(?<![\d,])(\d{1,3}(?:[,]\d{3})*[.]\d{2,4}|\d{1,3}(?:[.]\d{3})*[,]\d{2,4}|\d+[.,]\d{2,4})(?![\d.,])/g;
+      function parseNum(s){return parseFloat(s.replace(/,(?=\d{3})/g,'').replace(/\.(?=\d{3})/g,'').replace(',','.'));}
+      var it2=window._exportIt||[];
+      var encontrados=0;
+      var corpus=lines.map(function(ln){return normTxt(ln);});
+      it2.forEach(function(row,ri){
+        var desc=row.prod||'';
+        var cant=parseFloat(row.cant)||0;
+        var cod=normTxt(row.cod||'');
+        var bestScore=0,bestLine=-1;
+        corpus.forEach(function(ln,li){
+          if(ln.length<3)return;
+          var sc=similaridad(desc,ln);
+          if(cod.length>3&&ln.indexOf(cod)>=0)sc=Math.max(sc,0.8);
+          if(sc>bestScore){bestScore=sc;bestLine=li;}
+        });
+        if(bestScore<0.2)return;
+        var candidatos=[];
+        for(var lx=bestLine;lx<=Math.min(bestLine+5,lines.length-1);lx++){
+          var ms=lines[lx].match(numRe);
+          if(ms)ms.forEach(function(m){
+            var v=parseNum(m);
+            if(v<=0.01||v>500000)return;
+            if(Math.abs(v-cant)<0.01)return;
+            if(Number.isInteger(v)&&v<=200&&v===Math.round(v))return;
+            candidatos.push(v);
+          });
+        }
+        if(!candidatos.length)return;
+        candidatos.sort(function(a,b){return a-b;});
+        var base=candidatos[0];
+        candidatos=candidatos.filter(function(v){return v<=base*20;});
+        var pu=candidatos[0];
+        var inpS=document.querySelector('[data-item="'+ri+'"][data-prov="'+p+'"][data-cur="S"]');
+        if(inpS){inpS.value=pu.toFixed(2);inpS.style.borderColor='#16a34a';inpS.style.borderWidth='2px';inpS.style.color='#1e293b';inpS.title='✅ Auto-detectado del PDF — verifica antes de generar';encontrados++;}
+      });
+      statusEl.textContent=file.name+(encontrados?' ✅ '+encontrados+' precios detectados':' ⚠️ sin coincidencias');
+    }).catch(function(err){statusEl.textContent=file.name+' ⚠️ Error al leer PDF';console.error(err);});
+  };
+  reader.readAsArrayBuffer(file);
+}
+function construirTablaPrecio(items){
+  var cls=['#1d4ed8','#22c55e','#7c3aed','#d97706','#be123c','#0e7490'];
+  var clsBg=['#eff6ff','#f0fdf4','#faf5ff','#fffbeb','#fff1f2','#f0fdfa'];
+  var clsBd=['#bfdbfe','#bbf7d0','#ddd6fe','#fde68a','#fecdd3','#99f6e4'];
+  var pn=[0,1,2,3,4,5].map(function(p){var el=document.getElementById('me-pn'+p);return(el&&el.value.trim())||('PROVEEDOR '+(p+1));});
+  var h='<table style="width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed">';
+  h+='<colgroup><col style="width:40px"><col style="width:110px"><col><col style="width:65px"><col style="width:55px">';
+  for(var q=0;q<6;q++)h+='<col style="width:130px"><col style="width:130px">';
+  h+='</colgroup>';
+  h+='<thead><tr style="background:#1e3a5f;position:sticky;top:0;z-index:2">';
+  h+='<th style="padding:12px 6px;color:#93c5fd;text-align:center;font-size:12px">#</th>';
+  h+='<th style="padding:12px 8px;color:#bfdbfe;text-align:left;font-size:12px;font-weight:700;letter-spacing:.3px">CÓDIGO</th>';
+  h+='<th style="padding:12px 12px;color:#fff;text-align:left;font-size:13px;font-weight:700">DESCRIPCIÓN</th>';
+  h+='<th style="padding:12px 6px;color:#bfdbfe;text-align:center;font-size:12px;font-weight:700">CANT.</th>';
+  h+='<th style="padding:12px 6px;color:#bfdbfe;text-align:center;font-size:12px;font-weight:700">UND</th>';
+  for(var q=0;q<6;q++){h+='<th colspan="2" style="padding:12px 6px;color:'+cls[q]+';text-align:center;border-left:3px solid '+cls[q]+';background:'+clsBg[q]+';font-size:13px;font-weight:800;letter-spacing:.4px">'+pn[q]+'</th>';}
+  h+='</tr><tr style="background:#f8fafc;position:sticky;top:47px;z-index:2;border-bottom:2px solid #e2e8f0">';
+  h+='<th colspan="5" style="padding:5px"></th>';
+  for(var q=0;q<6;q++){h+='<th style="padding:8px 6px;color:'+cls[q]+';font-size:12px;font-weight:700;text-align:center;border-left:3px solid '+cls[q]+';background:'+clsBg[q]+'">P.U. S/</th><th style="padding:8px 6px;color:'+cls[q]+';font-size:12px;font-weight:700;text-align:center;background:'+clsBg[q]+'">P.U. US$</th>';}
+  h+='</tr></thead><tbody>';
+  items.forEach(function(r,i){
+    var bg=i%2===0?'#ffffff':'#f8fafc';
+    h+='<tr style="background:'+bg+';border-bottom:1px solid #e2e8f0">';
+    h+='<td style="color:#94a3b8;padding:11px 6px;text-align:center;font-size:13px;font-weight:700;border-right:1px solid #e2e8f0">'+(i+1)+'</td>';
+    h+='<td style="color:#64748b;padding:11px 8px;font-size:12px;font-family:monospace;white-space:nowrap" title="'+esc(r.cod||'')+'">'+esc(r.cod||'—')+'</td>';
+    h+='<td style="color:#1e293b;padding:11px 12px;font-size:14px;font-weight:500;line-height:1.5;white-space:normal;word-wrap:break-word;min-width:200px" title="'+esc(r.prod||'')+'">'+esc(r.prod||'—')+'</td>';
+    h+='<td style="color:#0f172a;padding:11px 6px;text-align:center;font-weight:800;font-size:15px">'+Number(r.cant||0).toLocaleString()+'</td>';
+    h+='<td style="color:#475569;padding:11px 6px;text-align:center;font-size:13px;font-weight:600">'+esc(r.unid||'')+'</td>';
+    for(var p=0;p<6;p++){
+      h+='<td style="padding:6px 5px;border-left:3px solid '+cls[p]+';background:'+clsBg[p]+'">';
+      h+='<input type="number" data-item="'+i+'" data-prov="'+p+'" data-cur="S" step="0.01" min="0" placeholder="—" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#fff;border:1px solid '+clsBd[p]+';border-radius:6px;color:#1e293b;font-size:14px;font-weight:600;text-align:right;font-family:monospace;outline:none">';
+      h+='</td>';
+      h+='<td style="padding:6px 5px;background:'+clsBg[p]+'">';
+      h+='<input type="number" data-item="'+i+'" data-prov="'+p+'" data-cur="D" step="0.01" min="0" placeholder="—" style="width:100%;box-sizing:border-box;padding:8px 10px;background:#fff;border:1px solid '+clsBd[p]+';border-radius:6px;color:#1e293b;font-size:14px;font-weight:600;text-align:right;font-family:monospace;outline:none">';
+      h+='</td>';
+    }
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  document.getElementById('me-tbl-wrap').innerHTML=h;
+}
+function exportarExcelConDatos(){
+  var it=window._exportIt;
+  if(!it||!it.length){alert('No hay ítems.');return;}
+  var tc=parseFloat(document.getElementById('me-tc2').value)||3.75;
+  var pNames=[0,1,2,3,4,5].map(function(p){return(document.getElementById('me-pn'+p).value||'').trim()||('PROVEEDOR '+(p+1));});
+  var precios=it.map(function(r,i){return[0,1,2,3,4,5].map(function(p){
+    var sEl=document.querySelector('[data-item="'+i+'"][data-prov="'+p+'"][data-cur="S"]');
+    var dEl=document.querySelector('[data-item="'+i+'"][data-prov="'+p+'"][data-cur="D"]');
+    var sv=sEl&&sEl.value?parseFloat(sEl.value):null;var dv=dEl&&dEl.value?parseFloat(dEl.value):null;
+    return{puS:(sv!==null&&sv>0)?sv:null,puD:(dv!==null&&dv>0)?dv:null};
+  });});
+  exportarExcel({tc:tc,provNames:pNames,precios:precios});
+}
+function abrirModalExport(){
+  p3EnsureUI();
+  var it=p3SelRows();
+  if(!it.length){alert('No hay ítems para exportar.');return;}
+  window._exportIt=it;
+  var _cns=(typeof D!=='undefined'&&D&&D.consultas)?D.consultas:[];
+  window._exportPH=it.map(function(r){
+    var ph=null;
+    for(var ci=0;ci<_cns.length;ci++){
+      if(_cns[ci].codigo===(r.cod||'')){var _v=Number(_cns[ci].valor);if(!isNaN(_v)&&_v>0){ph=_cns[ci];break;}}
+    }
+    if(!ph)return{txt:'—',fec:'—'};
+    var mon=(String(ph.moneda||'').toUpperCase().indexOf('USD')>=0||ph.moneda==='US$')?'US$ ':'S/ ';
+    return{txt:mon+Number(ph.valor).toFixed(2),fec:ph.fecha||'—'};
+  });
+  construirTablaPrecio(it);
+  document.getElementById('me-bg').style.display='flex';
+  var lbl=document.getElementById('tc-fuente');
+  if(lbl)lbl.textContent='Actualizando TC...';
+  fetch('https://open.er-api.com/v6/latest/USD')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.rates&&d.rates.PEN){
+        var tc=Math.round(d.rates.PEN*1000)/1000;
+        var e1=document.getElementById('me-tc');var e2=document.getElementById('me-tc2');
+        if(e1)e1.value=tc;if(e2)e2.value=tc;
+        var today=new Date();var dd=today.getDate().toString().padStart(2,'0');var mm=(today.getMonth()+1).toString().padStart(2,'0');var yy=today.getFullYear();
+        if(lbl)lbl.textContent='TC del '+dd+'/'+mm+'/'+yy+' (SBS/BCRP referencial)';
+      }
+    })
+    .catch(function(){if(lbl)lbl.textContent='No se pudo obtener TC automático';});
+}
+function p3EnsureExportModal(){
+  if(document.getElementById('me-bg'))return;
+  var provCards='';
+  var provColors=[['#bfdbfe','#1d4ed8','#eff6ff','#93c5fd'],['#bbf7d0','#16a34a','#f0fdf4','#86efac'],['#ddd6fe','#7c3aed','#faf5ff','#c4b5fd'],['#fde68a','#d97706','#fffbeb','#fde68a'],['#fecdd3','#be123c','#fff1f2','#fecdd3'],['#99f6e4','#0e7490','#f0fdfa','#99f6e4']];
+  for(var p=0;p<6;p++){
+    var c=provColors[p];
+    provCards+='<div style="background:#fff;border:2px solid '+c[0]+';border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.06)">';
+    provCards+='<div style="font-size:13px;color:'+c[1]+';font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">▸ Proveedor '+(p+1)+'</div>';
+    provCards+='<input id="me-pn'+p+'" type="text" placeholder="Nombre del proveedor" style="width:100%;box-sizing:border-box;padding:9px 11px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;color:#1e293b;font-size:13px;margin-bottom:10px">';
+    provCards+='<input id="me-pf'+p+'" type="file" accept=".pdf" style="display:none" onchange="adjuntarPDF('+p+')">';
+    provCards+='<button onclick="triggerPDF('+p+')" style="width:100%;padding:9px;background:'+c[2]+';border:1px solid '+c[3]+';border-radius:8px;color:'+c[1]+';font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📎 Adjuntar PDF</button>';
+    provCards+='<div id="me-pi'+p+'" style="display:none;align-items:center;gap:8px;margin-top:10px"><span id="me-pfn'+p+'" style="flex:1;font-size:12px;color:#16a34a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600"></span>';
+    provCards+='<button onclick="verPDF('+p+')" style="background:'+c[1]+';color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">👁 Ver</button></div>';
+    provCards+='</div>';
+  }
+  var provInputs='';
+  var inColors=['#1d4ed8','#16a34a','#7c3aed','#d97706','#be123c','#0e7490'];
+  for(var p=1;p<=6;p++){
+    var col=inColors[p-1];
+    provInputs+='<div'+(p>2?' id="np-div-'+p+'"':'')+'><label style="font-size:12px;color:'+col+';font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Proveedor '+p+'</label>';
+    provInputs+='<input id="me-n'+p+'" type="text" placeholder="PROVEEDOR '+p+'" style="width:210px;padding:10px 12px;background:#fff;border:2px solid '+col+';border-radius:8px;color:#1e293b;font-size:14px"></div>';
+  }
+  var npBtns='';
+  for(var n=2;n<=6;n++){
+    var act=n===6;
+    npBtns+='<button type="button" onclick="setNProv('+n+')" id="np-'+n+'" style="width:36px;height:36px;border-radius:50%;border:2px solid '+(act?'#1d4ed8':'#cbd5e1')+';background:'+(act?'#1d4ed8':'#fff')+';font-weight:700;font-size:14px;cursor:pointer;color:'+(act?'#fff':'#334155')+'" title="'+n+' proveedores">'+n+'</button>';
+  }
+  var m='';
+  m+='<div id="me-bg" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:8000;align-items:center;justify-content:center;padding:4px" onclick="if(event.target.id===\'me-bg\')cerrarModalExport()">';
+  m+='<div style="background:#f0f4f8;border-radius:14px;width:99vw;max-width:1700px;height:97vh;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.4)">';
+  m+='<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 28px;background:#1e3a5f;border-radius:14px 14px 0 0;flex-shrink:0">';
+  m+='<div><div style="font-weight:800;font-size:18px;color:#ffffff">📊 Exportar Cuadro Comparativo de Cotizaciones</div>';
+  m+='<div style="font-size:13px;color:#93c5fd;margin-top:3px">FRIOPACKING S.A. — Área de Compras</div></div>';
+  m+='<button onclick="cerrarModalExport()" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;cursor:pointer;line-height:1">✕</button>';
+  m+='</div>';
+  m+='<div style="display:flex;background:#1e3a5f;padding:0 28px;flex-shrink:0">';
+  m+='<button id="me-t1" onclick="switchTabExport(1)" style="padding:12px 24px;border:none;border-radius:8px 8px 0 0;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:#2563eb;color:#fff;margin-right:6px;margin-top:10px">📋 Modo Manual</button>';
+  m+='<button id="me-t2" onclick="switchTabExport(2)" style="padding:12px 24px;border:none;border-radius:8px 8px 0 0;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:rgba(255,255,255,.1);color:#bfdbfe;margin-top:10px">📎 Adjuntar PDFs de Proveedores</button>';
+  m+='</div>';
+  m+='<div style="overflow-y:auto;flex:1;padding:28px;background:#f0f4f8">';
+  m+='<div id="me-c1">';
+  m+='<p style="color:#475569;font-size:14px;margin:0 0 22px">Genera el cuadro comparativo con los ítems seleccionados. Abre el Excel descargado e ingresa los precios de cada proveedor directamente en el archivo.</p>';
+  m+='<div style="margin-bottom:18px;display:flex;align-items:center;gap:12px">';
+  m+='<span style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px">N° de Proveedores:</span>';
+  m+='<div style="display:flex;gap:6px">'+npBtns+'</div></div>';
+  m+='<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:26px">';
+  m+='<div><label style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">TC S/ × US$</label>';
+  m+='<input id="me-tc" type="number" value="3.75" step="0.01" min="1" style="width:110px;padding:10px 12px;background:#fff;border:2px solid #d97706;border-radius:8px;color:#92400e;font-size:16px;font-weight:700"><span id="tc-fuente" style="display:block;font-size:10px;color:#94a3b8;margin-top:3px">Actualizando...</span></div>';
+  m+=provInputs;
+  m+='</div>';
+  m+='<button id="btn-genxl" onclick="exportarExcel({})" style="background:linear-gradient(135deg,#166534,#16a34a);color:#fff;border:none;border-radius:10px;padding:13px 32px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(22,163,74,.35)">📥 Generar Excel vacío</button>';
+  m+='</div>';
+  m+='<div id="me-c2" style="display:none">';
+  m+='<p style="color:#475569;font-size:14px;margin:0 0 20px">Adjunta los PDFs de cada proveedor para consultarlos como referencia. Ingresa los precios en la tabla y genera el comparativo ya llenado.</p>';
+  m+='<div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:20px">';
+  m+='<div><label style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">TC S/ × US$</label>';
+  m+='<input id="me-tc2" type="number" value="3.75" step="0.01" min="1" style="width:110px;padding:10px 12px;background:#fff;border:2px solid #d97706;border-radius:8px;color:#92400e;font-size:16px;font-weight:700"></div>';
+  m+='</div>';
+  m+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">'+provCards+'</div>';
+  m+='<div id="me-tbl-wrap" style="overflow-x:auto;border-radius:10px;border:1px solid #cbd5e1;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.06)"></div>';
+  m+='<button onclick="exportarExcelConDatos()" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;border:none;border-radius:10px;padding:13px 32px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(37,99,235,.35)">📊 Generar Comparativo Llenado</button>';
+  m+='</div>';
+  m+='</div>';
+  m+='</div>';
+  var wrap=document.createElement('div');
+  wrap.innerHTML=m;
+  while(wrap.firstChild)document.body.appendChild(wrap.firstChild);
+}
+
 
 function clearF3(){
   resetMsel('f3respPedDrop','f3respPedBtn','f3respPedLbl','Resp. Pedido: Todos');
