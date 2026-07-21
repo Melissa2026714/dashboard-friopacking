@@ -1998,9 +1998,74 @@ function updateHomeCounters(){
   document.getElementById('hc-cod').textContent=`${getCatalogo().length} códigos registrados`;
 }
 
+/* ═══════════════ BARRA HORIZONTAL FLOTANTE ═══════════════ */
+// Permite desplazarse lateralmente en tablas anchas sin tener que bajar hasta la última fila:
+// mientras la tabla esté a la vista, una barra fija al pie de la pantalla replica su scroll horizontal.
+function setupFloatScrollbars(){
+  document.querySelectorAll('.tblwrap').forEach(wrap=>{
+    if(wrap._floatbar)return;
+    const bar=document.createElement('div');
+    bar.style.cssText='position:fixed;bottom:0;height:16px;overflow-x:auto;overflow-y:hidden;display:none;z-index:800;background:rgba(241,245,249,.96);border-top:1px solid #cbd5e1;border-radius:4px 4px 0 0';
+    const inner=document.createElement('div');
+    inner.style.height='1px';
+    bar.appendChild(inner);
+    document.body.appendChild(bar);
+    wrap._floatbar=bar;
+    wrap._sync={bar:0,wrap:0};
+    // Sincronización por eventos (navegador real). El bucle rAF de abajo es el respaldo.
+    let lock=false;
+    bar.addEventListener('scroll',()=>{if(lock)return;lock=true;wrap.scrollLeft=bar.scrollLeft;wrap._sync.bar=bar.scrollLeft;wrap._sync.wrap=wrap.scrollLeft;lock=false;});
+    wrap.addEventListener('scroll',()=>{if(lock)return;lock=true;bar.scrollLeft=wrap.scrollLeft;wrap._sync.bar=bar.scrollLeft;wrap._sync.wrap=wrap.scrollLeft;lock=false;});
+  });
+  updateFloatScrollbars();
+  if(!window._floatSyncLoop){
+    window._floatSyncLoop=true;
+    // Sincronización por frame (los eventos 'scroll' programáticos no son fiables en todos los entornos):
+    // quien se movió desde el último frame manda sobre el otro.
+    (function loop(){
+      document.querySelectorAll('.tblwrap').forEach(wrap=>{
+        const bar=wrap._floatbar;
+        if(!bar||bar.style.display!=='block')return;
+        const s=wrap._sync;
+        if(bar.scrollLeft!==s.bar)wrap.scrollLeft=bar.scrollLeft;
+        else if(wrap.scrollLeft!==s.wrap)bar.scrollLeft=wrap.scrollLeft;
+        s.bar=bar.scrollLeft;s.wrap=wrap.scrollLeft;
+      });
+      requestAnimationFrame(loop);
+    })();
+  }
+}
+function updateFloatScrollbars(){
+  document.querySelectorAll('.tblwrap').forEach(wrap=>{
+    const bar=wrap._floatbar;
+    if(!bar)return;
+    const visiblePage=wrap.offsetParent!==null; // la página (pestaña) está activa
+    const r=visiblePage?wrap.getBoundingClientRect():null;
+    const necesita=visiblePage&&wrap.scrollWidth>wrap.clientWidth+2;
+    // Se muestra solo si la tabla está a la vista pero su propia barra inferior queda fuera de pantalla
+    const mostrar=necesita&&r.top<window.innerHeight-60&&r.bottom>window.innerHeight;
+    if(mostrar){
+      const primeraVez=bar.style.display!=='block';
+      bar.style.display='block';
+      bar.style.left=r.left+'px';
+      bar.style.width=wrap.clientWidth+'px';
+      const w=wrap.scrollWidth+'px';
+      if(bar.firstChild.style.width!==w)bar.firstChild.style.width=w;
+      // Solo al aparecer adopta la posición actual de la tabla; después manda el bucle de sincronización.
+      if(primeraVez){bar.scrollLeft=wrap.scrollLeft;if(wrap._sync){wrap._sync.bar=bar.scrollLeft;wrap._sync.wrap=wrap.scrollLeft;}}
+    }else{
+      bar.style.display='none';
+    }
+  });
+}
+window.addEventListener('scroll',updateFloatScrollbars,{passive:true});
+window.addEventListener('resize',updateFloatScrollbars);
+setInterval(updateFloatScrollbars,600); // cubre cambios de contenido (render, filtros, paginación)
+
 /* ═══════════════ INIT ═══════════════ */
 fillFilters();render();
 fillCodFilters();renderCod();
+setupFloatScrollbars();
 cargarLive();
 </script>
 </body>
