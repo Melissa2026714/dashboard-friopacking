@@ -173,6 +173,7 @@ tr:hover td{background:#f8fafc}
       <option value="reservas">🔒 Solo con reservas</option>
       <option value="ambos">🚚🔒 Con tránsito y reservas</option>
     </select>
+    <button class="btn br" onclick="limpiarFiltrosGen()" title="Borrar búsqueda y filtros">✖ Limpiar filtros</button>
     <span class="fx" id="cnt"></span>
   </div>
 
@@ -774,13 +775,20 @@ function setTransito(t,r,marcarDirty,ts){
 }
 
 // Aplica los totales calculados a cada ítem de Existencias (columnas "En Tránsito" y "Reservas" de la hoja General).
+// El Stock Disponible NO se recalcula: se respeta la columna "Stock Disponible" que ya trae el Análisis Inventario.
 function applyTransitoADatos(){
   if(!TRANSITO_LIVE||!Array.isArray(DATA))return;
   DATA.forEach(d=>{
     d.transito=TRANS_BY_COD[d.cod]||0;
     d.reservas=RESV_BY_COD[d.cod]||0;
-    d.stockDisp=(d.stock||0)-(d.reservas||0);
   });
+}
+
+function limpiarFiltrosGen(){
+  document.getElementById('q').value='';
+  document.getElementById('fest').value='';
+  const fm=document.getElementById('fmov');if(fm)fm.value='';
+  render();
 }
 
 // Detalle para la ficha del ítem: OC en camino y requerimientos que lo reservan.
