@@ -426,9 +426,10 @@ tr:hover td{background:#f8fafc}
       <input id="pc-foto" type="file" accept=".jpg,.jpeg,.png" style="width:100%;padding:7px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;margin-bottom:6px">
       <div style="font-size:10.5px;color:#94a3b8;margin-bottom:16px">La fecha y hora se registran automáticamente al confirmar.</div>
       <div style="display:flex;gap:8px">
-        <button class="btn bi" onclick="confirmarCompletado()" style="flex:1;justify-content:center;padding:10px">✅ Confirmar</button>
+        <button class="btn bi" id="pc-confirmar" onclick="confirmarCompletado()" style="flex:1;justify-content:center;padding:10px">✅ Confirmar</button>
         <button class="btn br" onclick="cerrarCompletar()" style="padding:10px 16px">Cancelar</button>
       </div>
+      <div id="pc-status" style="font-size:11px;color:#0d9488;margin-top:8px;min-height:14px"></div>
     </div>
   </div>
 </div>
@@ -1489,33 +1490,49 @@ async function confirmarCompletado(){
   if(!key)return;
   const responsable=document.getElementById('pc-resp').value.trim();
   if(!responsable){alert('Indica quién realizó el picking.');return;}
-  const file=document.getElementById('pc-foto').files[0];
-  const ahora=new Date().toLocaleString('es-PE');
-  const prev=getRecord(key)||{};
-  const rec={...prev,completado:true,responsable,fechaHora:ahora};
-  if(file){
-    const token=localStorage.getItem(GH_TOKEN_KEY);
-    if(!token){
-      if(confirm('Para adjuntar la foto de evidencia necesitas el Token de GitHub de Almacén.\n¿Configurarlo ahora? (se guardará igual, sin la foto)'))setupGHToken();
-    }else{
-      try{
-        const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
-        const path='assets/picking/'+key.replace(/[|/\\]/g,'_')+'_'+Date.now()+'.'+ext;
-        const base64=await leerArchivoBase64(file);
-        await subirArchivoGitHub(path,base64,'almacen: evidencia de picking '+key);
-        rec.fotoPath=path;
-      }catch(e){
-        console.error(e);
-        alert('No se pudo subir la foto de evidencia ('+e.message+'). Se guarda el resto de la información igual.');
+  const btn=document.getElementById('pc-confirmar');
+  const status=document.getElementById('pc-status');
+  try{
+    if(btn){btn.disabled=true;btn.textContent='⏳ Guardando…';}
+    const file=document.getElementById('pc-foto').files[0];
+    const ahora=new Date().toLocaleString('es-PE');
+    const prev=getRecord(key)||{};
+    const rec={...prev,completado:true,responsable,fechaHora:ahora};
+    if(file){
+      const token=localStorage.getItem(GH_TOKEN_KEY);
+      if(!token){
+        if(confirm('Para adjuntar la foto de evidencia necesitas el Token de GitHub de Almacén.\n¿Configurarlo ahora? (se guardará igual, sin la foto)'))setupGHToken();
+      }else if(file.size>8*1024*1024){
+        alert('La foto pesa más de 8 MB — se guarda el cierre sin foto. Usa una imagen más liviana.');
+      }else{
+        try{
+          if(status)status.textContent='⏳ Subiendo foto de evidencia…';
+          const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+          const path='assets/picking/'+key.replace(/[|/\\]/g,'_')+'_'+Date.now()+'.'+ext;
+          const base64=await leerArchivoBase64(file);
+          // La subida no puede colgar el cierre: máximo 30 segundos y se continúa sin foto.
+          const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('tiempo de espera agotado (30 s)')),30000));
+          await Promise.race([subirArchivoGitHub(path,base64,'almacen: evidencia de picking '+key),timeout]);
+          rec.fotoPath=path;
+        }catch(e){
+          console.error(e);
+          alert('No se pudo subir la foto de evidencia ('+e.message+'). Se guarda el resto de la información igual.');
+        }
       }
     }
+    PENDING[key]=rec;
+    localStorage.setItem('fp_almacen_picking_pending',JSON.stringify(PENDING));
+    cerrarCompletar();
+    renderPick();
+    if(document.getElementById('tbreq'))renderReqTable();
+    updateHomeCounters();
+  }catch(e){
+    console.error(e);
+    alert('No se pudo registrar el cierre: '+e.message);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='✅ Confirmar';}
+    if(status)status.textContent='';
   }
-  PENDING[key]=rec;
-  localStorage.setItem('fp_almacen_picking_pending',JSON.stringify(PENDING));
-  cerrarCompletar();
-  renderPick();
-  if(document.getElementById('tbreq'))renderReqTable();
-  updateHomeCounters();
 }
 
 /* Guardar decisiones en data.json compartido (mismo repo que Compras).
