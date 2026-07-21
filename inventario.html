@@ -167,6 +167,12 @@ tr:hover td{background:#f8fafc}
       <option value="OK">🟢 OK</option>
       <option value="SIN DATOS">⚪ Sin datos</option>
     </select>
+    <select id="fmov" onchange="render()" title="Filtrar por stock en tránsito o reservas">
+      <option value="">Tránsito/Reservas: Todos</option>
+      <option value="transito">🚚 Solo con stock en tránsito</option>
+      <option value="reservas">🔒 Solo con reservas</option>
+      <option value="ambos">🚚🔒 Con tránsito y reservas</option>
+    </select>
     <span class="fx" id="cnt"></span>
   </div>
 
@@ -992,9 +998,13 @@ function render(){
   genPage=0;
   const q=document.getElementById('q').value.toLowerCase();
   const fe=document.getElementById('fest').value;
+  const fm=(document.getElementById('fmov')||{}).value||'';
   window._genFil=DATA.filter(d=>{
     if(q && !(d.cod.includes(q)||d.desc.toLowerCase().includes(q)))return false;
     if(fe && d.estado!==fe)return false;
+    if(fm==='transito' && !((d.transito||0)>0))return false;
+    if(fm==='reservas' && !((d.reservas||0)>0))return false;
+    if(fm==='ambos' && !((d.transito||0)>0 && (d.reservas||0)>0))return false;
     return true;
   });
   // Primero los ítems con consumo mensual (de mayor a menor); los sin consumo van al final, por código.
