@@ -1018,7 +1018,7 @@ function instNav(id){
       <th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">📋 REG.</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">ALMACÉN</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. ALMACÉN</th>
       <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th>ESTADO</th><th>USUARIO COMP.</th>
       <th>PROVEEDOR</th><th>RESPONSABLE</th><th>ID PROYECTO</th><th>PROYECTO</th><th>N° PEDIDO</th><th>F. PEDIDO</th><th>N° REQ.</th><th>F. REQ.</th>
-      <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th><th>F. TRANSFERENCIA</th><th style="white-space:nowrap;background:#ecfdf5;color:#047857">INGRESO</th><th style="white-space:nowrap;background:#ecfdf5;color:#047857">F. INGRESO OBRA</th>
+      <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">MONEDA</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">P. UNIT. SIN IGV</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">TIPO CAMBIO</th>
     </tr></thead><tbody id="tb2"></tbody></table>
     <div class="pag"><span id="p2info">—</span><div class="pbts" id="p2pag"></div></div>
   </div>
@@ -1420,9 +1420,9 @@ function renderP2Table(){
       <td>${r.cantRec}</td>
       <td class="${r.cantPend>0?'cpend':''}">${r.cantPend}</td>
       <td>${r.frec||'—'}</td>
-      <td style="font-size:11px;color:#0891b2;font-weight:600">${r.fsal||'—'}</td>
-      <td style="text-align:center;background:#ecfdf5;font-weight:700;color:#047857">${r.ingreso||'—'}</td>
-      <td style="text-align:center;background:#ecfdf5;font-size:11px;color:#047857;font-weight:600;white-space:nowrap">${r.fingreso||'—'}</td>
+      <td style="text-align:center;background:#fffbeb;font-size:11px;color:#92400e;font-weight:700;white-space:nowrap">${r.moneda||'—'}</td>
+      <td style="text-align:right;background:#fffbeb;font-weight:700;color:#92400e;white-space:nowrap">${r.punit===null?'<span style="font-size:10px;color:#b45309" title="Los ítems de esta OC tienen precios distintos — ábrela para ver el detalle">varios</span>':(r.punit>0?r.punit.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}):'—')}</td>
+      <td style="text-align:center;background:#fffbeb;font-size:11px;color:#92400e;font-weight:600">${r.tc>0?r.tc.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:3}):'—'}</td>
     </tr>`;
   }).join('');
   const tot=p2fil.length, pages=Math.ceil(tot/p2pgsz);
@@ -3715,6 +3715,8 @@ function openSkuModal(el){
       +'<td style="padding:8px 10px;font-size:12px;text-align:right;font-weight:700;color:'+(r.cantPend>0?'#16a34a':'#94a3b8')+'">'+r.cantPend+'</td>'
       +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#64748b">'+r.freq+'</td>'
       +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#64748b">'+(r.frec||'—')+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;text-align:center;background:#fffbeb;color:#92400e;font-weight:700">'+((r.moneda&&r.moneda!=='-')?r.moneda:'—')+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;white-space:nowrap;text-align:right;background:#fffbeb;color:#92400e;font-weight:700">'+(r.punit>0?r.punit.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'
       +'</tr>';
   }).join('');
   document.getElementById('sku-modal').style.display='flex';
@@ -3751,6 +3753,8 @@ function openSkuModalP4(el){
       +'<td style="padding:8px 10px;font-size:12px;text-align:right;color:#64748b">'+r.cantRec+'</td>'
       +'<td style="padding:8px 10px;font-size:12px;text-align:right;font-weight:700;color:'+(r.cantPend>0?'#16a34a':'#94a3b8')+'">'+r.cantPend+'</td>'
       +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#64748b">'+(r.frec||'—')+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;background:#fffbeb;color:#94a3b8">—</td>'
+      +'<td style="padding:8px 10px;text-align:right;background:#fffbeb;color:#94a3b8">—</td>'
       +'</tr>';
   }).join('');
   document.getElementById('sku-modal').style.display='flex';
@@ -4765,6 +4769,7 @@ function importMaestro(wb){
         nItems:0,cantOrd:0,cantRec:0,cantPend:0,
         frec:gd(r,'FechaRecepcion'),fsal:gd(r,'FechaSalida')||gd(r,'FechaSali'),ucomp:g(r,'UsuarioCompras'),
         ingreso:0,fingreso:'',
+        moneda:'',tc:0,_pus:[],
         reqs:[],
         ped:g(r,'CodPedido'),peds:[],fpedido:gd(r,'FechaPedido')||gd(r,'Fecha Pedido')||gd(r,'FechaPed')
       };
@@ -4774,6 +4779,10 @@ function importMaestro(wb){
     const co=gn(r,'Cantidad de orden'), cr=gn(r,'CantRecepcion');
     o.cantOrd+=co; o.cantRec+=cr;
     o.ingreso+=gn(r,'Ingreso');
+    const monR=g(r,'MONEDA');
+    if(monR&&monR!=='-'){if(!o.moneda)o.moneda=monR;else if(o.moneda.indexOf(monR)<0)o.moneda+=' / '+monR;}
+    o._pus.push(gn(r,'PRECIO UNITARIO SIN IGV'));
+    const tcR=gn(r,'TIPO DE CAMBIO');if(tcR&&!o.tc)o.tc=tcR;
     const fing=gd(r,'FechaIngreso');
     if(fing){
       const dkey=s=>s.split('/').reverse().join('');
@@ -4799,6 +4808,7 @@ function importMaestro(wb){
       idproy:g(r,'IdProyecto'),proy:g(r,'NombreProyecto'),
       req:g(r,'CodRequerimiento'),freq:gd(r,'FechaRequerimiento'),
       frec:gd(r,'FechaRecepcion'),
+      moneda:g(r,'MONEDA'),punit:gn(r,'PRECIO UNITARIO SIN IGV'),tc:gn(r,'TIPO DE CAMBIO'),
       unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||g(r,'UM')||g(r,'Um')||g(r,'Und')||g(r,'UndMed')||g(r,'Unidad de Medida')||g(r,'UnidMed')||''
     });
   });
@@ -4817,6 +4827,10 @@ function importMaestro(wb){
     else if(es.includes('Aprobado')&&es.includes('Pendiente')){o.estado='Aprobado';}
     else{o.estado=es[0]||'Pendiente';}
     delete o._estados;
+    // Precio unitario sin IGV: un solo valor si todos los items lo comparten; null = "varios"
+    const pus=(o._pus||[]).filter(v=>v>0);
+    o.punit=pus.length&&pus.every(v=>v===pus[0])?pus[0]:(pus.length?null:0);
+    delete o._pus;
     return o;
   });
   // Sort desc by foc; si empatan en fecha, desempatar por número de OC descendente
@@ -5415,6 +5429,8 @@ setInterval(function(){
             <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap;text-align:right">CANT. PEND.</th>
             <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">F. REQ.</th>
             <th style="padding:9px 10px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap">F. RECEPCIÓN</th>
+            <th style="padding:9px 10px;color:#92400e;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #fde68a;white-space:nowrap;background:#fffbeb">MONEDA</th>
+            <th style="padding:9px 10px;color:#92400e;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #fde68a;white-space:nowrap;background:#fffbeb;text-align:right">P. UNIT. SIN IGV</th>
           </tr>
         </thead>
         <tbody id="modal-sku-body"></tbody>
