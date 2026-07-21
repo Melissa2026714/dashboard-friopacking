@@ -701,24 +701,29 @@ function parseTransitoWorkbook(wb){
         if(!t){
           t={fuente:'Reporte Maestro',oc:xcodigo(r['CodOrden']),ped:xcodigo(r['CodPedido']),ref:xcodigo(r['CodRequerimiento']),
              cod:xtexto(r['IdProducto']),prod:xtexto(r['Producto']),unid:xtexto(r['UnidadMedida'])||'UND',
-             cant:toNum(r['Cantidad de orden'])||toNum(r['Cantidad de pedido'])||toNum(r['CantidadRequerimiento']),
-             cantRec:0,fapro:xfecha(r['FechaAprobacionOC']),fent:xfecha(r['ParaFechaOrden']),
-             ucomp:xtexto(r['UsuarioCompras']),prov:xtexto(r['NombreProveedor']),
+             cant:0,cantRec:0,fped:xfecha(r['FechaPedido']),foc:xfecha(r['FechaOrden']),fapro:xfecha(r['FechaAprobacionOC']),fent:xfecha(r['ParaFechaOrden']),
+             respPed:xtexto(r['ResponsablePedido']),ucomp:xtexto(r['UsuarioCompras']),prov:xtexto(r['NombreProveedor']),
              estadoPed:xtexto(r['EstadoPedido']),estadoOC:xtexto(r['EstadoOrden'])};
           T.set(key,t);
         }
+        // Cada fila del grupo es un ítem distinto del mismo producto (verificado: las filas no se repiten por recepción en estados pendientes) → se SUMA.
+        t.cant+=toNum(r['Cantidad de orden'])||toNum(r['Cantidad de pedido'])||toNum(r['CantidadRequerimiento']);
         t.cantRec+=toNum(r['CantRecepcion']);
       }
       // ── Reservas (cálculo independiente) ──
       const esReserva=(eReq.includes('revisi')&&eReq.includes('almac'))||eReq==='enviado a pedido'||eReq==='enviado parcial a pedido';
       if(esReserva){
         const kr=xcodigo(r['CodRequerimiento'])+'|'+xtexto(r['IdProducto']);
-        if(!R.has(kr)){
-          R.set(kr,{req:xcodigo(r['CodRequerimiento']),fecha:xfecha(r['FechaRequerimiento']),freq:xfecha(r['ParaFechaRequerimiento']),
+        let rv=R.get(kr);
+        if(!rv){
+          rv={req:xcodigo(r['CodRequerimiento']),fecha:xfecha(r['FechaRequerimiento']),freq:xfecha(r['ParaFechaRequerimiento']),
             resp:xtexto(r['NombreResponsable']),idproy:xtexto(r['IdProyecto']),proy:xtexto(r['NombreProyecto']),
-            cod:xtexto(r['IdProducto']),prod:xtexto(r['Producto']),cant:toNum(r['CantidadRequerimiento']),unid:xtexto(r['UnidadMedida'])||'UND',
-            fam:xtexto(r['NombreFamilia']),estado:xtexto(r['EstadoRequerimiento'])});
+            cod:xtexto(r['IdProducto']),prod:xtexto(r['Producto']),cant:0,unid:xtexto(r['UnidadMedida'])||'UND',
+            fam:xtexto(r['NombreFamilia']),estado:xtexto(r['EstadoRequerimiento'])};
+          R.set(kr,rv);
         }
+        // Se SUMA: las filas repetidas por recepción traen cantidad 0, y las filas con cantidad son ítems/partes distintas del requerimiento.
+        rv.cant+=toNum(r['CantidadRequerimiento']);
       }
     });
   }
@@ -731,14 +736,16 @@ function parseTransitoWorkbook(wb){
       const key=['P4',xcodigo(r['CodPedido']),xcodigo(r['CodOrden']),xtexto(r['IdProducto'])].join('|');
       let t=T.get(key);
       if(!t){
-        t={fuente:'PedSinReq',oc:xcodigo(r['CodOrden']),ped:xcodigo(r['CodPedido']),ref:xtexto(r['ResponsablePedido']),
+        t={fuente:'PedSinReq',oc:xcodigo(r['CodOrden']),ped:xcodigo(r['CodPedido']),ref:'',
            cod:xtexto(r['IdProducto']),prod:xtexto(r['Descripción']!=null?r['Descripción']:r['Descripcion']),unid:xtexto(r['Medida'])||'UND',
-           cant:toNum(r['Cantidad de orden'])||toNum(r['Cantidad de pedido']),cantRec:0,
-           fapro:xfecha(r['FechaAprobacionOC']),fent:xfecha(r['ParaFechaOrden']),
-           ucomp:xtexto(r['UsuarioCompras']),prov:xtexto(r['NombreProveedor']),
+           cant:0,cantRec:0,
+           fped:xfecha(r['FechaPedido']),foc:xfecha(r['FechaOrden']),fapro:xfecha(r['FechaAprobacionOC']),fent:xfecha(r['ParaFechaOrden']),
+           respPed:xtexto(r['ResponsablePedido']),ucomp:xtexto(r['UsuarioCompras']),prov:xtexto(r['NombreProveedor']),
            estadoPed:xtexto(r['EstadoPedido']),estadoOC:xtexto(r['EstadoOrden'])};
         T.set(key,t);
       }
+      // Cada fila del grupo es un ítem distinto del mismo producto → se SUMA (igual que en Reporte Maestro).
+      t.cant+=toNum(r['Cantidad de orden'])||toNum(r['Cantidad de pedido']);
       t.cantRec+=toNum(r['CantRecepcion']);
     });
   }
@@ -780,18 +787,97 @@ function fichaTransHTML(cod){
   const td='padding:3px 6px;border-top:1px solid #e2e8f0;font-size:11px';
   let h='';
   if(ocs.length){
-    h+=`<div style="padding:10px 20px 4px;font-weight:800;font-size:12px;color:#b45309">🚚 En tránsito — OC pendientes de recepción (${ocs.length})</div>
+    h+=`<div style="padding:10px 20px 4px;font-weight:800;font-size:12px;color:#b45309">🚚 En tránsito — OC pendientes de recepción (${ocs.length}) <a href="javascript:void(0)" onclick="verDetalleTransito('${cod}')" style="font-weight:600;font-size:11px;color:#0d9488">ver detalle completo ▸</a></div>
     <div style="padding:0 20px 6px;overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="${th}">OC</th><th style="${th}">Fuente</th><th style="${th};text-align:right">Cant. pend.</th><th style="${th}">F. Aprob.</th><th style="${th}">Est. llegada</th><th style="${th}">Usuario</th><th style="${th}">Proveedor</th></tr></thead><tbody>`+
     ocs.slice(0,25).map(t=>`<tr><td style="${td};font-family:ui-monospace,monospace">${t.oc||'— (ped. '+(t.ped||'?')+')'}</td><td style="${td}">${t.fuente}</td><td style="${td};text-align:right"><b>${fmtq(t.cantPend!=null?t.cantPend:t.cant)}</b></td><td style="${td}">${t.fapro||'—'}</td><td style="${td}">${t.fent||'—'}</td><td style="${td}">${t.ucomp||'—'}</td><td style="${td}">${t.prov||'—'}</td></tr>`).join('')+
     `</tbody></table>${ocs.length>25?`<div class="sub">…y ${ocs.length-25} línea(s) más</div>`:''}</div>`;
   }
   if(rs.length){
-    h+=`<div style="padding:10px 20px 4px;font-weight:800;font-size:12px;color:#b91c1c">🔒 Reservas — requerimientos activos (${rs.length})</div>
+    h+=`<div style="padding:10px 20px 4px;font-weight:800;font-size:12px;color:#b91c1c">🔒 Reservas — requerimientos activos (${rs.length}) <a href="javascript:void(0)" onclick="verDetalleReservas('${cod}')" style="font-weight:600;font-size:11px;color:#0d9488">ver detalle completo ▸</a></div>
     <div style="padding:0 20px 6px;overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="${th}">Requerimiento</th><th style="${th}">Fecha</th><th style="${th};text-align:right">Cant.</th><th style="${th}">Solicitante</th><th style="${th}">Proyecto/Área</th><th style="${th}">Estado</th></tr></thead><tbody>`+
     rs.slice(0,25).map(r=>`<tr><td style="${td};font-family:ui-monospace,monospace">${r.req}</td><td style="${td}">${r.fecha||'—'}</td><td style="${td};text-align:right"><b>${fmtq(r.cant)}</b></td><td style="${td}">${r.resp||'—'}</td><td style="${td}">${r.proy||r.idproy||'—'}</td><td style="${td}">${r.estado}</td></tr>`).join('')+
     `</tbody></table>${rs.length>25?`<div class="sub">…y ${rs.length-25} línea(s) más</div>`:''}</div>`;
   }
   return h;
+}
+
+// Ventana emergente: detalle completo del Stock en Tránsito de un SKU — a qué OC/pedido pertenece, fechas, usuario, proveedor.
+function verDetalleTransito(cod){
+  const d=DATA_BY_COD[cod]||{cod:cod,desc:'',um:''};
+  const ocs=TRANS.filter(t=>t.cod===cod);
+  const tot=ocs.reduce((a,t)=>a+(t.cantPend!=null?t.cantPend:t.cant||0),0);
+  const th='text-align:left;padding:5px 8px;color:#fff;background:#0f172a;font-size:10px;white-space:nowrap;position:sticky;top:0';
+  const td='padding:4px 8px;border-top:1px solid #e2e8f0;font-size:11px;white-space:nowrap';
+  document.getElementById('fichaBody').innerHTML=`
+    <div style="background:#b45309;color:#fff;padding:16px 20px">
+      <div style="font-size:11px;opacity:.85;font-family:ui-monospace,monospace">${d.cod}</div>
+      <div style="font-size:15px;font-weight:800;margin-top:2px">🚚 Stock en Tránsito — ${d.desc||''}</div>
+      <div style="margin-top:8px;font-size:12px">Total pendiente de recepción: <b>${fmtq(tot)}</b> ${d.um||''} · ${ocs.length} línea(s) · Fuentes: Reporte Maestro (${ocs.filter(t=>t.fuente==='Reporte Maestro').length}) + PedSinReq (${ocs.filter(t=>t.fuente==='PedSinReq').length})</div>
+    </div>
+    <div style="padding:12px 16px;overflow-x:auto">
+      ${ocs.length?`<table style="width:100%;border-collapse:collapse">
+        <thead><tr><th style="${th}">Fuente</th><th style="${th}">Requerimiento</th><th style="${th}">Pedido</th><th style="${th}">F. Pedido</th><th style="${th}">Estado Pedido</th><th style="${th}">Orden de Compra</th><th style="${th}">F. Orden</th><th style="${th}">F. Aprobación</th><th style="${th}">F. Est. Llegada</th><th style="${th};text-align:right">Cant. Orden</th><th style="${th};text-align:right">Recibida</th><th style="${th};text-align:right">Pendiente</th><th style="${th}">Estado OC</th><th style="${th}">Resp. Pedido</th><th style="${th}">Usuario Compras</th><th style="${th}">Proveedor</th></tr></thead>
+        <tbody>${ocs.map(t=>`<tr>
+          <td style="${td}">${t.fuente}</td>
+          <td style="${td};font-family:ui-monospace,monospace">${t.ref||'—'}</td>
+          <td style="${td};font-family:ui-monospace,monospace">${t.ped||'—'}</td>
+          <td style="${td}">${t.fped||'—'}</td>
+          <td style="${td}">${t.estadoPed||'—'}</td>
+          <td style="${td};font-family:ui-monospace,monospace"><b>${t.oc||'— (sin OC)'}</b></td>
+          <td style="${td}">${t.foc||'—'}</td>
+          <td style="${td}">${t.fapro||'—'}</td>
+          <td style="${td}">${t.fent||'—'}</td>
+          <td style="${td};text-align:right">${fmtq(t.cant)}</td>
+          <td style="${td};text-align:right">${fmtq(t.cantRec)}</td>
+          <td style="${td};text-align:right"><b style="color:#b45309">${fmtq(t.cantPend!=null?t.cantPend:t.cant)}</b></td>
+          <td style="${td}">${t.estadoOC||'—'}</td>
+          <td style="${td}">${t.respPed||'—'}</td>
+          <td style="${td}">${t.ucomp||'—'}</td>
+          <td style="${td}">${t.prov||'—'}</td>
+        </tr>`).join('')}</tbody></table>`
+      :'<div style="color:#94a3b8;padding:16px;text-align:center">Este ítem no tiene OC en tránsito. Importa el Reporte Almacen.xlsx si aún no lo has hecho.</div>'}
+    </div>
+    <div style="padding:0 20px 18px;display:flex;gap:8px">
+      <button class="btn br" onclick="verFichaExistencia('${cod}')">📋 Ver ficha completa</button>
+      <button class="btn br" onclick="cerrarFicha()">Cerrar</button>
+    </div>`;
+  document.getElementById('fichaBg').style.display='flex';
+}
+
+// Ventana emergente: detalle de las Reservas de un SKU — qué requerimientos lo reservan, quién lo solicita, etc.
+function verDetalleReservas(cod){
+  const d=DATA_BY_COD[cod]||{cod:cod,desc:'',um:''};
+  const rs=RESV.filter(r=>r.cod===cod);
+  const tot=rs.reduce((a,r)=>a+(+r.cant||0),0);
+  const th='text-align:left;padding:5px 8px;color:#fff;background:#0f172a;font-size:10px;white-space:nowrap;position:sticky;top:0';
+  const td='padding:4px 8px;border-top:1px solid #e2e8f0;font-size:11px;white-space:nowrap';
+  document.getElementById('fichaBody').innerHTML=`
+    <div style="background:#b91c1c;color:#fff;padding:16px 20px">
+      <div style="font-size:11px;opacity:.85;font-family:ui-monospace,monospace">${d.cod}</div>
+      <div style="font-size:15px;font-weight:800;margin-top:2px">🔒 Reservas — ${d.desc||''}</div>
+      <div style="margin-top:8px;font-size:12px">Total reservado: <b>${fmtq(tot)}</b> ${d.um||''} · ${rs.length} requerimiento(s) activo(s)</div>
+    </div>
+    <div style="padding:12px 16px;overflow-x:auto">
+      ${rs.length?`<table style="width:100%;border-collapse:collapse">
+        <thead><tr><th style="${th}">Requerimiento</th><th style="${th}">F. Requerimiento</th><th style="${th}">F. Requerida</th><th style="${th};text-align:right">Cant.</th><th style="${th}">UM</th><th style="${th}">Solicitante</th><th style="${th}">Proyecto / Área</th><th style="${th}">Familia</th><th style="${th}">Estado Req.</th></tr></thead>
+        <tbody>${rs.map(r=>`<tr>
+          <td style="${td};font-family:ui-monospace,monospace"><b>${r.req||'—'}</b></td>
+          <td style="${td}">${r.fecha||'—'}</td>
+          <td style="${td}">${r.freq||'—'}</td>
+          <td style="${td};text-align:right"><b style="color:#b91c1c">${fmtq(r.cant)}</b></td>
+          <td style="${td}">${r.unid||'—'}</td>
+          <td style="${td}">${r.resp||'—'}</td>
+          <td style="${td}">${r.proy||r.idproy||'—'}</td>
+          <td style="${td}">${r.fam||'—'}</td>
+          <td style="${td}">${r.estado||'—'}</td>
+        </tr>`).join('')}</tbody></table>`
+      :'<div style="color:#94a3b8;padding:16px;text-align:center">Este ítem no tiene reservas activas.</div>'}
+    </div>
+    <div style="padding:0 20px 18px;display:flex;gap:8px">
+      <button class="btn br" onclick="verFichaExistencia('${cod}')">📋 Ver ficha completa</button>
+      <button class="btn br" onclick="cerrarFicha()">Cerrar</button>
+    </div>`;
+  document.getElementById('fichaBg').style.display='flex';
 }
 
 /* ═══════════════ CARGA EN VIVO DE data.json (Requerimientos reales) ═══════════════ */
@@ -927,8 +1013,8 @@ function renderGenTable(){
       <td class="num">${(d.ica||0).toLocaleString('es-PE')}</td>
       <td class="num">${(d.lima||0).toLocaleString('es-PE')}</td>
       <td class="num">${(d.trujillo||0).toLocaleString('es-PE')}</td>
-      <td class="num">${(d.transito||0)>0?'<b style="color:#b45309">'+fmtq(d.transito)+'</b>':'0'}</td>
-      <td class="num">${(d.reservas||0)>0?'<b style="color:#b91c1c">'+fmtq(d.reservas)+'</b>':'0'}</td>
+      <td class="num" ${(d.transito||0)>0?`onclick="event.stopPropagation();verDetalleTransito('${d.cod}')" style="cursor:pointer" title="Clic: ver a qué OC y pedidos pertenece este tránsito"`:''}>${(d.transito||0)>0?'<b style="color:#b45309">'+fmtq(d.transito)+' ▸</b>':'0'}</td>
+      <td class="num" ${(d.reservas||0)>0?`onclick="event.stopPropagation();verDetalleReservas('${d.cod}')" style="cursor:pointer" title="Clic: ver qué requerimientos reservan este ítem"`:''}>${(d.reservas||0)>0?'<b style="color:#b91c1c">'+fmtq(d.reservas)+' ▸</b>':'0'}</td>
       <td class="num">${(()=>{const sd=d.stockDisp!=null?d.stockDisp:(d.stock||0);return sd<0?'<b style="color:#b91c1c">'+fmtq(sd)+'</b>':'<b>'+fmtq(sd)+'</b>';})()}</td>
       <td class="num">${(d.rop||0).toLocaleString('es-PE',{maximumFractionDigits:1})}</td>
       <td>${PILL_GEN[d.estado]||PILL_GEN['SIN DATOS']}</td>
