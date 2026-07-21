@@ -708,6 +708,7 @@ function parseTransitoWorkbook(wb){
         if(!t){
           t={fuente:'Reporte Maestro',oc:xcodigo(r['CodOrden']),ped:xcodigo(r['CodPedido']),ref:xcodigo(r['CodRequerimiento']),
              cod:xtexto(r['IdProducto']),prod:xtexto(r['Producto']),unid:xtexto(r['UnidadMedida'])||'UND',
+             resp:xtexto(r['NombreResponsable']),proy:xtexto(r['NombreProyecto']),idproy:xtexto(r['IdProyecto']),
              cant:0,cantRec:0,fped:xfecha(r['FechaPedido']),foc:xfecha(r['FechaOrden']),fapro:xfecha(r['FechaAprobacionOC']),fent:xfecha(r['ParaFechaOrden']),
              respPed:xtexto(r['ResponsablePedido']),ucomp:xtexto(r['UsuarioCompras']),prov:xtexto(r['NombreProveedor']),
              estadoPed:xtexto(r['EstadoPedido']),estadoOC:xtexto(r['EstadoOrden'])};
@@ -745,6 +746,7 @@ function parseTransitoWorkbook(wb){
       if(!t){
         t={fuente:'PedSinReq',oc:xcodigo(r['CodOrden']),ped:xcodigo(r['CodPedido']),ref:'',
            cod:xtexto(r['IdProducto']),prod:xtexto(r['Descripción']!=null?r['Descripción']:r['Descripcion']),unid:xtexto(r['Medida'])||'UND',
+           resp:'',proy:'',idproy:'',
            cant:0,cantRec:0,
            fped:xfecha(r['FechaPedido']),foc:xfecha(r['FechaOrden']),fapro:xfecha(r['FechaAprobacionOC']),fent:xfecha(r['ParaFechaOrden']),
            respPed:xtexto(r['ResponsablePedido']),ucomp:xtexto(r['UsuarioCompras']),prov:xtexto(r['NombreProveedor']),
@@ -802,8 +804,8 @@ function fichaTransHTML(cod){
   let h='';
   if(ocs.length){
     h+=`<div style="padding:10px 20px 4px;font-weight:800;font-size:12px;color:#b45309">🚚 En tránsito — OC pendientes de recepción (${ocs.length}) <a href="javascript:void(0)" onclick="verDetalleTransito('${cod}')" style="font-weight:600;font-size:11px;color:#0d9488">ver detalle completo ▸</a></div>
-    <div style="padding:0 20px 6px;overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="${th}">OC</th><th style="${th}">Fuente</th><th style="${th};text-align:right">Cant. pend.</th><th style="${th}">F. Aprob.</th><th style="${th}">Est. llegada</th><th style="${th}">Usuario</th><th style="${th}">Proveedor</th></tr></thead><tbody>`+
-    ocs.slice(0,25).map(t=>`<tr><td style="${td};font-family:ui-monospace,monospace">${t.oc||'— (ped. '+(t.ped||'?')+')'}</td><td style="${td}">${t.fuente}</td><td style="${td};text-align:right"><b>${fmtq(t.cantPend!=null?t.cantPend:t.cant)}</b></td><td style="${td}">${t.fapro||'—'}</td><td style="${td}">${t.fent||'—'}</td><td style="${td}">${t.ucomp||'—'}</td><td style="${td}">${t.prov||'—'}</td></tr>`).join('')+
+    <div style="padding:0 20px 6px;overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="${th}">OC</th><th style="${th}">Fuente</th><th style="${th}">Solicitante</th><th style="${th}">Proyecto / Área</th><th style="${th};text-align:right">Cant. pend.</th><th style="${th}">F. Aprob.</th><th style="${th}">Est. llegada</th><th style="${th}">Usuario</th><th style="${th}">Proveedor</th></tr></thead><tbody>`+
+    ocs.slice(0,25).map(t=>`<tr><td style="${td};font-family:ui-monospace,monospace">${t.oc||'— (ped. '+(t.ped||'?')+')'}</td><td style="${td}">${t.fuente}</td><td style="${td}">${t.resp||t.respPed||'—'}</td><td style="${td}">${t.proy||t.idproy||'—'}</td><td style="${td};text-align:right"><b>${fmtq(t.cantPend!=null?t.cantPend:t.cant)}</b></td><td style="${td}">${t.fapro||'—'}</td><td style="${td}">${t.fent||'—'}</td><td style="${td}">${t.ucomp||'—'}</td><td style="${td}">${t.prov||'—'}</td></tr>`).join('')+
     `</tbody></table>${ocs.length>25?`<div class="sub">…y ${ocs.length-25} línea(s) más</div>`:''}</div>`;
   }
   if(rs.length){
@@ -830,10 +832,12 @@ function verDetalleTransito(cod){
     </div>
     <div style="padding:12px 16px;overflow-x:auto">
       ${ocs.length?`<table style="width:100%;border-collapse:collapse">
-        <thead><tr><th style="${th}">Fuente</th><th style="${th}">Requerimiento</th><th style="${th}">Pedido</th><th style="${th}">F. Pedido</th><th style="${th}">Estado Pedido</th><th style="${th}">Orden de Compra</th><th style="${th}">F. Orden</th><th style="${th}">F. Aprobación</th><th style="${th}">F. Est. Llegada</th><th style="${th};text-align:right">Cant. Orden</th><th style="${th};text-align:right">Recibida</th><th style="${th};text-align:right">Pendiente</th><th style="${th}">Estado OC</th><th style="${th}">Resp. Pedido</th><th style="${th}">Usuario Compras</th><th style="${th}">Proveedor</th></tr></thead>
+        <thead><tr><th style="${th}">Fuente</th><th style="${th}">Requerimiento</th><th style="${th}">Solicitante</th><th style="${th}">Proyecto / Área</th><th style="${th}">Pedido</th><th style="${th}">F. Pedido</th><th style="${th}">Estado Pedido</th><th style="${th}">Orden de Compra</th><th style="${th}">F. Orden</th><th style="${th}">F. Aprobación</th><th style="${th}">F. Est. Llegada</th><th style="${th};text-align:right">Cant. Orden</th><th style="${th};text-align:right">Recibida</th><th style="${th};text-align:right">Pendiente</th><th style="${th}">Estado OC</th><th style="${th}">Resp. Pedido</th><th style="${th}">Usuario Compras</th><th style="${th}">Proveedor</th></tr></thead>
         <tbody>${ocs.map(t=>`<tr>
           <td style="${td}">${t.fuente}</td>
           <td style="${td};font-family:ui-monospace,monospace">${t.ref||'—'}</td>
+          <td style="${td}">${t.resp||t.respPed||'—'}</td>
+          <td style="${td}">${t.proy||t.idproy||'—'}</td>
           <td style="${td};font-family:ui-monospace,monospace">${t.ped||'—'}</td>
           <td style="${td}">${t.fped||'—'}</td>
           <td style="${td}">${t.estadoPed||'—'}</td>
