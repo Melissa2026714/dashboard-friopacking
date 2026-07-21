@@ -119,7 +119,8 @@ tr:hover td{background:#f8fafc}
     <button class="tab act" id="tab-home" onclick="nav('home')">📦 ALMACÉN</button>
     <button class="tab" id="tab-general" onclick="nav('p-general')">📋 General</button>
     <button class="tab" id="tab-req" onclick="nav('p-req')">⚡ Requerimientos</button>
-    <button class="tab" id="tab-pick" onclick="nav('p-pick')">🧰 Picking</button>
+    <button class="tab" id="tab-pick" onclick="nav('p-pick')" title="Solo lo pendiente por trabajar">🧰 Picking Pendiente</button>
+    <button class="tab" id="tab-pickdone" onclick="nav('p-pickdone')" title="Antecedente de pickings cerrados con responsable, foto y fecha/hora">✅ Picking Finalizado</button>
     <button class="tab" id="tab-cod" onclick="nav('p-cod')">🔖 Códigos</button>
   </div>
   <div class="nbr">
@@ -138,7 +139,8 @@ tr:hover td{background:#f8fafc}
   <div class="hcards">
     <div class="hcard" onclick="nav('p-general')"><div class="hci">📋</div><div class="hct">General</div><div class="hcs" id="hc-general">cargando…</div></div>
     <div class="hcard" onclick="nav('p-req')"><div class="hci">⚡</div><div class="hct">Requerimientos</div><div class="hcs" id="hc-req">cargando…</div></div>
-    <div class="hcard" onclick="nav('p-pick')"><div class="hci">🧰</div><div class="hct">Picking</div><div class="hcs" id="hc-pick">cargando…</div></div>
+    <div class="hcard" onclick="nav('p-pick')"><div class="hci">🧰</div><div class="hct">Picking Pendiente</div><div class="hcs" id="hc-pick">cargando…</div></div>
+    <div class="hcard" onclick="nav('p-pickdone')"><div class="hci">✅</div><div class="hct">Picking Finalizado</div><div class="hcs" id="hc-pickdone">cargando…</div></div>
     <div class="hcard" onclick="nav('p-cod')"><div class="hci">🔖</div><div class="hct">Códigos</div><div class="hcs" id="hc-cod">cargando…</div></div>
   </div>
 </div>
@@ -243,12 +245,12 @@ tr:hover td{background:#f8fafc}
 <div class="pg" id="p-pick">
   <div class="hd">
     <div>
-      <h2>Picking — Por preparar</h2>
-      <div class="sub">Requerimientos en revisión de almacén, agrupados — marca ítem por ítem: Picking o Pedido</div>
+      <h2>Picking Pendiente</h2>
+      <div class="sub">Solo lo pendiente por trabajar — agrupado por proyecto y requerimiento. Las cantidades se asignan en la revisión (Requerimientos)</div>
     </div>
   </div>
 
-  <div class="note crit">🧰 Aquí solo aparecen los SKUs con <b>Cant. a Picking</b> mayor a 0 (el reparto por cantidad se hace desde Requerimientos). Cuando termines de preparar un ítem, márcalo <b>✅ Completado</b> con responsable, foto y fecha/hora.</div>
+  <div class="note crit">🧰 Aquí solo aparece lo <b>pendiente por trabajar</b> (SKUs con Cant. a Picking &gt; 0 aún sin cerrar). Cuando termines de preparar un ítem, márcalo <b>✅ Completado</b> con responsable, foto y fecha/hora — al cerrarse pasa automáticamente a la hoja <b>✅ Picking Finalizado</b> como antecedente.</div>
 
   <div class="kpis" id="pickKpis"></div>
 
@@ -264,6 +266,29 @@ tr:hover td{background:#f8fafc}
   </div>
 
   <div id="pickGroups"></div>
+
+  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+</div>
+
+<!-- ══════════════ PÁGINA: PICKING FINALIZADO ══════════════ -->
+<div class="pg" id="p-pickdone">
+  <div class="hd">
+    <div>
+      <h2>Picking Finalizado</h2>
+      <div class="sub">Registro histórico (antecedente) de pickings cerrados — responsable, fecha/hora y foto de evidencia. Agrupado por proyecto y requerimiento</div>
+    </div>
+  </div>
+
+  <div class="note live">✅ Aquí queda el <b>antecedente</b> de cada picking cerrado en la hoja Picking Pendiente. El registro se conserva aunque el requerimiento luego cambie de estado. Recuerda <b>💾 GUARDAR</b> para compartirlo.</div>
+
+  <div class="kpis" id="pickDoneKpis"></div>
+
+  <div class="filters">
+    <input id="pdq" type="text" placeholder="🔍 Buscar por código, descripción, proyecto, requerimiento o responsable…" oninput="renderPickDone()">
+    <span class="fx" id="pdcnt"></span>
+  </div>
+
+  <div id="pickDoneGroups"></div>
 
   <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
@@ -410,8 +435,8 @@ tr:hover td{background:#f8fafc}
 
 <script>
 /* ═══════════════ NAVEGACIÓN ═══════════════ */
-const PAGES=['home','p-general','p-req','p-pick','p-cod'];
-const TABS={home:'tab-home','p-general':'tab-general','p-req':'tab-req','p-pick':'tab-pick','p-cod':'tab-cod'};
+const PAGES=['home','p-general','p-req','p-pick','p-pickdone','p-cod'];
+const TABS={home:'tab-home','p-general':'tab-general','p-req':'tab-req','p-pick':'tab-pick','p-pickdone':'tab-pickdone','p-cod':'tab-cod'};
 function nav(id){
   PAGES.forEach(p=>{const el=document.getElementById(p==='home'?'ph':p);if(el)el.classList.remove('act');});
   document.getElementById(id==='home'?'ph':id).classList.add('act');
@@ -1311,19 +1336,20 @@ function renderPick(){
     return {...r,key,stockDisp:it?it.stock:0,ubi:it?it.ubi:'—',auto,picking,pedido,
       completado:!!rec.completado,responsable:rec.responsable||'',fechaHora:rec.fechaHora||'',fotoPath:rec.fotoPath||''};
   });
-  // Esta página solo muestra ítems con cantidad efectivamente asignada a Picking
-  let items=allItems.filter(r=>r.picking>0);
+  // Esta página solo muestra lo PENDIENTE por trabajar: cantidad asignada a Picking y aún sin cerrar.
+  const asignados=allItems.filter(r=>r.picking>0);
+  const finalizados=asignados.filter(r=>r.completado).length;
+  let items=asignados.filter(r=>!r.completado);
   if(q) items=items.filter(r=>[r.cod,r.prod,r.proy,r.resp,r.req].join(' ').toLowerCase().includes(q));
 
   const totalCant=allItems.reduce((s,r)=>s+r.cant,0);
-  const totalPick=allItems.reduce((s,r)=>s+r.picking,0);
-  const completados=items.filter(r=>r.completado).length;
+  const totalPick=items.reduce((s,r)=>s+r.picking,0);
   document.getElementById('pickKpis').innerHTML=`
    <div class="kpi alert"><div class="kl">Pendientes en almacén</div><div class="kv">${pendientes.length.toLocaleString('es-PE')}</div><div class="kd">líneas en revisión</div></div>
-   <div class="kpi good"><div class="kl">Und. a Picking</div><div class="kv">${totalPick.toLocaleString('es-PE')}</div><div class="kd">de ${totalCant.toLocaleString('es-PE')} und. requeridas</div></div>
-   <div class="kpi warn"><div class="kl">Por preparar</div><div class="kv">${items.length-completados}</div><div class="kd">de ${items.length} ítems en picking</div></div>
-   <div class="kpi"><div class="kl">Completados</div><div class="kv">${completados}</div><div class="kd">con evidencia registrada</div></div>`;
-  document.getElementById('pcnt').textContent=`${items.length} ítems en picking`;
+   <div class="kpi good"><div class="kl">Und. a Picking pendientes</div><div class="kv">${totalPick.toLocaleString('es-PE')}</div><div class="kd">de ${totalCant.toLocaleString('es-PE')} und. requeridas</div></div>
+   <div class="kpi warn"><div class="kl">Ítems por preparar</div><div class="kv">${items.length}</div><div class="kd">pendientes de cierre</div></div>
+   <div class="kpi"><div class="kl">Finalizados</div><div class="kv">${finalizados}</div><div class="kd">ver hoja ✅ Picking Finalizado</div></div>`;
+  document.getElementById('pcnt').textContent=`${items.length} ítems pendientes`;
   updateDirtyLabels();
 
   // Agrupar PRIMERO por proyecto (con su total) y dentro por requerimiento — solo SKUs con Cant. a Picking > 0
@@ -1333,7 +1359,6 @@ function renderPick(){
   document.getElementById('pickGroups').innerHTML=proyNames.map(p=>{
     const list=proys[p];
     const pPick=list.reduce((s,r)=>s+r.picking,0);
-    const pDone=list.filter(r=>r.completado).length;
     const groups={};
     list.forEach(r=>{(groups[r.req]=groups[r.req]||[]).push(r);});
     const reqCodes=Object.keys(groups).sort((a,b)=>{
@@ -1342,16 +1367,15 @@ function renderPick(){
     });
     return `<div style="margin:20px 0 10px;background:#0f172a;color:#fff;border-radius:9px;padding:11px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
       <span style="font-weight:800;font-size:13px">📁 ${p}</span>
-      <span style="font-size:11px;opacity:.9">TOTAL: <b>${pPick.toLocaleString('es-PE')} und. a picking</b> · ${list.length} SKUs · ${reqCodes.length} requerimiento(s) · ${pDone}/${list.length} completados</span>
+      <span style="font-size:11px;opacity:.9">TOTAL: <b>${pPick.toLocaleString('es-PE')} und. a picking</b> · ${list.length} SKUs · ${reqCodes.length} requerimiento(s) pendiente(s)</span>
     </div>`+
     reqCodes.map(rc=>{
       const g=groups[rc];
       const gPick=g.reduce((s,r)=>s+r.picking,0);
-      const gDone=g.filter(r=>r.completado).length;
       return `<div class="reqgroup">
       <div class="reqgroup-hd">
         <span class="rg-req">${rc}</span>
-        <span class="rg-meta">${g.length} SKUs en picking · ${gPick} und. · ${gDone}/${g.length} completados · ${g[0].resp||'—'} · ${g[0].fecha||'—'}</span>
+        <span class="rg-meta">${g.length} SKUs en picking · ${gPick} und. · ${g[0].resp||'—'} · ${g[0].fecha||'—'}</span>
       </div>
       <table>
         <thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant. req.</th><th class="num">Cant. a Picking</th><th>Cierre de ciclo</th></tr></thead>
@@ -1370,7 +1394,82 @@ function renderPick(){
       </table>
     </div>`;
     }).join('');
-  }).join('') || `<div class="note">🧹 Picking limpio: ningún ítem tiene cantidad asignada todavía. Asigna las cantidades en la pestaña <b>Requerimientos</b> (revisión de almacén) y aparecerán aquí agrupadas por proyecto y requerimiento.</div>`;
+  }).join('') || `<div class="note">🧹 Sin picking pendiente: ningún ítem tiene cantidad asignada por trabajar. Asigna las cantidades en la pestaña <b>Requerimientos</b> (revisión de almacén) y aparecerán aquí agrupadas por proyecto y requerimiento. Los pickings ya cerrados están en <b>✅ Picking Finalizado</b>.</div>`;
+  renderPickDone();
+}
+
+/* ═══════════════ PICKING FINALIZADO — antecedente de pickings cerrados ═══════════════ */
+// Se construye desde los registros guardados/pendientes (almacenPicking), no desde P5,
+// para que el antecedente se conserve aunque el requerimiento cambie luego de estado.
+function renderPickDone(){
+  const el=document.getElementById('pickDoneGroups');
+  if(!el)return;
+  const q=(document.getElementById('pdq').value||'').toLowerCase().trim();
+  const byKey={};
+  P5.forEach(r=>{byKey[r.req+'|'+r.cod]=r;});
+  const recs={...CONFIRMED,...PENDING};
+  let items=Object.keys(recs).map(k=>{
+    const raw=recs[k];
+    const rec=(raw&&typeof raw==='object')?raw:{picking:raw};
+    if(!rec.completado)return null;
+    const partes=k.split('|');
+    const p5=byKey[k]||{};
+    return {key:k,req:p5.req||partes[0],cod:p5.cod||partes[1]||'',prod:p5.prod||'(el requerimiento ya no está en revisión)',
+      proy:p5.proy||'',resp:p5.resp||'—',fecha:p5.fecha||'',cant:p5.cant!=null?p5.cant:'—',unid:p5.unid||'',
+      picking:rec.picking!=null?rec.picking:(p5.cant||0),
+      responsable:rec.responsable||'—',fechaHora:rec.fechaHora||'—',fotoPath:rec.fotoPath||''};
+  }).filter(Boolean);
+  if(q)items=items.filter(r=>[r.cod,r.prod,r.proy,r.resp,r.req,r.responsable].join(' ').toLowerCase().includes(q));
+
+  const und=items.reduce((s,r)=>s+(+r.picking||0),0);
+  const proySet=new Set(items.map(r=>r.proy||'—'));
+  const conFoto=items.filter(r=>r.fotoPath).length;
+  document.getElementById('pickDoneKpis').innerHTML=`
+   <div class="kpi good"><div class="kl">Ítems finalizados</div><div class="kv">${items.length.toLocaleString('es-PE')}</div><div class="kd">con cierre de ciclo registrado</div></div>
+   <div class="kpi"><div class="kl">Unidades entregadas</div><div class="kv">${und.toLocaleString('es-PE')}</div><div class="kd">${proySet.size} proyecto(s) · ${new Set(items.map(r=>r.req)).size} requerimiento(s)</div></div>
+   <div class="kpi"><div class="kl">Con foto de evidencia</div><div class="kv">${conFoto.toLocaleString('es-PE')}</div><div class="kd">de ${items.length.toLocaleString('es-PE')} ítems</div></div>`;
+  document.getElementById('pdcnt').textContent=`${items.length} ítems finalizados`;
+
+  // Agrupar por proyecto (con total) y dentro por requerimiento — mismo orden que Picking Pendiente
+  const proys={};
+  items.forEach(r=>{const p=r.proy||'— SIN PROYECTO —';(proys[p]=proys[p]||[]).push(r);});
+  const proyNames=Object.keys(proys).sort((a,b)=>a.localeCompare(b,'es'));
+  el.innerHTML=proyNames.map(p=>{
+    const list=proys[p];
+    const pPick=list.reduce((s,r)=>s+(+r.picking||0),0);
+    const groups={};
+    list.forEach(r=>{(groups[r.req]=groups[r.req]||[]).push(r);});
+    const reqCodes=Object.keys(groups).sort((a,b)=>{
+      const fa=groups[a][0].fecha||'',fb=groups[b][0].fecha||'';
+      return fb.localeCompare(fa);
+    });
+    return `<div style="margin:20px 0 10px;background:#14532d;color:#fff;border-radius:9px;padding:11px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <span style="font-weight:800;font-size:13px">📁 ${p}</span>
+      <span style="font-size:11px;opacity:.9">TOTAL FINALIZADO: <b>${pPick.toLocaleString('es-PE')} und.</b> · ${list.length} SKUs · ${reqCodes.length} requerimiento(s)</span>
+    </div>`+
+    reqCodes.map(rc=>{
+      const g=groups[rc];
+      const gPick=g.reduce((s,r)=>s+(+r.picking||0),0);
+      return `<div class="reqgroup">
+      <div class="reqgroup-hd">
+        <span class="rg-req">${rc}</span>
+        <span class="rg-meta">${g.length} SKUs · ${gPick.toLocaleString('es-PE')} und. finalizadas · ${g[0].resp||'—'} · ${g[0].fecha||'—'}</span>
+      </div>
+      <table>
+        <thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant. req.</th><th class="num">Cant. picking</th><th>Cierre de ciclo</th></tr></thead>
+        <tbody>
+        ${g.map(r=>`<tr>
+          <td class="mono">${r.cod}</td>
+          <td style="white-space:normal;max-width:300px;font-weight:500">${r.prod||'—'}</td>
+          <td class="num">${r.cant}</td>
+          <td class="num" style="font-weight:700">${r.picking}</td>
+          <td><span class="pill p-ok">✅ COMPLETADO</span> <span style="font-size:10.5px;color:#64748b">${r.responsable} · ${r.fechaHora}</span>${r.fotoPath?` · <a href="${r.fotoPath}" target="_blank" style="font-size:10.5px;font-weight:600">📷 ver foto</a>`:''}</td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+    }).join('');
+  }).join('') || `<div class="note">Aún no hay pickings finalizados. Cuando cierres un ítem en <b>🧰 Picking Pendiente</b> (✅ Completado con responsable, foto y fecha/hora), quedará registrado aquí como antecedente.</div>`;
 }
 
 /* ═══════════════ CIERRE DE CICLO DE PICKING (foto + responsable + fecha/hora) ═══════════════ */
@@ -1889,6 +1988,13 @@ function updateHomeCounters(){
     totalReq+=r.cant;
   });
   document.getElementById('hc-pick').textContent=`${totalPick.toLocaleString('es-PE')} und. a picking de ${totalReq.toLocaleString('es-PE')} req.`;
+  const elPD=document.getElementById('hc-pickdone');
+  if(elPD){
+    const recsAll={...CONFIRMED,...PENDING};
+    let fin=0;
+    Object.values(recsAll).forEach(v=>{if(v&&typeof v==='object'&&v.completado)fin++;});
+    elPD.textContent=`${fin.toLocaleString('es-PE')} ítems con antecedente`;
+  }
   document.getElementById('hc-cod').textContent=`${getCatalogo().length} códigos registrados`;
 }
 
