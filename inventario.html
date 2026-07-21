@@ -175,7 +175,7 @@ tr:hover td{background:#f8fafc}
       <thead><tr>
         <th>Código</th><th>Descripción</th><th>UM</th>
         <th class="num">ICA</th><th class="num">LIMA</th><th class="num">TRUJILLO</th>
-        <th class="num">Stock Actual</th><th class="num" title="OC pendientes de recepción — hojas Reporte Maestro y PedSinReq del Reporte Almacen.xlsx">En Tránsito</th><th class="num" title="Requerimientos activos (En revisión de Almacén / Enviado a pedido / Enviado parcial) — hoja Reporte Maestro">Reservas</th><th class="num">P. Reorden</th>
+        <th class="num" title="OC pendientes de recepción — hojas Reporte Maestro y PedSinReq del Reporte Almacen.xlsx">En Tránsito</th><th class="num" title="Requerimientos activos (En revisión de Almacén / Enviado a pedido / Enviado parcial) — hoja Reporte Maestro">Reservas</th><th class="num" title="Stock actual − Reservas">Stock Disponible</th><th class="num">P. Reorden</th>
         <th>Estado</th><th class="num">Cant. Faltante</th>
       </tr></thead>
       <tbody id="tb"></tbody>
@@ -925,9 +925,9 @@ function renderGenTable(){
       <td class="num">${(d.ica||0).toLocaleString('es-PE')}</td>
       <td class="num">${(d.lima||0).toLocaleString('es-PE')}</td>
       <td class="num">${(d.trujillo||0).toLocaleString('es-PE')}</td>
-      <td class="num">${(d.stock||0).toLocaleString('es-PE')}</td>
       <td class="num">${(d.transito||0)>0?'<b style="color:#b45309">'+fmtq(d.transito)+'</b>':'0'}</td>
       <td class="num">${(d.reservas||0)>0?'<b style="color:#b91c1c">'+fmtq(d.reservas)+'</b>':'0'}</td>
+      <td class="num">${(()=>{const sd=d.stockDisp!=null?d.stockDisp:(d.stock||0);return sd<0?'<b style="color:#b91c1c">'+fmtq(sd)+'</b>':'<b>'+fmtq(sd)+'</b>';})()}</td>
       <td class="num">${(d.rop||0).toLocaleString('es-PE',{maximumFractionDigits:1})}</td>
       <td>${PILL_GEN[d.estado]||PILL_GEN['SIN DATOS']}</td>
       <td class="num">${(d.cantFaltante||0).toLocaleString('es-PE')}</td>
