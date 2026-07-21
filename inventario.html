@@ -940,7 +940,9 @@ async function cargarLive(){
   }
   try{PENDING=JSON.parse(localStorage.getItem('fp_almacen_picking_pending')||'{}');}catch(e2){PENDING={};}
   PENDING_COD=loadPendingCodigos();
-  AUTO_MAP=computeAutoAlloc(P5.filter(r=>r.estado.toLowerCase().includes('revisi')));
+  // El picking nace LIMPIO: sin sugerencias automáticas. Las cantidades se asignan
+  // manualmente en la revisión (pestaña Requerimientos) y recién ahí aparecen en Picking.
+  AUTO_MAP={};
   fillFilters();
   render();
   fillReqFilters();
@@ -1324,21 +1326,31 @@ function renderPick(){
   document.getElementById('pcnt').textContent=`${items.length} ítems en picking`;
   updateDirtyLabels();
 
-  // Agrupar por requerimiento — solo aparecen los SKUs con Cant. a Picking > 0
-  const groups={};
-  items.forEach(r=>{(groups[r.req]=groups[r.req]||[]).push(r);});
-  const reqCodes=Object.keys(groups).sort((a,b)=>{
-    const fa=groups[a][0].fecha||'',fb=groups[b][0].fecha||'';
-    return fb.localeCompare(fa);
-  });
-  document.getElementById('pickGroups').innerHTML=reqCodes.map(rc=>{
-    const g=groups[rc];
-    const gPick=g.reduce((s,r)=>s+r.picking,0);
-    const gDone=g.filter(r=>r.completado).length;
-    return `<div class="reqgroup">
+  // Agrupar PRIMERO por proyecto (con su total) y dentro por requerimiento — solo SKUs con Cant. a Picking > 0
+  const proys={};
+  items.forEach(r=>{const p=r.proy||'— SIN PROYECTO —';(proys[p]=proys[p]||[]).push(r);});
+  const proyNames=Object.keys(proys).sort((a,b)=>a.localeCompare(b,'es'));
+  document.getElementById('pickGroups').innerHTML=proyNames.map(p=>{
+    const list=proys[p];
+    const pPick=list.reduce((s,r)=>s+r.picking,0);
+    const pDone=list.filter(r=>r.completado).length;
+    const groups={};
+    list.forEach(r=>{(groups[r.req]=groups[r.req]||[]).push(r);});
+    const reqCodes=Object.keys(groups).sort((a,b)=>{
+      const fa=groups[a][0].fecha||'',fb=groups[b][0].fecha||'';
+      return fb.localeCompare(fa);
+    });
+    return `<div style="margin:20px 0 10px;background:#0f172a;color:#fff;border-radius:9px;padding:11px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <span style="font-weight:800;font-size:13px">📁 ${p}</span>
+      <span style="font-size:11px;opacity:.9">TOTAL: <b>${pPick.toLocaleString('es-PE')} und. a picking</b> · ${list.length} SKUs · ${reqCodes.length} requerimiento(s) · ${pDone}/${list.length} completados</span>
+    </div>`+
+    reqCodes.map(rc=>{
+      const g=groups[rc];
+      const gPick=g.reduce((s,r)=>s+r.picking,0);
+      const gDone=g.filter(r=>r.completado).length;
+      return `<div class="reqgroup">
       <div class="reqgroup-hd">
         <span class="rg-req">${rc}</span>
-        <span class="rg-proy">${g[0].proy||'—'}</span>
         <span class="rg-meta">${g.length} SKUs en picking · ${gPick} und. · ${gDone}/${g.length} completados · ${g[0].resp||'—'} · ${g[0].fecha||'—'}</span>
       </div>
       <table>
@@ -1357,7 +1369,8 @@ function renderPick(){
         </tbody>
       </table>
     </div>`;
-  }).join('') || `<div class="note">Ningún ítem tiene cantidad asignada a Picking todavía — asígnala desde Requerimientos o editando "Cant. a Picking" aquí.</div>`;
+    }).join('');
+  }).join('') || `<div class="note">🧹 Picking limpio: ningún ítem tiene cantidad asignada todavía. Asigna las cantidades en la pestaña <b>Requerimientos</b> (revisión de almacén) y aparecerán aquí agrupadas por proyecto y requerimiento.</div>`;
 }
 
 /* ═══════════════ CIERRE DE CICLO DE PICKING (foto + responsable + fecha/hora) ═══════════════ */
@@ -1869,11 +1882,10 @@ function updateHomeCounters(){
   document.getElementById('hc-general').textContent=`${DATA.length} SKUs · ${bajo} con alerta${EXISTENCIAS_LIVE?' (real)':' (ejemplo)'}`;
   const pendientes=P5.filter(r=>r.estado.toLowerCase().includes('revisi'));
   document.getElementById('hc-req').textContent=P5_LIVE?`${P5.length.toLocaleString('es-PE')} requerimientos (en vivo)`:`${P5.length} de ejemplo`;
-  const autoMap=computeAutoAlloc(pendientes);
   let totalPick=0,totalReq=0;
   pendientes.forEach(r=>{
     const key=r.req+'|'+r.cod;
-    totalPick+=getDecision(key,autoMap[key]||0);
+    totalPick+=getDecision(key,0); // sin sugerencia automática: solo lo asignado en la revisión
     totalReq+=r.cant;
   });
   document.getElementById('hc-pick').textContent=`${totalPick.toLocaleString('es-PE')} und. a picking de ${totalReq.toLocaleString('es-PE')} req.`;
