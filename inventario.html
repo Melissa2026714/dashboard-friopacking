@@ -184,7 +184,7 @@ tr:hover td{background:#f8fafc}
       <thead><tr>
         <th>Código</th><th>Descripción</th><th>UM</th>
         <th class="num">ICA</th><th class="num">LIMA</th><th class="num">TRUJILLO</th>
-        <th class="num" title="OC pendientes de recepción — hojas Reporte Maestro y PedSinReq del Reporte Almacen.xlsx">En Tránsito</th><th class="num" title="Requerimientos activos (En revisión de Almacén / Enviado a pedido / Enviado parcial) — hoja Reporte Maestro">Reservas</th><th class="num" title="Stock actual − Reservas">Stock Disponible</th><th class="num">P. Reorden</th>
+        <th class="num" title="Solo OC APROBADAS pendientes de recepción (EstadoOrden = Pendiente (Aprobado)) — hojas Reporte Maestro y PedSinReq del Reporte Almacen.xlsx">En Tránsito</th><th class="num" title="Requerimientos activos (En revisión de Almacén / Enviado a pedido / Enviado parcial) — hoja Reporte Maestro">Reservas</th><th class="num" title="Stock actual − Reservas">Stock Disponible</th><th class="num">P. Reorden</th>
         <th>Estado</th><th class="num">Cant. Faltante</th>
       </tr></thead>
       <tbody id="tb"></tbody>
@@ -682,6 +682,8 @@ function handleImportAlmacen(input){
 // Tránsito (Fuente 1, hoja "Reporte Maestro"): EstadoRequerimiento (col O) ∈ {Enviado a pedido, Enviado parcial a pedido}
 //   Y EstadoPedido (col T) ∈ {Pendiente, Con orden de compra} → OC vía CodOrden (col W).
 // Tránsito (Fuente 2, hoja "PedSinReq"): EstadoPedido (col D) ∈ {Pendiente, Con orden de compra} → CodOrden (col G).
+// En AMBAS fuentes la OC además debe tener EstadoOrden = "Pendiente (Aprobado)": si aún no está aprobada
+// no se considera en tránsito (no sabemos si realmente se aprobará).
 // Reservas: SOLO "Reporte Maestro", EstadoRequerimiento ∈ {En revisión de Almacén, Enviado a pedido, Enviado parcial a pedido}.
 // El resultado se aplica por SKU a las columnas "En Tránsito" y "Reservas" de la hoja General.
 let TRANS=[],RESV=[];                 // líneas detalle — persisten compartidas en data.json (D.almacenTransito)
@@ -726,9 +728,10 @@ function parseTransitoWorkbook(wb){
     (hojaAObjetos(wb.Sheets[shM])||[]).forEach(r=>{
       const eReq=xtexto(r['EstadoRequerimiento']).toLowerCase();
       const ePed=xtexto(r['EstadoPedido']).toLowerCase();
-      // ── Fuente 1: Stock en Tránsito ──
-      const esTransito=(eReq==='enviado a pedido'||eReq==='enviado parcial a pedido')&&(ePed==='pendiente'||ePed==='con orden de compra');
-      if(esTransito&&!/anulad/i.test(xtexto(r['EstadoOrden']))){
+      // ── Fuente 1: Stock en Tránsito ── (la OC debe estar APROBADA)
+      const eOrd=xtexto(r['EstadoOrden']).toLowerCase();
+      const esTransito=(eReq==='enviado a pedido'||eReq==='enviado parcial a pedido')&&(ePed==='pendiente'||ePed==='con orden de compra')&&eOrd==='pendiente (aprobado)';
+      if(esTransito){
         const key=[xcodigo(r['CodRequerimiento']),xcodigo(r['CodPedido']),xcodigo(r['CodOrden']),xtexto(r['IdProducto'])].join('|');
         let t=T.get(key);
         if(!t){
@@ -766,7 +769,7 @@ function parseTransitoWorkbook(wb){
     (hojaAObjetos(wb.Sheets[shP])||[]).forEach(r=>{
       const ePed=xtexto(r['EstadoPedido']).toLowerCase();
       if(ePed!=='pendiente'&&ePed!=='con orden de compra')return;
-      if(/anulad/i.test(xtexto(r['EstadoOrden'])))return;
+      if(xtexto(r['EstadoOrden']).toLowerCase()!=='pendiente (aprobado)')return; // solo OC aprobadas cuentan como tránsito
       const key=['P4',xcodigo(r['CodPedido']),xcodigo(r['CodOrden']),xtexto(r['IdProducto'])].join('|');
       let t=T.get(key);
       if(!t){
@@ -854,7 +857,7 @@ function verDetalleTransito(cod){
     <div style="background:#b45309;color:#fff;padding:16px 20px">
       <div style="font-size:11px;opacity:.85;font-family:ui-monospace,monospace">${d.cod}</div>
       <div style="font-size:15px;font-weight:800;margin-top:2px">🚚 Stock en Tránsito — ${d.desc||''}</div>
-      <div style="margin-top:8px;font-size:12px">Total pendiente de recepción: <b>${fmtq(tot)}</b> ${d.um||''} · ${ocs.length} línea(s) · Fuentes: Reporte Maestro (${ocs.filter(t=>t.fuente==='Reporte Maestro').length}) + PedSinReq (${ocs.filter(t=>t.fuente==='PedSinReq').length})</div>
+      <div style="margin-top:8px;font-size:12px">Total pendiente de recepción: <b>${fmtq(tot)}</b> ${d.um||''} · ${ocs.length} línea(s) · Fuentes: Reporte Maestro (${ocs.filter(t=>t.fuente==='Reporte Maestro').length}) + PedSinReq (${ocs.filter(t=>t.fuente==='PedSinReq').length}) · solo OC con estado <b>Pendiente (Aprobado)</b></div>
     </div>
     <div style="padding:12px 16px;overflow-x:auto">
       ${ocs.length?`<table style="width:100%;border-collapse:collapse">
