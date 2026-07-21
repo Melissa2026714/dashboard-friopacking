@@ -120,7 +120,6 @@ tr:hover td{background:#f8fafc}
     <button class="tab" id="tab-general" onclick="nav('p-general')">📋 General</button>
     <button class="tab" id="tab-req" onclick="nav('p-req')">⚡ Requerimientos</button>
     <button class="tab" id="tab-pick" onclick="nav('p-pick')">🧰 Picking</button>
-    <button class="tab" id="tab-trans" onclick="nav('p-trans')" title="Stock en Tránsito (OC pendientes de recepción) y Reservas (requerimientos activos)">🚚 Tránsito y Reservas</button>
     <button class="tab" id="tab-cod" onclick="nav('p-cod')">🔖 Códigos</button>
   </div>
   <div class="nbr">
@@ -140,7 +139,6 @@ tr:hover td{background:#f8fafc}
     <div class="hcard" onclick="nav('p-general')"><div class="hci">📋</div><div class="hct">General</div><div class="hcs" id="hc-general">cargando…</div></div>
     <div class="hcard" onclick="nav('p-req')"><div class="hci">⚡</div><div class="hct">Requerimientos</div><div class="hcs" id="hc-req">cargando…</div></div>
     <div class="hcard" onclick="nav('p-pick')"><div class="hci">🧰</div><div class="hct">Picking</div><div class="hcs" id="hc-pick">cargando…</div></div>
-    <div class="hcard" onclick="nav('p-trans')"><div class="hci">🚚</div><div class="hct">Tránsito y Reservas</div><div class="hcs" id="hc-trans">cargando…</div></div>
     <div class="hcard" onclick="nav('p-cod')"><div class="hci">🔖</div><div class="hct">Códigos</div><div class="hcs" id="hc-cod">cargando…</div></div>
   </div>
 </div>
@@ -185,68 +183,6 @@ tr:hover td{background:#f8fafc}
     <div class="pag"><span id="genInfo">—</span><div id="genPag" style="display:flex;gap:4px"></div></div>
   </div>
   <div class="sub" style="margin-top:6px">Haz clic en una fila para ver el detalle completo (consumo, lead time, EOQ, costos, cobertura…)</div>
-
-  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
-</div>
-
-<!-- ══════════════ PÁGINA: TRÁNSITO Y RESERVAS ══════════════ -->
-<div class="pg" id="p-trans">
-  <div class="hd">
-    <div>
-      <h2>Stock en Tránsito y Reservas</h2>
-      <div class="sub">Se alimentan del Excel <b>Reporte Almacen.xlsx</b> (hojas "Reporte Maestro" y "PedSinReq") — usa 📂 IMPORTAR con ese archivo y luego 💾 GUARDAR para compartirlo</div>
-    </div>
-  </div>
-
-  <div class="note" id="transNote">⚠️ Aún no se han importado datos de Tránsito/Reservas. Usa <b>📂 IMPORTAR</b> con el <b>Reporte Almacen.xlsx</b> (Master Data Almacén).</div>
-  <div class="kpis" id="transKpis"></div>
-
-  <div class="hd" style="margin-top:14px"><div><h2 style="font-size:15px">🚚 Stock en Tránsito</h2>
-    <div class="sub">Órdenes de compra pendientes de recepción. Fuente 1: <b>Reporte Maestro</b> — req. <i>Enviado a pedido / Enviado parcial a pedido</i> con pedido <i>Pendiente / Con orden de compra</i>. Fuente 2: <b>PedSinReq</b> — pedidos <i>Pendiente / Con orden de compra</i>.</div></div></div>
-  <div class="filters">
-    <input id="qt" type="text" placeholder="🔍 Buscar por OC, código, producto, proveedor o usuario…" oninput="renderTransTable(true)">
-    <select id="ftFuente" onchange="renderTransTable(true)">
-      <option value="">Ambas fuentes</option>
-      <option value="Reporte Maestro">Reporte Maestro</option>
-      <option value="PedSinReq">PedSinReq (sin requerimiento)</option>
-    </select>
-    <span class="fx" id="cntTrans"></span>
-  </div>
-  <div class="tblwrap">
-    <table>
-      <thead><tr>
-        <th>Orden de Compra</th><th>Fuente</th><th>Código</th><th>Producto</th>
-        <th class="num">Cant. Solicitada</th><th class="num">Recibida</th><th class="num">En Tránsito</th>
-        <th>F. Aprobación OC</th><th>F. Est. Llegada</th><th>Usuario Compras</th><th>Proveedor</th><th>Estado</th>
-      </tr></thead>
-      <tbody id="tbTrans"></tbody>
-    </table>
-    <div class="pag"><span id="transInfo">—</span><div id="transPag" style="display:flex;gap:4px"></div></div>
-  </div>
-
-  <div class="hd" style="margin-top:22px"><div><h2 style="font-size:15px">🔒 Reservas</h2>
-    <div class="sub">Requerimientos que todavía consumen stock o están pendientes de atención (solo hoja <b>Reporte Maestro</b>): estados <i>En revisión de Almacén</i>, <i>Enviado a pedido</i> y <i>Enviado parcial a pedido</i>.</div></div></div>
-  <div class="filters">
-    <input id="qr" type="text" placeholder="🔍 Buscar por requerimiento, código, producto, solicitante o proyecto…" oninput="renderResvTable(true)">
-    <select id="frEst" onchange="renderResvTable(true)">
-      <option value="">Todos los estados</option>
-      <option value="revisi">En revisión de Almacén</option>
-      <option value="enviado a pedido">Enviado a pedido</option>
-      <option value="enviado parcial">Enviado parcial a pedido</option>
-    </select>
-    <span class="fx" id="cntResv"></span>
-  </div>
-  <div class="tblwrap">
-    <table>
-      <thead><tr>
-        <th>Requerimiento</th><th>Fecha</th><th>Código</th><th>Detalle</th>
-        <th class="num">Cant. Requerida</th><th>UM</th><th>Solicitante</th><th>Proyecto / Área</th><th>F. Requerida</th><th>Estado Req.</th>
-      </tr></thead>
-      <tbody id="tbResv"></tbody>
-    </table>
-    <div class="pag"><span id="resvInfo">—</span><div id="resvPag" style="display:flex;gap:4px"></div></div>
-  </div>
-  <div class="sub" style="margin-top:6px">Ambos cálculos son independientes: el <b>tránsito</b> nace de las OC aún no recepcionadas; las <b>reservas</b>, de los requerimientos activos. Haz clic en una fila para ver la ficha del ítem.</div>
 
   <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
@@ -467,8 +403,8 @@ tr:hover td{background:#f8fafc}
 
 <script>
 /* ═══════════════ NAVEGACIÓN ═══════════════ */
-const PAGES=['home','p-general','p-req','p-pick','p-trans','p-cod'];
-const TABS={home:'tab-home','p-general':'tab-general','p-req':'tab-req','p-pick':'tab-pick','p-trans':'tab-trans','p-cod':'tab-cod'};
+const PAGES=['home','p-general','p-req','p-pick','p-cod'];
+const TABS={home:'tab-home','p-general':'tab-general','p-req':'tab-req','p-pick':'tab-pick','p-cod':'tab-cod'};
 function nav(id){
   PAGES.forEach(p=>{const el=document.getElementById(p==='home'?'ph':p);if(el)el.classList.remove('act');});
   document.getElementById(id==='home'?'ph':id).classList.add('act');
@@ -671,21 +607,10 @@ function handleImportAlmacen(input){
     reader.onload=function(e){
       try{
         const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-        const partes=[];
-        let rows=[];
-        try{rows=parseExistenciasWorkbook(wb);}catch(_){rows=[];}
-        if(rows.length){
-          existenciasAcum=existenciasAcum.concat(rows);
-          partes.push(rows.length+' existencias');
-        }
-        // Hojas "Reporte Maestro" / "PedSinReq" del mismo archivo → Stock en Tránsito y Reservas
-        const tr=parseTransitoWorkbook(wb);
-        if(tr){
-          setTransito(tr.t,tr.r,true);
-          partes.push(tr.t.length+' líneas en tránsito + '+tr.r.length+' reservas');
-        }
-        if(!partes.length)throw new Error('no se encontraron filas con código válido');
-        results.push('✅ '+file.name+' ('+partes.join(' · ')+')');
+        const rows=parseExistenciasWorkbook(wb);
+        if(!rows.length)throw new Error('no se encontraron filas con código válido');
+        existenciasAcum=existenciasAcum.concat(rows);
+        results.push('✅ '+file.name+' ('+rows.length+' ítems)');
       }catch(err){
         results.push('❌ '+file.name+': '+err.message);
       }
@@ -696,222 +621,14 @@ function handleImportAlmacen(input){
           const merged={};
           existenciasAcum.forEach(r=>merged[r.cod]=r);
           setExistencias(Object.values(merged),true);
+          updateHomeCounters();
         }
-        if(TRANS_DIRTY)renderTrans();
-        updateHomeCounters();
-        alert('Importación completada:\n\n'+results.join('\n')+((existenciasAcum.length||TRANS_DIRTY)?'\n\nRecuerda hacer clic en 💾 GUARDAR para compartirlo con todos.':''));
+        alert('Importación de Existencias completada:\n\n'+results.join('\n')+(existenciasAcum.length?'\n\nRecuerda hacer clic en 💾 GUARDAR para compartirlo con todos.':''));
       }
     };
     reader.readAsArrayBuffer(file);
   });
   input.value='';
-}
-
-/* ═══════════════ TRÁNSITO Y RESERVAS — se alimentan del "Reporte Almacen.xlsx" (Master Data Almacén) ═══════════════ */
-// Fuente 1 (hoja "Reporte Maestro"): EstadoRequerimiento (col O) ∈ {Enviado a pedido, Enviado parcial a pedido}
-//   Y EstadoPedido (col T) ∈ {Pendiente, Con orden de compra} → OC en tránsito vía CodOrden (col W).
-// Fuente 2 (hoja "PedSinReq"): EstadoPedido (col D) ∈ {Pendiente, Con orden de compra} → CodOrden (col G).
-// Reservas: SOLO "Reporte Maestro", EstadoRequerimiento ∈ {En revisión de Almacén, Enviado a pedido, Enviado parcial a pedido}.
-let TRANS=[],RESV=[];                 // líneas consolidadas — persisten compartidas en data.json (D.almacenTransito)
-let TRANS_META=null;                  // {ts} de la última importación
-let TRANSITO_LIVE=false,TRANS_DIRTY=false;
-let TRANS_BY_COD={},RESV_BY_COD={};   // suma por SKU para cruzar con Existencias (ficha)
-let transPage=0,resvPage=0;
-
-function xfecha(v){ // Date | serial Excel | texto → "dd/mm/yyyy"
-  if(v==null||v==='')return '';
-  if(v instanceof Date&&!isNaN(v))return String(v.getDate()).padStart(2,'0')+'/'+String(v.getMonth()+1).padStart(2,'0')+'/'+v.getFullYear();
-  if(typeof v==='number'&&v>30000){const d=new Date(Math.round((v-25569)*86400000));return String(d.getUTCDate()).padStart(2,'0')+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+d.getUTCFullYear();}
-  return String(v).split(' ')[0];
-}
-function dmyKey(s){const p=(s||'').split('/');return p.length===3?(+p[2])*10000+(+p[1])*100+(+p[0]):99999999;}
-function xtexto(v){return v==null?'':String(v).trim();}
-function xcodigo(v){const s=xtexto(v);return (s==='-'||s.toLowerCase()==='nan'||s.toLowerCase()==='none')?'':s;} // el Maestro usa "-" cuando no hay OC/pedido
-function fmtq(n){return (n||0).toLocaleString('es-PE',{maximumFractionDigits:2});}
-
-// Lee una hoja cuyos encabezados pueden no estar en la fila 1 (el Reporte Almacen los trae en la fila 3).
-function hojaAObjetos(ws){
-  const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
-  let hdr=-1;
-  for(let i=0;i<Math.min(12,raw.length);i++){
-    const r=raw[i]||[];
-    if(r.some(c=>typeof c==='string'&&/^(CodRequerimiento|CodPedido)$/i.test(String(c).trim()))){hdr=i;break;}
-  }
-  if(hdr<0)return null;
-  const heads=(raw[hdr]||[]).map(h=>h?String(h).trim():'');
-  return raw.slice(hdr+1).filter(r=>r&&r.some(c=>c!=null&&c!=='')).map(r=>{
-    const o={};heads.forEach((h,i)=>{if(h&&o[h]===undefined)o[h]=r[i];});return o;
-  });
-}
-
-// Devuelve {t:[líneas tránsito], r:[líneas reserva]} o null si el workbook no trae esas hojas.
-function parseTransitoWorkbook(wb){
-  const shM=wb.SheetNames.find(n=>/maestro/i.test(n));
-  const shP=wb.SheetNames.find(n=>/ped\s*sin\s*req/i.test(n));
-  if(!shM&&!shP)return null;
-  const T=new Map(),R=new Map(); // dedup: el Maestro repite la línea por cada recepción/salida
-
-  if(shM){
-    (hojaAObjetos(wb.Sheets[shM])||[]).forEach(r=>{
-      const eReq=xtexto(r['EstadoRequerimiento']).toLowerCase();
-      const ePed=xtexto(r['EstadoPedido']).toLowerCase();
-      // ── Fuente 1: Stock en Tránsito ──
-      const esTransito=(eReq==='enviado a pedido'||eReq==='enviado parcial a pedido')&&(ePed==='pendiente'||ePed==='con orden de compra');
-      if(esTransito&&!/anulad/i.test(xtexto(r['EstadoOrden']))){
-        const key=[xcodigo(r['CodRequerimiento']),xcodigo(r['CodPedido']),xcodigo(r['CodOrden']),xtexto(r['IdProducto'])].join('|');
-        let t=T.get(key);
-        if(!t){
-          t={fuente:'Reporte Maestro',oc:xcodigo(r['CodOrden']),ped:xcodigo(r['CodPedido']),ref:xcodigo(r['CodRequerimiento']),
-             cod:xtexto(r['IdProducto']),prod:xtexto(r['Producto']),unid:xtexto(r['UnidadMedida'])||'UND',
-             cant:toNum(r['Cantidad de orden'])||toNum(r['Cantidad de pedido'])||toNum(r['CantidadRequerimiento']),
-             cantRec:0,fapro:xfecha(r['FechaAprobacionOC']),fent:xfecha(r['ParaFechaOrden']),
-             ucomp:xtexto(r['UsuarioCompras']),prov:xtexto(r['NombreProveedor']),
-             estadoPed:xtexto(r['EstadoPedido']),estadoOC:xtexto(r['EstadoOrden'])};
-          T.set(key,t);
-        }
-        t.cantRec+=toNum(r['CantRecepcion']);
-      }
-      // ── Reservas (independiente del tránsito) ──
-      const esReserva=(eReq.includes('revisi')&&eReq.includes('almac'))||eReq==='enviado a pedido'||eReq==='enviado parcial a pedido';
-      if(esReserva){
-        const kr=xtexto(r['CodRequerimiento'])+'|'+xtexto(r['IdProducto']);
-        if(!R.has(kr)){
-          R.set(kr,{req:xtexto(r['CodRequerimiento']),fecha:xfecha(r['FechaRequerimiento']),freq:xfecha(r['ParaFechaRequerimiento']),
-            resp:xtexto(r['NombreResponsable']),idproy:xtexto(r['IdProyecto']),proy:xtexto(r['NombreProyecto']),
-            cod:xtexto(r['IdProducto']),prod:xtexto(r['Producto']),cant:toNum(r['CantidadRequerimiento']),unid:xtexto(r['UnidadMedida'])||'UND',
-            fam:xtexto(r['NombreFamilia']),estado:xtexto(r['EstadoRequerimiento'])});
-        }
-      }
-    });
-  }
-
-  if(shP){
-    (hojaAObjetos(wb.Sheets[shP])||[]).forEach(r=>{
-      const ePed=xtexto(r['EstadoPedido']).toLowerCase();
-      if(ePed!=='pendiente'&&ePed!=='con orden de compra')return;
-      if(/anulad/i.test(xtexto(r['EstadoOrden'])))return;
-      const key=['P4',xcodigo(r['CodPedido']),xcodigo(r['CodOrden']),xtexto(r['IdProducto'])].join('|');
-      let t=T.get(key);
-      if(!t){
-        t={fuente:'PedSinReq',oc:xcodigo(r['CodOrden']),ped:xcodigo(r['CodPedido']),ref:xtexto(r['ResponsablePedido']),
-           cod:xtexto(r['IdProducto']),prod:xtexto(r['Descripción']!=null?r['Descripción']:r['Descripcion']),unid:xtexto(r['Medida'])||'UND',
-           cant:toNum(r['Cantidad de orden'])||toNum(r['Cantidad de pedido']),cantRec:0,
-           fapro:xfecha(r['FechaAprobacionOC']),fent:xfecha(r['ParaFechaOrden']),
-           ucomp:xtexto(r['UsuarioCompras']),prov:xtexto(r['NombreProveedor']),
-           estadoPed:xtexto(r['EstadoPedido']),estadoOC:xtexto(r['EstadoOrden'])};
-        T.set(key,t);
-      }
-      t.cantRec+=toNum(r['CantRecepcion']);
-    });
-  }
-
-  const trans=[];T.forEach(t=>{t.cantPend=Math.max(0,(t.cant||0)-(t.cantRec||0));trans.push(t);});
-  trans.sort((a,b)=>dmyKey(a.fent)-dmyKey(b.fent));
-  const resv=[];R.forEach(x=>resv.push(x));
-  resv.sort((a,b)=>dmyKey(a.fecha)-dmyKey(b.fecha));
-  return {t:trans,r:resv};
-}
-
-function setTransito(t,r,marcarDirty,ts){
-  TRANS=Array.isArray(t)?t:[];
-  RESV=Array.isArray(r)?r:[];
-  TRANS_META={ts:ts||Date.now()};
-  TRANSITO_LIVE=true;
-  if(marcarDirty)TRANS_DIRTY=true;
-  TRANS_BY_COD={};TRANS.forEach(x=>{if(x.cod)TRANS_BY_COD[x.cod]=(TRANS_BY_COD[x.cod]||0)+(x.cantPend!=null?x.cantPend:(x.cant||0));});
-  RESV_BY_COD={};RESV.forEach(x=>{if(x.cod)RESV_BY_COD[x.cod]=(RESV_BY_COD[x.cod]||0)+(+x.cant||0);});
-}
-
-function pillOC(t){
-  const eo=(t.estadoOC||'').toLowerCase(),ep=(t.estadoPed||'').toLowerCase();
-  if(!t.oc)return '<span class="pill p-crit" title="Pedido aún sin orden de compra">SIN OC (PED. PENDIENTE)</span>';
-  if(eo.includes('sin aprobar'))return '<span class="pill p-crit" title="'+t.estadoPed+'">OC SIN APROBAR</span>';
-  if(eo.includes('parcial'))return '<span class="pill p-sobre" title="'+t.estadoPed+'">ATENDIDO PARCIAL</span>';
-  if(eo.includes('pendiente'))return '<span class="pill p-low" title="'+t.estadoPed+'">OC APROBADA — EN CAMINO</span>';
-  return '<span class="pill p-gray">'+(t.estadoOC||t.estadoPed||'—')+'</span>';
-}
-function pillResv(e){
-  const l=(e||'').toLowerCase();
-  if(l.includes('revisi'))return '<span class="pill p-crit">EN REVISIÓN DE ALMACÉN</span>';
-  if(l.includes('parcial'))return '<span class="pill p-sobre">ENVIADO PARCIAL A PEDIDO</span>';
-  return '<span class="pill p-low">ENVIADO A PEDIDO</span>';
-}
-function pagerTrans(tot,sz,page,infoId,pagId,pageVar,fnName){
-  const pages=Math.ceil(tot/sz);
-  document.getElementById(infoId).textContent=tot?`Mostrando ${page*sz+1}–${Math.min((page+1)*sz,tot)} de ${tot.toLocaleString('es-PE')}`:'Sin resultados';
-  let h='';
-  if(page>0)h+=`<button class="pbt" onclick="${pageVar}--;${fnName}()">‹</button>`;
-  const start=Math.max(0,page-4),end=Math.min(pages,start+10);
-  for(let i=start;i<end;i++)h+=`<button class="pbt${i===page?' pact':''}" onclick="${pageVar}=${i};${fnName}()">${i+1}</button>`;
-  if(page<pages-1)h+=`<button class="pbt" onclick="${pageVar}++;${fnName}()">›</button>`;
-  document.getElementById(pagId).innerHTML=h;
-}
-
-function renderTrans(){
-  const note=document.getElementById('transNote');
-  if(note){
-    if(TRANSITO_LIVE&&TRANS_DIRTY){note.className='note crit';note.innerHTML='📂 <b>Tránsito/Reservas importados</b> — hay cambios sin guardar. Usa <b>💾 GUARDAR</b> para compartirlos con todos.';}
-    else if(TRANSITO_LIVE){const f=TRANS_META&&TRANS_META.ts?new Date(TRANS_META.ts).toLocaleString('es-PE'):'';note.className='note live';note.innerHTML='☁️ <b>Datos compartidos</b> desde el Reporte Almacen.xlsx'+(f?' — actualizado el '+f:'')+'.';}
-    else{note.className='note';note.innerHTML='⚠️ Aún no se han importado datos de Tránsito/Reservas. Usa <b>📂 IMPORTAR</b> con el <b>Reporte Almacen.xlsx</b> (Master Data Almacén).';}
-  }
-  const ocs=new Set(TRANS.filter(t=>t.oc).map(t=>t.oc)).size;
-  const sinOC=TRANS.filter(t=>!t.oc).length;
-  const und=TRANS.reduce((a,t)=>a+(t.cantPend!=null?t.cantPend:t.cant||0),0);
-  const undR=RESV.reduce((a,r)=>a+(+r.cant||0),0);
-  const reqs=new Set(RESV.map(r=>r.req)).size;
-  document.getElementById('transKpis').innerHTML=`
-   <div class="kpi"><div class="kl">OC en tránsito</div><div class="kv">${ocs.toLocaleString('es-PE')}</div><div class="kd">pendientes de recepción</div></div>
-   <div class="kpi warn"><div class="kl">Unidades en tránsito</div><div class="kv">${fmtq(und)}</div><div class="kd">${TRANS.length.toLocaleString('es-PE')} líneas (Maestro + PedSinReq)</div></div>
-   ${sinOC?`<div class="kpi alert"><div class="kl">Pedidos sin OC</div><div class="kv">${sinOC.toLocaleString('es-PE')}</div><div class="kd">líneas pendientes de generar OC</div></div>`:''}
-   <div class="kpi alert"><div class="kl">Requerimientos con reserva</div><div class="kv">${reqs.toLocaleString('es-PE')}</div><div class="kd">consumen stock o esperan atención</div></div>
-   <div class="kpi"><div class="kl">Unidades reservadas</div><div class="kv">${fmtq(undR)}</div><div class="kd">${RESV.length.toLocaleString('es-PE')} líneas de requerimiento</div></div>`;
-  renderTransTable(true);
-  renderResvTable(true);
-}
-function renderTransTable(reset){
-  if(reset)transPage=0;
-  const q=(document.getElementById('qt').value||'').toLowerCase();
-  const ff=document.getElementById('ftFuente').value;
-  const f=TRANS.filter(t=>{
-    if(ff&&t.fuente!==ff)return false;
-    if(q&&!((t.oc||'').toLowerCase().includes(q)||(t.cod||'').includes(q)||(t.prod||'').toLowerCase().includes(q)||(t.prov||'').toLowerCase().includes(q)||(t.ucomp||'').toLowerCase().includes(q)))return false;
-    return true;
-  });
-  window._transFil=f;
-  document.getElementById('cntTrans').textContent=`${f.length.toLocaleString('es-PE')} de ${TRANS.length.toLocaleString('es-PE')} líneas`;
-  const sz=50,rows=f.slice(transPage*sz,(transPage+1)*sz);
-  document.getElementById('tbTrans').innerHTML=rows.map(t=>`<tr class="rowclick" onclick="verFichaExistencia('${t.cod}')">
-    <td class="mono">${t.oc||'—'}</td>
-    <td>${t.fuente==='Reporte Maestro'?'<span class="pill p-ok">MAESTRO</span>':'<span class="pill p-gray">PED SIN REQ</span>'}</td>
-    <td class="mono">${t.cod}</td>
-    <td title="${t.fuente==='Reporte Maestro'?('Req: '+(t.ref||'—')+' · Pedido: '+(t.ped||'—')):('Pedido: '+(t.ped||'—')+' · Resp: '+(t.ref||'—'))}">${t.prod}</td>
-    <td class="num">${fmtq(t.cant)}</td>
-    <td class="num">${fmtq(t.cantRec)}</td>
-    <td class="num"><b>${fmtq(t.cantPend!=null?t.cantPend:t.cant)}</b></td>
-    <td>${t.fapro||'—'}</td><td>${t.fent||'—'}</td><td>${t.ucomp||'—'}</td><td>${t.prov||'—'}</td>
-    <td>${pillOC(t)}</td>
-  </tr>`).join('')||`<tr><td colspan="12" style="text-align:center;color:#94a3b8;padding:24px">Sin OC en tránsito${TRANSITO_LIVE?'':' — importa el Reporte Almacen.xlsx'}</td></tr>`;
-  pagerTrans(f.length,sz,transPage,'transInfo','transPag','transPage','renderTransTable');
-}
-function renderResvTable(reset){
-  if(reset)resvPage=0;
-  const q=(document.getElementById('qr').value||'').toLowerCase();
-  const fe=document.getElementById('frEst').value;
-  const f=RESV.filter(r=>{
-    if(fe&&!(r.estado||'').toLowerCase().includes(fe))return false;
-    if(q&&!((r.req||'').toLowerCase().includes(q)||(r.cod||'').includes(q)||(r.prod||'').toLowerCase().includes(q)||(r.resp||'').toLowerCase().includes(q)||(r.proy||'').toLowerCase().includes(q)))return false;
-    return true;
-  });
-  document.getElementById('cntResv').textContent=`${f.length.toLocaleString('es-PE')} de ${RESV.length.toLocaleString('es-PE')} líneas`;
-  const sz=50,rows=f.slice(resvPage*sz,(resvPage+1)*sz);
-  document.getElementById('tbResv').innerHTML=rows.map(r=>`<tr class="rowclick" onclick="verFichaExistencia('${r.cod}')">
-    <td class="mono">${r.req}</td><td>${r.fecha||'—'}</td>
-    <td class="mono">${r.cod}</td><td title="${r.fam?('Familia: '+r.fam):''}">${r.prod}</td>
-    <td class="num"><b>${fmtq(r.cant)}</b></td><td>${r.unid}</td>
-    <td>${r.resp||'—'}</td><td>${r.proy||r.idproy||'—'}</td><td>${r.freq||'—'}</td>
-    <td>${pillResv(r.estado)}</td>
-  </tr>`).join('')||`<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:24px">Sin reservas${TRANSITO_LIVE?'':' — importa el Reporte Almacen.xlsx'}</td></tr>`;
-  pagerTrans(f.length,sz,resvPage,'resvInfo','resvPag','resvPage','renderResvTable');
 }
 
 /* ═══════════════ CARGA EN VIVO DE data.json (Requerimientos reales) ═══════════════ */
@@ -941,9 +658,6 @@ async function cargarLive(){
       rebuildDataByCod();
       EXISTENCIAS_LIVE=true;
     }
-    if(!TRANS_DIRTY&&s.D.almacenTransito&&Array.isArray(s.D.almacenTransito.t)){
-      setTransito(s.D.almacenTransito.t,s.D.almacenTransito.r||[],false,s.D.almacenTransito.ts);
-    }
     document.getElementById('reqLiveNote').innerHTML='☁️ <b>Datos en vivo</b> desde data.json — '+P5.length.toLocaleString('es-PE')+' requerimientos (mismos que ve Compras).';
   }catch(e){
     P5=P5_DEMO;
@@ -963,7 +677,6 @@ async function cargarLive(){
   renderPick();
   renderAlertBox();
   renderCod();
-  renderTrans();
   updateHomeCounters();
 }
 
@@ -1073,12 +786,10 @@ function verFichaExistencia(cod){
     </div>
     <div style="padding:6px 0">
       <div class="detrow"><span class="dl">Stock ICA / LIMA / TRUJILLO</span><span class="dv">${(d.ica||0).toLocaleString('es-PE')} / ${(d.lima||0).toLocaleString('es-PE')} / ${(d.trujillo||0).toLocaleString('es-PE')}</span></div>
-      <div class="detrow"><span class="dl">Stock en tránsito (Kardex)</span><span class="dv">${(d.transito||0).toLocaleString('es-PE')}</span></div>
-      ${TRANSITO_LIVE?`<div class="detrow"><span class="dl">En tránsito ahora (OC pendientes)</span><span class="dv">${fmtq(TRANS_BY_COD[d.cod]||0)}</span></div>`:''}
+      <div class="detrow"><span class="dl">Stock en tránsito</span><span class="dv">${(d.transito||0).toLocaleString('es-PE')}</span></div>
       <div class="detrow"><span class="dl">Stock Actual</span><span class="dv">${(d.stock||0).toLocaleString('es-PE')}</span></div>
       <div class="detrow"><span class="dl">Stock Disponible</span><span class="dv">${(d.stockDisp||0).toLocaleString('es-PE')}</span></div>
-      <div class="detrow"><span class="dl">Reservas (Kardex)</span><span class="dv">${(d.reservas||0).toLocaleString('es-PE')}</span></div>
-      ${TRANSITO_LIVE?`<div class="detrow"><span class="dl">Reservado ahora (req. activos)</span><span class="dv">${fmtq(RESV_BY_COD[d.cod]||0)}</span></div>`:''}
+      <div class="detrow"><span class="dl">Reservas</span><span class="dv">${(d.reservas||0).toLocaleString('es-PE')}</span></div>
       <div class="detrow"><span class="dl">Consumo Mensual / Diario</span><span class="dv">${fmt(d.consumoM)} / ${fmt(d.consumoD)}</span></div>
       <div class="detrow"><span class="dl">Lead Time (días)</span><span class="dv">${fmt(d.leadTime)}</span></div>
       <div class="detrow"><span class="dl">Desviación estándar</span><span class="dv">${fmt(d.desvest)}</span></div>
@@ -1805,8 +1516,7 @@ async function guardarTodo(){
   const hayExistencias=EXISTENCIAS_DIRTY;
   const hayPicking=Object.keys(PENDING).length>0;
   const hayCodigos=PENDING_COD.length>0;
-  const hayTransito=TRANS_DIRTY;
-  if(!hayExistencias&&!hayPicking&&!hayCodigos&&!hayTransito){alert('No hay cambios nuevos para guardar.');return;}
+  if(!hayExistencias&&!hayPicking&&!hayCodigos){alert('No hay cambios nuevos para guardar.');return;}
   const token=localStorage.getItem(GH_TOKEN_KEY);
   if(!token){
     if(confirm('Para guardar (compartido con todos) necesitas un Token de GitHub de Almacén.\n¿Configurarlo ahora?'))setupGHToken();
@@ -1835,14 +1545,12 @@ async function guardarTodo(){
       remote.D.almacenCodigos=remoteCodigos.concat(nuevosCod);
     }
     if(hayExistencias)remote.D.almacenExistencias=DATA;
-    if(hayTransito)remote.D.almacenTransito={t:TRANS,r:RESV,ts:(TRANS_META&&TRANS_META.ts)||Date.now()};
 
     const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
     const partes=[];
     if(hayExistencias)partes.push('Existencias ('+DATA.length+' SKUs)');
     if(hayPicking)partes.push('Picking ('+Object.keys(PENDING).length+' cambios)');
     if(hayCodigos)partes.push('Códigos ('+PENDING_COD.length+' nuevos)');
-    if(hayTransito)partes.push('Tránsito/Reservas ('+TRANS.length+' + '+RESV.length+' líneas)');
     const body={message:'almacen: guardar '+partes.join(' + ')+' — '+new Date().toISOString(),content,sha};
     const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
@@ -1850,7 +1558,6 @@ async function guardarTodo(){
     if(hayPicking){CONFIRMED=remote.D.almacenPicking;PENDING={};localStorage.removeItem('fp_almacen_picking_pending');}
     if(hayCodigos){CONFIRMED_COD=remote.D.almacenCodigos;PENDING_COD=colisionesCod;savePendingCodigos();}
     if(hayExistencias){EXISTENCIAS_DIRTY=false;}
-    if(hayTransito){TRANS_DIRTY=false;renderTrans();}
 
     let savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE')+' — '+partes.join(' + ');
     if(colisionesCod.length)savedTxt+=` — ⚠ ${colisionesCod.length} código(s) ya existían y no se subieron, regenéralos`;
@@ -1883,21 +1590,11 @@ function updateHomeCounters(){
   });
   document.getElementById('hc-pick').textContent=`${totalPick.toLocaleString('es-PE')} und. a picking de ${totalReq.toLocaleString('es-PE')} req.`;
   document.getElementById('hc-cod').textContent=`${getCatalogo().length} códigos registrados`;
-  const elT=document.getElementById('hc-trans');
-  if(elT){
-    if(TRANSITO_LIVE){
-      const ocs=new Set(TRANS.filter(t=>t.oc).map(t=>t.oc)).size;
-      elT.textContent=`${ocs.toLocaleString('es-PE')} OC en camino · ${RESV.length.toLocaleString('es-PE')} reservas${TRANS_DIRTY?' (sin guardar)':''}`;
-    }else{
-      elT.textContent='importa el Reporte Almacen.xlsx';
-    }
-  }
 }
 
 /* ═══════════════ INIT ═══════════════ */
 fillFilters();render();
 fillCodFilters();renderCod();
-renderTrans();
 cargarLive();
 </script>
 </body>
