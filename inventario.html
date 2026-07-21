@@ -911,6 +911,8 @@ function render(){
     if(fe && d.estado!==fe)return false;
     return true;
   });
+  // Primero los ítems con consumo mensual (de mayor a menor); los sin consumo van al final, por código.
+  window._genFil.sort((a,b)=>((b.consumoM||0)-(a.consumoM||0))||String(a.cod).localeCompare(String(b.cod)));
   document.getElementById('cnt').textContent=`${window._genFil.length.toLocaleString('es-PE')} de ${DATA.length.toLocaleString('es-PE')} ítems`;
   renderGenTable();
   kpis();
