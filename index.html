@@ -1558,7 +1558,60 @@ function enviarCorreoOC(oc){
   window.location.href='mailto:?subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(L.join('\r\n'));
 }
 // WhatsApp informativo para el SUPERVISOR: su requerimiento ya tiene OC, estado y fecha estimada.
+// El texto lleva solo el "asunto" (datos de la OC); el detalle de ítems se descarga como PDF
+// para adjuntarlo en el chat (WhatsApp no permite adjuntar archivos por enlace).
 // Si su celular está en DB Supervisores abre el chat directo; si no, deja elegir contacto o grupo.
+function _loadScriptOnce(src){
+  window._scriptCache=window._scriptCache||{};
+  if(window._scriptCache[src])return window._scriptCache[src];
+  window._scriptCache[src]=new Promise(function(ok,err){
+    var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=err;document.head.appendChild(s);
+  });
+  return window._scriptCache[src];
+}
+function _ensureJsPDF(){
+  var p=Promise.resolve();
+  if(!(window.jspdf&&window.jspdf.jsPDF))p=p.then(function(){return _loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');});
+  return p.then(function(){
+    if(!window.jspdf.jsPDF.API.autoTable)return _loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+  });
+}
+// PDF con el detalle de ítems de una OC (para adjuntar en WhatsApp)
+function generarPdfItemsOC(oc,items,row){
+  return _ensureJsPDF().then(function(){
+    var doc=new window.jspdf.jsPDF();
+    doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(3,105,161);
+    doc.text('FRIOPACKING S.A. — Área de Compras',14,16);
+    doc.setFontSize(12);doc.setTextColor(15,23,42);
+    doc.text('Orden de Compra N° '+oc+' — Detalle de ítems',14,24);
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(71,85,105);
+    var meta=[];
+    if(row.estado)meta.push('Estado: '+row.estado);
+    var provP=row.prov||(items[0]&&items[0].prov)||'';
+    if(provP)meta.push('Proveedor: '+provP);
+    if(row.foc)meta.push('Fecha OC: '+row.foc);
+    var fentP=row.fent||(items[0]&&items[0].fent)||'';
+    if(fentP)meta.push('Entrega estimada: '+fentP);
+    var respP=row.resp||row.respPed||(items[0]&&items[0].resp)||'';
+    if(respP)meta.push('Responsable: '+respP);
+    if(row.idproy||row.proy)meta.push('Proyecto: '+(row.idproy||'')+(row.proy?(row.idproy?' — ':'')+row.proy:''));
+    var y=31;
+    meta.forEach(function(m){doc.text(m,14,y);y+=5;});
+    doc.autoTable({
+      startY:y+2,
+      head:[['#','Código','Descripción','Cant.','Unid.']],
+      body:items.map(function(it,i){return [i+1,it.cod||'',it.prod||'',it.cantOrd,it.unid||''];}),
+      styles:{fontSize:8,cellPadding:2,textColor:[30,41,59]},
+      headStyles:{fillColor:[3,105,161],fontSize:8.5},
+      alternateRowStyles:{fillColor:[240,249,255]},
+      columnStyles:{0:{cellWidth:9,halign:'center'},1:{cellWidth:30},3:{cellWidth:15,halign:'right'},4:{cellWidth:15,halign:'center'}},
+      margin:{left:14,right:14}
+    });
+    doc.setFontSize(8);doc.setTextColor(148,163,184);
+    doc.text('Generado desde la Plataforma de Compras FRIOPACKING — '+new Date().toLocaleString('es-PE'),14,doc.internal.pageSize.getHeight()-8);
+    doc.save('OC_'+oc.replace(/[^\w-]/g,'_')+'_items.pdf');
+  });
+}
 function enviarWhatsAppOC(oc){
   var items=SKUS[oc]||SKUS_P4[oc]||[];
   var row=(D.oc||[]).find(function(o){return o.oc===oc;})||(D.p4||[]).find(function(o){return o.oc===oc;})||{};
@@ -1567,28 +1620,23 @@ function enviarWhatsAppOC(oc){
   var reqs=(row.reqs&&row.reqs.length)?row.reqs:(row.req?[row.req]:[]);
   var peds=Array.isArray(row.ped)?row.ped:((row.peds&&row.peds.length)?row.peds:(row.ped?[row.ped]:[]));
   var L=[];
-  L.push('Hola'+(resp?' *'+resp+'*':'')+' 👋');
+  L.push('Hola'+(resp?' *'+resp+'*':''));
   L.push('');
-  if(reqs.length)L.push('Le informamos que su requerimiento *'+reqs.join(', ')+'* ya fue procesado y cuenta con Orden de Compra. ✅');
-  else if(peds.length)L.push('Le informamos que su pedido *'+peds.join(', ')+'* ya fue procesado y cuenta con Orden de Compra. ✅');
-  else L.push('Le informamos el estado de su Orden de Compra. ✅');
+  if(reqs.length)L.push('Le informamos que su requerimiento *'+reqs.join(', ')+'* ya fue procesado y cuenta con Orden de Compra.');
+  else if(peds.length)L.push('Le informamos que su pedido *'+peds.join(', ')+'* ya fue procesado y cuenta con Orden de Compra.');
+  else L.push('Le informamos el estado de su Orden de Compra.');
   L.push('');
-  L.push('📦 *Orden de Compra:* '+oc);
-  if(row.estado)L.push('🏷️ *Estado:* '+row.estado);
+  L.push('*Orden de Compra:* '+oc);
+  if(row.estado)L.push('*Estado:* '+row.estado);
   var provWA=row.prov||(items[0]&&items[0].prov)||'';
-  if(provWA)L.push('🏢 *Proveedor:* '+provWA);
-  if(row.foc)L.push('📅 *Fecha OC:* '+row.foc);
+  if(provWA)L.push('*Proveedor:* '+provWA);
+  if(row.foc)L.push('*Fecha OC:* '+row.foc);
   var fentWA=row.fent||(items[0]&&items[0].fent)||'';
-  if(fentWA)L.push('🚚 *Entrega estimada:* '+fentWA);
-  if(row.idproy||row.proy)L.push('🏗️ *Proyecto:* '+(row.idproy?row.idproy+(row.proy?' — ':''):'')+(row.proy||''));
+  if(fentWA)L.push('*Entrega estimada:* '+fentWA);
+  if(row.idproy||row.proy)L.push('*Proyecto:* '+(row.idproy?row.idproy+(row.proy?' — ':''):'')+(row.proy||''));
   L.push('');
-  if(items.length){
-    L.push('*Ítems ('+items.length+'):*');
-    var mxWA=Math.min(items.length,60);
-    for(var iw=0;iw<mxWA;iw++){var itw=items[iw];L.push((iw+1)+'. '+itw.cod+' — '+itw.prod+' — *'+itw.cantOrd+'* '+(itw.unid||''));}
-    if(items.length>mxWA)L.push('… y '+(items.length-mxWA)+' ítem(s) más.');
-    L.push('');
-  }
+  if(items.length)L.push('Se adjunta en PDF el detalle de los *'+items.length+'* ítem'+(items.length===1?'':'s')+' de la OC.');
+  L.push('');
   L.push('_Área de Compras — FRIOPACKING S.A._');
   var txtWA=L.join('\n');
   var supWA=buscarSupervisor(resp);
@@ -1599,7 +1647,14 @@ function enviarWhatsAppOC(oc){
     if(dg.length>=10)numWA=dg;
   }
   var urlWA=numWA?('https://wa.me/'+numWA+'?text='+encodeURIComponent(txtWA)):('https://api.whatsapp.com/send?text='+encodeURIComponent(txtWA));
+  // Abrir WhatsApp de inmediato (gesto del usuario) y generar el PDF en paralelo
   window.open(urlWA,'_blank');
+  if(items.length){
+    generarPdfItemsOC(oc,items,row).catch(function(e){
+      console.warn('PDF items OC:',e);
+      alert('No se pudo generar el PDF de ítems (sin conexión al CDN). El mensaje de WhatsApp se abrió igual.');
+    });
+  }
 }
 function verCorreoFormateadoOC(oc){
   var items=SKUS[oc]||SKUS_P4[oc]||[];
@@ -1637,8 +1692,8 @@ function verCorreoFormateadoOC(oc){
     if(_digs.length>=10)waNum=_digs;
   }
   var waLines=[];
-  waLines.push('🏭 *FRIOPACKING S.A. — Área de Compras*');
-  waLines.push('📦 *Orden de Compra N° '+oc+'*');
+  waLines.push('*FRIOPACKING S.A. — Área de Compras*');
+  waLines.push('*Orden de Compra N° '+oc+'*');
   waLines.push('');
   waLines.push('*Proveedor:* '+prov);
   if(foc)waLines.push('*Fecha OC:* '+foc);
