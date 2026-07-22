@@ -1097,7 +1097,7 @@ function verFichaExistencia(cod){
       <div style="margin-top:8px">${PILL_GEN[d.estado]||PILL_GEN['SIN DATOS']} <span style="background:rgba(255,255,255,.14);border-radius:14px;padding:3px 11px;font-size:10.5px;margin-left:6px">${d.um}</span></div>
     </div>
     ${fichaTransHTML(d.cod)}
-    <div style="padding:6px 0">
+    <div style="padding:6px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));column-gap:26px;align-content:start">
       <div class="detrow"><span class="dl">Stock ICA / LIMA / TRUJILLO</span><span class="dv">${(d.ica||0).toLocaleString('es-PE')} / ${(d.lima||0).toLocaleString('es-PE')} / ${(d.trujillo||0).toLocaleString('es-PE')}</span></div>
       <div class="detrow"><span class="dl">Stock en tránsito${TRANSITO_LIVE?' (OC pendientes)':''}</span><span class="dv">${fmtq(d.transito||0)}</span></div>
       <div class="detrow"><span class="dl">Stock Actual</span><span class="dv">${(d.stock||0).toLocaleString('es-PE')}</span></div>
@@ -1122,7 +1122,7 @@ function verFichaExistencia(cod){
       <div class="detrow"><span class="dl">Valor de inventario (SKU)</span><span class="dv">S/ ${fmt((d.stock||0)*(d.costo||0))}</span></div>
     </div>
     <div style="padding:12px 20px 18px"><button class="btn br" onclick="cerrarFicha()">Cerrar</button></div>`;
-  fichaSize('min(96vw,1250px)');
+  fichaSize('min(96vw,1500px)');
   document.getElementById('fichaBg').style.display='flex';
 }
 
