@@ -1604,6 +1604,69 @@ function compartirPdfItemsOC(oc){
     mostrarPanelPdfOC(oc,'⚠️ No se pudo generar el PDF ('+(e&&e.message||'error')+').');
   });
 }
+// Imagen PNG con el detalle de ítems, copiada al portapapeles: en WhatsApp solo se pega con Ctrl+V.
+function copiarImagenItemsOC(oc){
+  var items=SKUS[oc]||SKUS_P4[oc]||[];
+  var row=(D.oc||[]).find(function(o){return o.oc===oc;})||(D.p4||[]).find(function(o){return o.oc===oc;})||{};
+  if(!items.length){alert('No se encontraron ítems para esta OC.');return;}
+  mostrarPanelPdfOC(oc,'⏳ Generando la imagen…');
+  var elImg=null;
+  _loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js').then(function(){
+    var resp=row.resp||row.respPed||(items[0]&&items[0].resp)||'';
+    var prov=row.prov||(items[0]&&items[0].prov)||'';
+    var fent=row.fent||(items[0]&&items[0].fent)||'';
+    elImg=document.createElement('div');
+    elImg.style.cssText='position:fixed;left:-12000px;top:0;width:920px;background:#fff;padding:26px;font-family:Arial,sans-serif;color:#1e293b';
+    var h='<div style="font-size:20px;font-weight:800;color:#0369a1;letter-spacing:.5px">FRIOPACKING S.A. — Área de Compras</div>';
+    h+='<div style="font-size:15px;font-weight:700;margin:6px 0 10px;color:#0f172a">Orden de Compra N° '+oc+' — Detalle de ítems</div>';
+    h+='<div style="font-size:12px;color:#475569;margin-bottom:14px;line-height:1.8">';
+    if(row.estado)h+='<b>Estado:</b> '+row.estado+' &nbsp;·&nbsp; ';
+    if(prov)h+='<b>Proveedor:</b> '+prov+' &nbsp;·&nbsp; ';
+    if(row.foc)h+='<b>Fecha OC:</b> '+row.foc+' &nbsp;·&nbsp; ';
+    if(fent)h+='<b>Entrega estimada:</b> '+fent;
+    if(row.idproy||row.proy)h+='<br><b>Proyecto:</b> '+(row.idproy||'')+(row.proy?(row.idproy?' — ':'')+row.proy:'');
+    if(resp)h+=' &nbsp;·&nbsp; <b>Responsable:</b> '+resp;
+    h+='</div>';
+    h+='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+    h+='<tr style="background:#0369a1;color:#fff">'
+      +'<th style="padding:7px 9px;border:1px solid #0369a1;width:30px">#</th>'
+      +'<th style="padding:7px 9px;border:1px solid #0369a1;text-align:left;width:110px">Código</th>'
+      +'<th style="padding:7px 9px;border:1px solid #0369a1;text-align:left">Descripción</th>'
+      +'<th style="padding:7px 9px;border:1px solid #0369a1;width:55px">Cant.</th>'
+      +'<th style="padding:7px 9px;border:1px solid #0369a1;width:55px">Unid.</th></tr>';
+    items.forEach(function(it,i){
+      var bg=i%2===0?'#ffffff':'#f0f9ff';
+      h+='<tr style="background:'+bg+'">'
+        +'<td style="padding:6px 9px;border:1px solid #dbeafe;text-align:center;color:#64748b">'+(i+1)+'</td>'
+        +'<td style="padding:6px 9px;border:1px solid #dbeafe;color:#0369a1;font-weight:700;white-space:nowrap">'+(it.cod||'')+'</td>'
+        +'<td style="padding:6px 9px;border:1px solid #dbeafe">'+(it.prod||'')+'</td>'
+        +'<td style="padding:6px 9px;border:1px solid #dbeafe;text-align:right;font-weight:700">'+it.cantOrd+'</td>'
+        +'<td style="padding:6px 9px;border:1px solid #dbeafe;text-align:center;color:#475569">'+(it.unid||'')+'</td></tr>';
+    });
+    h+='</table>';
+    h+='<div style="font-size:10px;color:#94a3b8;margin-top:12px">Generado desde la Plataforma de Compras FRIOPACKING — '+new Date().toLocaleString('es-PE')+'</div>';
+    elImg.innerHTML=h;
+    document.body.appendChild(elImg);
+    return html2canvas(elImg,{scale:2,backgroundColor:'#ffffff'});
+  }).then(function(canvas){
+    if(elImg)elImg.remove();
+    return new Promise(function(ok,err){canvas.toBlob(function(b){b?ok(b):err(new Error('sin blob'));},'image/png');});
+  }).then(function(blob){
+    var nombrePng='OC_'+oc.replace(/[^\w-]/g,'_')+'_items.png';
+    function descargarPng(){
+      var a=document.createElement('a');a.download=nombrePng;a.href=URL.createObjectURL(blob);a.click();
+      mostrarPanelPdfOC(oc,'Imagen descargada como <b>'+nombrePng+'</b> (no se pudo copiar al portapapeles). Adjúntala en WhatsApp con el clip 📎.');
+    }
+    if(navigator.clipboard&&window.ClipboardItem){
+      navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).then(function(){
+        mostrarPanelPdfOC(oc,'✅ Imagen copiada al portapapeles. Ve al chat de WhatsApp y pégala con <b>Ctrl+V</b>, luego Enviar.');
+      },descargarPng);
+    }else descargarPng();
+  }).catch(function(e){
+    if(elImg)elImg.remove();
+    mostrarPanelPdfOC(oc,'⚠️ No se pudo generar la imagen ('+(e&&e.message||'error')+').');
+  });
+}
 function _buildPdfItemsOC(oc,items,row){
     var doc=new window.jspdf.jsPDF();
     doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(3,105,161);
@@ -1679,7 +1742,7 @@ function enviarWhatsAppOC(oc){
   if(items.length){
     mostrarPanelPdfOC(oc,'⏳ Generando el PDF con el detalle de los '+items.length+' ítems…');
     generarPdfItemsOC(oc,items,row).then(function(){
-      mostrarPanelPdfOC(oc,'✅ PDF descargado: <b>OC_'+oc.replace(/[^\w-]/g,'_')+'_items.pdf</b><br>Usa <b>📤 Adjuntar en WhatsApp</b> para enviarlo directo, o adjúntalo desde <b>Descargas</b> con el clip 📎 → Documento.');
+      mostrarPanelPdfOC(oc,'✅ PDF descargado: <b>OC_'+oc.replace(/[^\w-]/g,'_')+'_items.pdf</b><br>Más rápido: <b>🖼 Copiar imagen</b> y pega en el chat con <b>Ctrl+V</b>. O usa <b>📤 Adjuntar en WhatsApp</b> / el clip 📎 con el PDF de <b>Descargas</b>.');
     }).catch(function(e){
       console.warn('PDF items OC:',e);
       mostrarPanelPdfOC(oc,'⚠️ No se pudo generar el PDF automáticamente. Usa el botón <b>Descargar PDF</b>.');
@@ -1699,6 +1762,7 @@ function mostrarPanelPdfOC(oc,estadoHtml){
   p.innerHTML='<div style="font-weight:700;margin-bottom:6px">📎 PDF de ítems — OC '+oc+'</div>'
     +'<div style="color:#cbd5e1">'+estadoHtml+'</div>'
     +'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
+    +'<button onclick="copiarImagenItemsOC(\''+ocEsc+'\')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer" title="Copia el detalle como imagen — en el chat de WhatsApp solo pega con Ctrl+V">🖼 Copiar imagen</button>'
     +'<button onclick="compartirPdfItemsOC(\''+ocEsc+'\')" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer" title="Abre el panel de compartir de Windows con el PDF listo — elige WhatsApp y el chat">📤 Adjuntar en WhatsApp</button>'
     +'<button onclick="descargarPdfItemsOC(\''+ocEsc+'\')" style="background:rgba(255,255,255,.12);color:#e2e8f0;border:none;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">⬇ Descargar PDF</button>'
     +'<button onclick="document.getElementById(\'wa-pdf-panel\').remove()" style="background:rgba(255,255,255,.12);color:#e2e8f0;border:none;border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer">Cerrar</button>'
@@ -1711,7 +1775,7 @@ function descargarPdfItemsOC(oc){
   if(!items.length){alert('No se encontraron ítems para esta OC.');return;}
   mostrarPanelPdfOC(oc,'⏳ Generando el PDF…');
   generarPdfItemsOC(oc,items,row).then(function(){
-    mostrarPanelPdfOC(oc,'✅ PDF descargado: <b>OC_'+oc.replace(/[^\w-]/g,'_')+'_items.pdf</b><br>Usa <b>📤 Adjuntar en WhatsApp</b> para enviarlo directo, o adjúntalo desde <b>Descargas</b> con el clip 📎 → Documento.');
+    mostrarPanelPdfOC(oc,'✅ PDF descargado: <b>OC_'+oc.replace(/[^\w-]/g,'_')+'_items.pdf</b><br>Más rápido: <b>🖼 Copiar imagen</b> y pega en el chat con <b>Ctrl+V</b>. O usa <b>📤 Adjuntar en WhatsApp</b> / el clip 📎 con el PDF de <b>Descargas</b>.');
   }).catch(function(e){
     mostrarPanelPdfOC(oc,'⚠️ No se pudo generar el PDF ('+(e&&e.message||'error')+'). Verifica tu conexión e intenta de nuevo.');
   });
