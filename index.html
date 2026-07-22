@@ -27,6 +27,13 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:1
 .b2{color:#64748b;font-size:10px}
 .sep{width:1px;height:28px;background:#334155;flex-shrink:0}
 .tabs{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none}
+/* Móvil: la barra se parte en dos filas — arriba INICIO/IMPORTAR/GUARDAR, abajo las pestañas deslizables */
+@media (max-width:760px){
+  .nb{flex-wrap:wrap;height:auto;position:sticky;top:0;padding:8px 10px;row-gap:6px}
+  .tabs{order:10;flex:1 1 100%;width:100%}
+  .pg{margin-top:0;height:auto;overflow-y:visible}
+  #ph{margin-top:0;height:auto;min-height:75vh}
+}
 .tabs::-webkit-scrollbar{display:none}
 .tab{display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:6px;color:#94a3b8;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .15s;border:none;background:transparent}
 .tab:hover{background:#1e293b;color:#e2e8f0}
@@ -343,8 +350,6 @@ body.dark .g-rank-card{background:#111b2b!important}
 
 <nav class="nb">
   <a href="plataforma.html" title="Volver al Inicio de la Plataforma LOGÍSTICA" style="display:flex;align-items:center;gap:6px;background:#1e293b;color:#93c5fd;border:1px solid #334155;padding:6px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;flex-shrink:0">◀ INICIO</a>
-  <div class="fp">FP</div>
-  <div class="sep"></div>
   <div class="tabs">
     <button class="tab" onclick="nav('home')">🛒 COMPRAS</button>
     <button class="tab" onclick="nav('p2')">📋 OC Pendientes <span class="tbdg" id="bdg2">—</span></button>

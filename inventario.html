@@ -50,6 +50,13 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:1
   .hlogo img{max-width:70vw;height:auto}
   .hcards{grid-template-columns:repeat(2,1fr);width:100%;max-width:420px}
 }
+/* Móvil: la barra se parte en dos filas — arriba INICIO/IMPORTAR/GUARDAR, abajo las pestañas deslizables */
+@media (max-width:760px){
+  .nb{flex-wrap:wrap;height:auto;position:sticky;top:0;padding:8px 10px;row-gap:6px}
+  .tabs{order:10;flex:1 1 100%;width:100%;margin-left:0}
+  .pg{margin-top:0}
+  #ph{margin-top:0}
+}
 /* PAGE */
 .pg{display:none;margin-top:52px;padding:16px;max-width:1500px;margin-left:auto;margin-right:auto}
 .pg.act{display:block}
@@ -130,7 +137,6 @@ tr:hover td{background:#f8fafc}
 
 <nav class="nb">
   <a class="back" href="plataforma.html" title="Volver al Inicio de la Plataforma LOGÍSTICA">◀ INICIO</a>
-  <div class="fp">📦</div>
   <div class="tabs">
     <button class="tab act" id="tab-home" onclick="nav('home')">📦 ALMACÉN</button>
     <button class="tab" id="tab-general" onclick="nav('p-general')">📋 General</button>
