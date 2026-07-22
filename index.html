@@ -1003,7 +1003,7 @@ function instNav(id){
     <select class="fsel" id="f2resp" onchange="renderP2()"><option value="">Responsable: Todos</option></select>
     <select class="fsel" id="f2ucomp" onchange="renderP2()"><option value="">Usr. Compras: Todos</option></select>
     <select class="fsel" id="f2proj" onchange="renderP2()"><option value="">Proyecto: Todos</option></select>
-    <input class="fsrch" id="f2q" oninput="renderP2()" placeholder="Buscar OC / Req. / ID Proyecto / Proveedor / Producto… (busca en todos los requerimientos)" autocomplete="off" name="f2q_search" readonly onfocus="this.removeAttribute('readonly')"/>
+    <input class="fsrch" id="f2q" oninput="renderP2()" placeholder="Buscar OC / Req. / ID Proyecto / Proveedor / Producto / Código SKU… (busca en todos los ítems de cada OC)" autocomplete="off" name="f2q_search" readonly onfocus="this.removeAttribute('readonly')"/>
     <button class="fclr" onclick="clearF2()">✕ Limpiar</button>
     <button id="f2reg-btn" onclick="toggleF2Reg()" style="padding:4px 10px;border-radius:6px;border:1px solid #f59e0b;background:#fff;color:#92400e;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">📋 Solo REG.</button>
     <span class="fcnt" id="f2cnt">— registros</span>
@@ -1095,7 +1095,7 @@ function instNav(id){
     <select class="fsel" id="f4resp" onchange="renderP4()"><option value="">Resp. Pedido: Todos</option></select>
     <select class="fsel" id="f4ucomp" onchange="renderP4()"><option value="">Usr. Compras: Todos</option></select>
     <select class="fsel" id="f4prov" onchange="renderP4()"><option value="">Proveedor: Todos</option></select>
-    <input class="fsrch" id="f4q" oninput="renderP4()" placeholder="Buscar OC / N° Pedido / Proveedor / Producto…"/>
+    <input class="fsrch" id="f4q" oninput="renderP4()" placeholder="Buscar OC / N° Pedido / Proveedor / Producto / Código SKU… (todos los ítems)"/>
     <button class="fclr" onclick="clearF4()">✕ Limpiar</button>
     <span class="fcnt" id="f4cnt">— registros</span>
   </div>
@@ -1321,7 +1321,11 @@ function filterP2(){
     if(f.resp&&r.resp!==f.resp)return false;
     if(f.ucomp&&r.ucomp!==f.ucomp)return false;
     if(f.proj&&r.proy!==f.proj)return false;
-    if(f.q&&!([r.oc,...(r.reqs||[r.req]),r.prov,r.prod,r.proy,r.idproy].join(' ').toLowerCase().includes(f.q)))return false;
+    if(f.q){
+      const its=SKUS[r.oc]||SKUS_P4[r.oc]||[];
+      const hay=[r.oc,...(r.reqs||[r.req]),r.prov,r.prod,r.cod,r.proy,r.idproy].concat(its.map(s=>(s.cod||'')+' '+(s.prod||''))).join(' ').toLowerCase();
+      if(!hay.includes(f.q))return false;
+    }
     if(_f2RegOnly&&!(D.ocMeta[r.oc]&&D.ocMeta[r.oc].reg))return false;
     return true;});
 }
@@ -3748,13 +3752,15 @@ function openSkuModalP4(el){
       +'<td style="padding:8px 10px;white-space:nowrap">'+badgeOC2(r.estado)+'</td>'
       +'<td style="padding:8px 10px;white-space:nowrap"><span style="font-size:10px;font-weight:700;color:#475569;background:#f1f5f9;border:1px solid #e2e8f0;padding:2px 7px;border-radius:5px">'+(r.ucomp||'—')+'</span></td>'
       +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#334155">'+(r.resp||'—')+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;color:#94a3b8">—</td>'
       +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#7c3aed;font-weight:600">'+(r.ped||'—')+'</td>'
       +'<td style="padding:8px 10px;font-size:12px;text-align:right;font-weight:700;color:#1e3a5f">'+r.cantOrd+'</td>'
       +'<td style="padding:8px 10px;font-size:12px;text-align:right;color:#64748b">'+r.cantRec+'</td>'
       +'<td style="padding:8px 10px;font-size:12px;text-align:right;font-weight:700;color:'+(r.cantPend>0?'#16a34a':'#94a3b8')+'">'+r.cantPend+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;color:#94a3b8">—</td>'
       +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;color:#64748b">'+(r.frec||'—')+'</td>'
-      +'<td style="padding:8px 10px;text-align:center;background:#fffbeb;color:#94a3b8">—</td>'
-      +'<td style="padding:8px 10px;text-align:right;background:#fffbeb;color:#94a3b8">—</td>'
+      +'<td style="padding:8px 10px;font-size:11px;white-space:nowrap;text-align:center;background:#fffbeb;color:#92400e;font-weight:700">'+((r.moneda&&r.moneda!=='-')?r.moneda:'—')+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;white-space:nowrap;text-align:right;background:#fffbeb;color:#92400e;font-weight:700">'+(r.punit>0?r.punit.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'
       +'</tr>';
   }).join('');
   document.getElementById('sku-modal').style.display='flex';
@@ -4447,7 +4453,11 @@ function renderP4(){
     if(resp&&r.respPed!==resp)return false;
     if(ucomp&&r.ucomp!==ucomp)return false;
     if(prov&&r.prov!==prov)return false;
-    if(q&&![r.oc,...(r.ped||[]),r.prov,r.respPed,r.ucomp,r.prod,r.cod].join(' ').toLowerCase().includes(q))return false;
+    if(q){
+      const its4=SKUS_P4[r.oc]||[];
+      const hay4=[r.oc,...(r.ped||[]),r.prov,r.respPed,r.ucomp,r.prod,r.cod].concat(its4.map(s=>(s.cod||'')+' '+(s.prod||''))).join(' ').toLowerCase();
+      if(!hay4.includes(q))return false;
+    }
     return true;
   });
   document.getElementById('f4cnt').textContent=p4fil.length+' registros';
