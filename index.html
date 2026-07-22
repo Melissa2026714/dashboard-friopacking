@@ -5283,15 +5283,30 @@ function importSupervisores(wb){
   let hdr=0;
   for(let i=0;i<Math.min(10,raw.length);i++){
     const r=raw[i];
-    if(r&&r.some(c=>typeof c==='string'&&/^Nombre$/i.test(String(c).trim()))){hdr=i;break;}
+    if(r&&r.some(c=>typeof c==='string'&&/^Nombres?\b/i.test(String(c).trim()))){hdr=i;break;}
   }
   const headers=raw[hdr]||[];
   const ci={};headers.forEach((h,i)=>{if(h)ci[String(h).trim()]=i;});
   const g=(row,name)=>{const i=ci[name];return(i!==undefined)?xs(row[i]):'';};
+  // Encabezados flexibles: acepta "Nombre" o "Nombres Completos (…)", "Correo" o
+  // "Correo electrónico", "Celular"/"Teléfono"/"Número de teléfono"/"WhatsApp", "Área", "Proyecto"
+  const hKeys=Object.keys(ci);
+  const hFind=re=>hKeys.find(k=>re.test(k))||'';
+  const hNom=hFind(/^Nombres?\b/i);
+  const hDni=hFind(/DNI/i);
+  const hCor=hFind(/^Correo/i);
+  const hCel=hFind(/tel[eé]fono|celular|whatsapp|^cel\b/i);
+  const hArea=hFind(/^[aá]rea$/i);
+  const hProy=hFind(/^Proyecto/i);
   const supervisores=raw.slice(hdr+1)
-    .filter(r=>r&&g(r,'Nombre'))
-    .map(r=>({nombre:g(r,'Nombre'),dni:g(r,'DNI'),correo:g(r,'Correo').toLowerCase(),
-      celular:g(r,'Celular')||g(r,'Teléfono')||g(r,'Telefono')||g(r,'WhatsApp')||g(r,'Whatsapp')||g(r,'Cel')||''}));
+    .filter(r=>r&&g(r,hNom))
+    .map(r=>{
+      const s={nombre:g(r,hNom),dni:hDni?g(r,hDni):'',correo:(hCor?g(r,hCor):'').toLowerCase(),
+        celular:(hCel?g(r,hCel):'').replace(/\D/g,'')};
+      if(hArea)s.area=g(r,hArea);
+      if(hProy)s.proyecto=g(r,hProy);
+      return s;
+    });
   D.supervisores=supervisores;
   saveLocal();
   const t1=performance.now();
