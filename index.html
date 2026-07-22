@@ -1647,14 +1647,48 @@ function enviarWhatsAppOC(oc){
     if(dg.length>=10)numWA=dg;
   }
   var urlWA=numWA?('https://wa.me/'+numWA+'?text='+encodeURIComponent(txtWA)):('https://api.whatsapp.com/send?text='+encodeURIComponent(txtWA));
-  // Abrir WhatsApp de inmediato (gesto del usuario) y generar el PDF en paralelo
+  // Abrir WhatsApp de inmediato (gesto del usuario) y generar el PDF en paralelo.
+  // El panel flotante confirma la descarga (al abrirse WhatsApp el foco se va y la
+  // descarga pasa desapercibida) y permite re-descargar con un clic directo.
   window.open(urlWA,'_blank');
   if(items.length){
-    generarPdfItemsOC(oc,items,row).catch(function(e){
+    mostrarPanelPdfOC(oc,'⏳ Generando el PDF con el detalle de los '+items.length+' ítems…');
+    generarPdfItemsOC(oc,items,row).then(function(){
+      mostrarPanelPdfOC(oc,'✅ PDF descargado: <b>OC_'+oc.replace(/[^\w-]/g,'_')+'_items.pdf</b><br>Revisa tu carpeta <b>Descargas</b> y adjúntalo en el chat de WhatsApp (clip 📎 → Documento).');
+    }).catch(function(e){
       console.warn('PDF items OC:',e);
-      alert('No se pudo generar el PDF de ítems (sin conexión al CDN). El mensaje de WhatsApp se abrió igual.');
+      mostrarPanelPdfOC(oc,'⚠️ No se pudo generar el PDF automáticamente. Usa el botón <b>Descargar PDF</b>.');
     });
   }
+}
+// Panel flotante de estado/descarga del PDF de ítems
+function mostrarPanelPdfOC(oc,estadoHtml){
+  var p=document.getElementById('wa-pdf-panel');
+  if(!p){
+    p=document.createElement('div');
+    p.id='wa-pdf-panel';
+    p.style.cssText='position:fixed;bottom:22px;right:22px;z-index:99999;background:#0f172a;color:#fff;border-radius:12px;padding:14px 18px;font-size:12.5px;box-shadow:0 12px 40px rgba(0,0,0,.45);max-width:360px;font-family:Inter,Arial,sans-serif;line-height:1.5';
+    document.body.appendChild(p);
+  }
+  var ocEsc=oc.replace(/'/g,"\\'");
+  p.innerHTML='<div style="font-weight:700;margin-bottom:6px">📎 PDF de ítems — OC '+oc+'</div>'
+    +'<div style="color:#cbd5e1">'+estadoHtml+'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:10px">'
+    +'<button onclick="descargarPdfItemsOC(\''+ocEsc+'\')" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">⬇ Descargar PDF</button>'
+    +'<button onclick="document.getElementById(\'wa-pdf-panel\').remove()" style="background:rgba(255,255,255,.12);color:#e2e8f0;border:none;border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer">Cerrar</button>'
+    +'</div>';
+}
+// Descarga manual (clic directo del usuario → el navegador nunca la bloquea)
+function descargarPdfItemsOC(oc){
+  var items=SKUS[oc]||SKUS_P4[oc]||[];
+  var row=(D.oc||[]).find(function(o){return o.oc===oc;})||(D.p4||[]).find(function(o){return o.oc===oc;})||{};
+  if(!items.length){alert('No se encontraron ítems para esta OC.');return;}
+  mostrarPanelPdfOC(oc,'⏳ Generando el PDF…');
+  generarPdfItemsOC(oc,items,row).then(function(){
+    mostrarPanelPdfOC(oc,'✅ PDF descargado: <b>OC_'+oc.replace(/[^\w-]/g,'_')+'_items.pdf</b><br>Revisa tu carpeta <b>Descargas</b> y adjúntalo en el chat de WhatsApp (clip 📎 → Documento).');
+  }).catch(function(e){
+    mostrarPanelPdfOC(oc,'⚠️ No se pudo generar el PDF ('+(e&&e.message||'error')+'). Verifica tu conexión e intenta de nuevo.');
+  });
 }
 function verCorreoFormateadoOC(oc){
   var items=SKUS[oc]||SKUS_P4[oc]||[];
