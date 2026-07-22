@@ -3647,6 +3647,28 @@ async function saveGitHub(payload){
             return false;
           }
         }
+        // Anti-pisado: conservar claves que la nube tiene y esta pestaña no conoce
+        // (ej. almacenValidado/almacenPicking creados por Almacén después de abrir esta pestaña)
+        let cambiado=false;
+        Object.keys(remote.D||{}).forEach(function(k){
+          if(localData.D[k]===undefined){localData.D[k]=remote.D[k];cambiado=true;}
+        });
+        // Anti-pisado: preservar datos de contacto de supervisores (celular/área/proyecto/DNI/correo)
+        // que la nube ya tiene y esta pestaña cargó sin ellos (ver bug "última escritura gana")
+        if(Array.isArray(remote.D&&remote.D.supervisores)&&Array.isArray(localData.D.supervisores)){
+          const remBy={};remote.D.supervisores.forEach(function(s){remBy[String(s.nombre||'').trim().toUpperCase()]=s;});
+          localData.D.supervisores.forEach(function(s){
+            const r=remBy[String(s.nombre||'').trim().toUpperCase()];
+            if(!r)return;
+            ['celular','area','proyecto','dni','correo'].forEach(function(f){
+              if(r[f]&&!s[f]){s[f]=r[f];cambiado=true;}
+            });
+          });
+        }
+        if(cambiado){
+          payload=JSON.stringify(localData);
+          Object.assign(D,localData.D); // mantener también en memoria
+        }
       }
     }catch(e2){console.warn('[FP] Chequeo de conflicto antes de guardar falló, se continúa:',e2);}
     let sha='';

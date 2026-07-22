@@ -232,6 +232,7 @@ tr:hover td{background:#f8fafc}
         <th>N° Req.</th><th>F. Req.</th><th style="text-align:center">Ítems</th>
         <th style="text-align:center">🚦</th><th>Estado</th>
         <th class="num">Cant. Total</th><th class="num">Cant. a Picking</th><th class="num">Cant. a Pedido</th>
+        <th style="text-align:center;background:#ecfdf5;color:#065f46" title="Marca el check cuando Almacén termine de validar este requerimiento — se abre WhatsApp con el aviso al supervisor: qué pasó a Picking y qué pasó a Pedido">✔ Valid. Almacén</th>
       </tr></thead>
       <tbody id="tbreq"></tbody>
     </table>
@@ -940,6 +941,9 @@ const P5_DEMO=[
 let CONFIRMED={};  // decisiones ya guardadas en data.json (D.almacenPicking)
 let PENDING={};    // decisiones editadas en este navegador y aún no guardadas
 let AUTO_MAP={};   // sugerencia automática de cant. a Picking por req+código (repartida, sin duplicar stock)
+let CONFIRMED_VAL={}; // validaciones de almacén ya guardadas en data.json (D.almacenValidado)
+let PENDING_VAL={};   // validaciones marcadas en este navegador y aún no guardadas
+let SUPERVISORES=[];  // directorio D.supervisores (nombre/correo/celular) para el aviso WhatsApp
 
 async function cargarLive(){
   try{
@@ -950,6 +954,8 @@ async function cargarLive(){
     P5=s.D.p5reqs.map(r=>({...r,estado:fixEnc(r.estado)}));
     P5_LIVE=true;
     CONFIRMED=s.D.almacenPicking||{};
+    CONFIRMED_VAL=s.D.almacenValidado||{};
+    SUPERVISORES=s.D.supervisores||[];
     CONFIRMED_COD=s.D.almacenCodigos||[];
     if(Array.isArray(s.D.almacenExistencias)&&s.D.almacenExistencias.length){
       DATA=s.D.almacenExistencias;
@@ -965,11 +971,14 @@ async function cargarLive(){
     P5=P5_DEMO;
     P5_LIVE=false;
     CONFIRMED={};
+    CONFIRMED_VAL={};
+    SUPERVISORES=[];
     CONFIRMED_COD=[];
     document.getElementById('reqLiveNote').className='note';
     document.getElementById('reqLiveNote').innerHTML='⚠️ No se pudo leer data.json (modo local sin servidor) — mostrando '+P5.length+' filas de ejemplo. En la web publicada esto carga automáticamente los '+'requerimientos reales.';
   }
   try{PENDING=JSON.parse(localStorage.getItem('fp_almacen_picking_pending')||'{}');}catch(e2){PENDING={};}
+  try{PENDING_VAL=JSON.parse(localStorage.getItem('fp_almacen_validado_pending')||'{}');}catch(e3){PENDING_VAL={};}
   PENDING_COD=loadPendingCodigos();
   // El picking nace LIMPIO: sin sugerencias automáticas. Las cantidades se asignan
   // manualmente en la revisión (pestaña Requerimientos) y recién ahí aparecen en Picking.
@@ -1212,8 +1221,12 @@ function renderReqTable(){
     <td class="num" style="font-weight:700">${cantTotal.toLocaleString('es-PE')}</td>
     <td class="num">${pickTotal.toLocaleString('es-PE')}</td>
     <td class="num">${pedTotal.toLocaleString('es-PE')}</td>
+    <td style="text-align:center;white-space:nowrap;background:#f0fdfa">
+      <input type="checkbox" ${isValidadoReq(rk)?'checked':''} onchange="toggleValidadoReq('${rk}',this.checked)" style="width:16px;height:16px;cursor:pointer;accent-color:#0d9488;vertical-align:middle" title="Validado por Almacén — al marcar se abre WhatsApp con el aviso al supervisor">
+      ${isValidadoReq(rk)?`<button class="btn br" style="padding:3px 8px;font-size:10.5px;margin-left:5px;vertical-align:middle" onclick="enviarWhatsAppReq('${rk}')" title="Reenviar el aviso por WhatsApp al supervisor">💬</button>`:''}
+    </td>
   </tr>`;
-  }).join('') || `<tr><td colspan="12" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
+  }).join('') || `<tr><td colspan="13" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
   const tot=order.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqInfo').textContent=tot?`Mostrando ${reqPage*sz+1}–${Math.min((reqPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} requerimientos`:'Sin resultados';
   const pagEl=document.getElementById('reqPag');
@@ -1221,6 +1234,94 @@ function renderReqTable(){
   for(let i=0;i<Math.min(pages,10);i++)h+=`<button class="pbt${i===reqPage?' pact':''}" onclick="reqPage=${i};renderReqTable()">${i+1}</button>`;
   pagEl.innerHTML=h;
   updateDirtyLabels();
+}
+
+/* ── Validación de Almacén por requerimiento ─────────────────────────────────
+   Al marcar el check, el requerimiento queda validado (se comparte en data.json
+   con 💾 GUARDAR) y se abre WhatsApp con el aviso al supervisor: qué ítems pasan
+   a Picking (stock) y cuáles a Pedido (compra). */
+function isValidadoReq(rk){
+  if(Object.prototype.hasOwnProperty.call(PENDING_VAL,rk))return !!PENDING_VAL[rk];
+  return !!CONFIRMED_VAL[rk];
+}
+function toggleValidadoReq(rk,checked){
+  PENDING_VAL[rk]=checked?new Date().toLocaleString('es-PE'):false;
+  localStorage.setItem('fp_almacen_validado_pending',JSON.stringify(PENDING_VAL));
+  renderReqTable();
+  if(checked)enviarWhatsAppReq(rk);
+}
+// Busca al supervisor en D.supervisores por coincidencia de nombre (≥2 palabras y ≥50%)
+function _normNombreAl(s){
+  var map={'Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U','Ñ':'N','Ü':'U'};
+  var up=(s||'').toUpperCase(),out='';
+  for(var i=0;i<up.length;i++){out+=map[up[i]]||up[i];}
+  return out.replace(/[^A-Z ]/g,' ').replace(/\s+/g,' ').trim();
+}
+function buscarSupervisorAl(nombre){
+  const nws=new Set(_normNombreAl(nombre).split(' ').filter(Boolean));
+  if(!nws.size||!SUPERVISORES.length)return null;
+  let best=null,bestScore=0;
+  SUPERVISORES.forEach(function(s){
+    const sws=new Set(_normNombreAl(s.nombre).split(' ').filter(Boolean));
+    if(!sws.size)return;
+    let inter=0;nws.forEach(function(w){if(sws.has(w))inter++;});
+    const score=inter/Math.max(nws.size,sws.size);
+    if(inter>=2&&score>bestScore){bestScore=score;best=s;}
+  });
+  return (best&&bestScore>=0.5)?best:null;
+}
+// Aviso WhatsApp al supervisor: requerimiento validado, con detalle a Picking / a Pedido.
+// Texto sin emojis (WhatsApp los mostraba corruptos). Si el celular del supervisor está
+// en DB Supervisores abre su chat directo; si no, deja elegir contacto o grupo.
+function enviarWhatsAppReq(rk){
+  const items=(window._reqGroups||{})[rk]||[];
+  if(!items.length){alert('No se encontraron ítems para este requerimiento.');return;}
+  const g0=items[0];
+  const aPick=[],aPed=[];
+  items.forEach(function(i){
+    const l=(i.estado||'').toLowerCase();
+    if(l.includes('revisi')){
+      const key=i.req+'|'+i.cod;
+      const pick=getDecision(key,AUTO_MAP[key]||0);
+      const ped=Math.max(0,(i.cant||0)-pick);
+      if(pick>0)aPick.push({it:i,n:pick});
+      if(ped>0)aPed.push({it:i,n:ped});
+    }else if(l.includes('pedido')){
+      aPed.push({it:i,n:i.cant||0});
+    }else{
+      aPick.push({it:i,n:i.cant||0});
+    }
+  });
+  const totPick=aPick.reduce(function(s,x){return s+x.n;},0);
+  const totPed=aPed.reduce(function(s,x){return s+x.n;},0);
+  const L=[];
+  L.push('Hola'+(g0.resp?' *'+g0.resp+'*':''));
+  L.push('');
+  L.push('Su requerimiento *'+rk+'* ya fue *validado por Almacén*.');
+  L.push('');
+  if(g0.idproy||g0.proy)L.push('*Proyecto:* '+(g0.idproy||'')+(g0.proy?((g0.idproy?' — ':'')+g0.proy):''));
+  if(g0.fecha)L.push('*Fecha requerimiento:* '+g0.fecha);
+  L.push('*Ítems:* '+items.length+' | *A Picking:* '+totPick.toLocaleString('es-PE')+' und. | *A Pedido:* '+totPed.toLocaleString('es-PE')+' und.');
+  L.push('');
+  L.push('*Pasa a PICKING (se atiende con stock de almacén):*');
+  if(aPick.length)aPick.forEach(function(x,i){L.push((i+1)+'. '+x.it.cod+' — '+x.it.prod+' — *'+x.n+'* '+(x.it.unid||''));});
+  else L.push('— Ningún ítem se atiende con stock.');
+  L.push('');
+  L.push('*Pasa a PEDIDO (proceso de compra):*');
+  if(aPed.length)aPed.forEach(function(x,i){L.push((i+1)+'. '+x.it.cod+' — '+x.it.prod+' — *'+x.n+'* '+(x.it.unid||''));});
+  else L.push('— Ningún ítem pasa a compra.');
+  L.push('');
+  L.push('_Almacén — FRIOPACKING S.A._');
+  const txt=L.join('\n');
+  const sup=buscarSupervisorAl(g0.resp);
+  let num='';
+  if(sup&&sup.celular){
+    let dg=String(sup.celular).replace(/\D/g,'');
+    if(dg.length===9)dg='51'+dg;
+    if(dg.length>=10)num=dg;
+  }
+  const url=num?('https://wa.me/'+num+'?text='+encodeURIComponent(txt)):('https://api.whatsapp.com/send?text='+encodeURIComponent(txt));
+  window.open(url,'_blank');
 }
 
 /* Modal emergente con el detalle de todos los ítems (SKU) de un requerimiento — igual al de "OC — N item(s)" de Compras */
@@ -1326,7 +1427,7 @@ function computeAutoAlloc(pendientes){
   return auto;
 }
 function updateDirtyLabels(){
-  const dirty=Object.keys(PENDING).length;
+  const dirty=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length;
   document.querySelectorAll('.dirtyLbl').forEach(el=>{
     el.innerHTML=dirty?`<span class="dirty-badge">${dirty} cambio(s) sin guardar</span>`:'';
   });
@@ -1547,7 +1648,8 @@ async function confirmarCompletado(){
    arriesgar los datos de Compras (ver memoria del bug de "última escritura gana"). */
 async function guardarDecisiones(){
   const keys=Object.keys(PENDING);
-  if(!keys.length){alert('No hay cambios nuevos para guardar.');return;}
+  const vkeys=Object.keys(PENDING_VAL);
+  if(!keys.length&&!vkeys.length){alert('No hay cambios nuevos para guardar.');return;}
   const token=localStorage.getItem(GH_TOKEN_KEY);
   if(!token){
     if(confirm('Para guardar decisiones de Picking (compartidas con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
@@ -1566,13 +1668,20 @@ async function guardarDecisiones(){
     if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
     const merged={...(remote.D.almacenPicking||{}),...PENDING};
     remote.D.almacenPicking=merged;
+    // Validaciones de almacén (check ✔): true → se agrega/actualiza; false → se retira
+    const mergedVal={...(remote.D.almacenValidado||{})};
+    Object.keys(PENDING_VAL).forEach(k=>{if(PENDING_VAL[k])mergedVal[k]=PENDING_VAL[k];else delete mergedVal[k];});
+    remote.D.almacenValidado=mergedVal;
     const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
-    const body={message:'almacen: actualizar decisiones de picking '+new Date().toISOString(),content,sha};
+    const body={message:'almacen: actualizar decisiones de picking y validaciones '+new Date().toISOString(),content,sha};
     const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
     CONFIRMED=merged;
     PENDING={};
     localStorage.removeItem('fp_almacen_picking_pending');
+    CONFIRMED_VAL=mergedVal;
+    PENDING_VAL={};
+    localStorage.removeItem('fp_almacen_validado_pending');
     const savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE');
     document.querySelectorAll('.saveLblEl').forEach(l=>l.textContent=savedTxt);
     if(document.getElementById('tbreq'))renderReqTable();
