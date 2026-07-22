@@ -1603,6 +1603,53 @@ function enviarWhatsAppOC(oc){
   }
   var urlWA=numWA?('https://wa.me/'+numWA+'?text='+encodeURIComponent(txtWA)):('https://api.whatsapp.com/send?text='+encodeURIComponent(txtWA));
   window.open(urlWA,'_blank');
+  window._lastWaTxt=txtWA;
+  mostrarPanelSuply(oc,numWA?(resp||'supervisor'):null);
+}
+// Panel para reenviar el mismo aviso al grupo SUPLY de WhatsApp.
+// WhatsApp no permite abrir un grupo con texto pre-escrito, así que:
+// — con enlace de invitación configurado: copia el mensaje y abre el grupo (pegar con Ctrl+V);
+// — sin enlace: abre el selector de chats con el texto ya escrito (elegir SUPLY).
+function mostrarPanelSuply(oc,supNombre){
+  var p=document.getElementById('wa-suply-panel');
+  if(!p){
+    p=document.createElement('div');
+    p.id='wa-suply-panel';
+    p.style.cssText='position:fixed;bottom:22px;right:22px;z-index:99999;background:#0f172a;color:#fff;border-radius:12px;padding:14px 18px;font-size:12.5px;box-shadow:0 12px 40px rgba(0,0,0,.45);max-width:350px;font-family:Inter,Arial,sans-serif;line-height:1.5';
+    document.body.appendChild(p);
+  }
+  p.innerHTML='<div style="font-weight:700;margin-bottom:6px">💬 WhatsApp — OC '+oc+'</div>'
+    +'<div id="wa-suply-status" style="color:#cbd5e1">'+(supNombre?('Se abrió el chat de <b>'+supNombre+'</b>. '):'Se abrió WhatsApp con el mensaje. ')+'¿Enviar el mismo aviso al grupo <b>SUPLY</b>?</div>'
+    +'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
+    +'<button onclick="enviarWaGrupoSuply()" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">👥 Enviar al grupo SUPLY</button>'
+    +'<button onclick="configurarGrupoSuply()" title="Configurar el enlace de invitación del grupo SUPLY" style="background:rgba(255,255,255,.12);color:#e2e8f0;border:none;border-radius:7px;padding:7px 10px;font-size:12px;cursor:pointer">⚙</button>'
+    +'<button onclick="document.getElementById(\'wa-suply-panel\').remove()" style="background:rgba(255,255,255,.12);color:#e2e8f0;border:none;border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer">Cerrar</button>'
+    +'</div>';
+}
+function enviarWaGrupoSuply(){
+  var txt=window._lastWaTxt||'';
+  if(!txt){alert('No hay un mensaje pendiente. Vuelve a presionar el botón 💬 de la OC.');return;}
+  var link=(D.waGrupoSuply||'').trim();
+  var st=document.getElementById('wa-suply-status');
+  if(link){
+    var abrir=function(){window.open(link,'_blank');};
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(abrir,abrir);
+    }else abrir();
+    if(st)st.innerHTML='✅ Mensaje <b>copiado</b> y grupo SUPLY abierto — pega con <b>Ctrl+V</b> y presiona Enviar.';
+  }else{
+    window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(txt),'_blank');
+    if(st)st.innerHTML='Se abrió WhatsApp con el mensaje escrito — elige el grupo <b>SUPLY</b> en la lista y presiona Enviar.<br><span style="color:#94a3b8">Tip: con ⚙ puedes guardar el enlace de invitación del grupo para abrirlo directo.</span>';
+  }
+}
+function configurarGrupoSuply(){
+  var cur=D.waGrupoSuply||'';
+  var t=prompt('Pega el enlace de invitación del grupo SUPLY\n(en WhatsApp: abrir el grupo → tocar el nombre → "Invitar a un grupo mediante un enlace" → Copiar enlace).\n\nCon el enlace guardado, el botón abre el grupo directamente y el mensaje queda copiado para pegar con Ctrl+V.\nDéjalo vacío para usar el selector de chats (mensaje ya escrito, eliges SUPLY).',cur);
+  if(t!==null){
+    D.waGrupoSuply=t.trim();
+    saveLocal();
+    alert(t.trim()?'✅ Enlace del grupo SUPLY guardado. Usa 💾 GUARDAR para compartirlo con todos.':'Enlace eliminado — se usará el selector de chats.');
+  }
 }
 function verCorreoFormateadoOC(oc){
   var items=SKUS[oc]||SKUS_P4[oc]||[];
