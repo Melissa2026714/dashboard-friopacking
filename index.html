@@ -1505,6 +1505,8 @@ function toggleCorreo(cb,oc){
   const elRow=cb.closest('tr').querySelector('[id^="fcorreo_"]');
   if(elRow)elRow.textContent=D.ocMeta[oc].fcorreo||'—';
   saveLocal();
+  // Al marcar "correo enviado", abrir por defecto el WhatsApp informativo al supervisor
+  if(cb.checked)enviarWhatsAppOC(oc);
 }
 function editFCorreo(cell,oc){
   if(!D.ocMeta)D.ocMeta={};
