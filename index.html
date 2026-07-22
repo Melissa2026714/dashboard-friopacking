@@ -1394,7 +1394,7 @@ function renderP2Table(){
       <td class="reg-col" onclick="editRegFecha(this,'${r.oc}','compras','fcompras')" title="Clic para corregir la fecha real de Compras" style="text-align:center;background:#fffbeb;font-size:11px;color:#0369a1;font-weight:600;white-space:nowrap;cursor:pointer;text-decoration:underline dotted #0369a1" id="fcomp_${ocId}">${rm.fcompras||'—'}</td>
       <td class="reg-col" style="text-align:center;background:#fffbeb"><input type="checkbox" ${rm.almacen?'checked':''} onchange="toggleRegCheck(this,'${r.oc}','almacen','falmacen','falm_${ocId}')" style="width:15px;height:15px;cursor:pointer;accent-color:#0f766e" ${rm.reg?'':'disabled title="Marque REG. primero"'}></td>
       <td class="reg-col" onclick="editRegFecha(this,'${r.oc}','almacen','falmacen')" title="Clic para corregir la fecha real de Almacén" style="text-align:center;background:#fffbeb;font-size:11px;color:#0f766e;font-weight:600;white-space:nowrap;cursor:pointer;text-decoration:underline dotted #0f766e" id="falm_${ocId}">${rm.falmacen||'—'}</td>
-      <td><div style="display:flex;align-items:center;gap:5px"><button onclick="verCorreoFormateadoOC('${ocEsc}')" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="Ver correo formateado para proveedor">✉</button><strong>${r.nItems>1
+      <td><div style="display:flex;align-items:center;gap:5px"><button onclick="verCorreoFormateadoOC('${ocEsc}')" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="Ver correo formateado para proveedor">✉</button><button onclick="enviarWhatsAppOC('${ocEsc}')" style="background:linear-gradient(135deg,#16a34a,#25d366);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="WhatsApp informativo para el supervisor: su requerimiento ya tiene OC, estado y fecha estimada">💬</button><strong>${r.nItems>1
         ? `<span class="cl" style="cursor:pointer" onclick="openSkuModal(this)" data-oc="${r.oc}" data-proy="${r.proy.replace(/"/g,'&quot;')}" data-prov="${r.prov.replace(/"/g,'&quot;')}" title="Ver ${r.nItems} SKUs">${r.oc} <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:3px;margin-left:3px">${r.nItems} SKU</span></span>`
         : r.oc
       }</strong></div></td>
@@ -1556,6 +1556,50 @@ function enviarCorreoOC(oc){
   L.push('Quedamos a su disposicion para cualquier consulta adicional.');L.push('');
   L.push('Atentamente,');
   window.location.href='mailto:?subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(L.join('\r\n'));
+}
+// WhatsApp informativo para el SUPERVISOR: su requerimiento ya tiene OC, estado y fecha estimada.
+// Si su celular está en DB Supervisores abre el chat directo; si no, deja elegir contacto o grupo.
+function enviarWhatsAppOC(oc){
+  var items=SKUS[oc]||SKUS_P4[oc]||[];
+  var row=(D.oc||[]).find(function(o){return o.oc===oc;})||(D.p4||[]).find(function(o){return o.oc===oc;})||{};
+  if(!items.length&&!row.oc){alert('No se encontraron datos para esta OC.');return;}
+  var resp=row.resp||row.respPed||(items[0]&&items[0].resp)||'';
+  var reqs=(row.reqs&&row.reqs.length)?row.reqs:(row.req?[row.req]:[]);
+  var peds=Array.isArray(row.ped)?row.ped:((row.peds&&row.peds.length)?row.peds:(row.ped?[row.ped]:[]));
+  var L=[];
+  L.push('Hola'+(resp?' *'+resp+'*':'')+' 👋');
+  L.push('');
+  if(reqs.length)L.push('Le informamos que su requerimiento *'+reqs.join(', ')+'* ya fue procesado y cuenta con Orden de Compra. ✅');
+  else if(peds.length)L.push('Le informamos que su pedido *'+peds.join(', ')+'* ya fue procesado y cuenta con Orden de Compra. ✅');
+  else L.push('Le informamos el estado de su Orden de Compra. ✅');
+  L.push('');
+  L.push('📦 *Orden de Compra:* '+oc);
+  if(row.estado)L.push('🏷️ *Estado:* '+row.estado);
+  var provWA=row.prov||(items[0]&&items[0].prov)||'';
+  if(provWA)L.push('🏢 *Proveedor:* '+provWA);
+  if(row.foc)L.push('📅 *Fecha OC:* '+row.foc);
+  var fentWA=row.fent||(items[0]&&items[0].fent)||'';
+  if(fentWA)L.push('🚚 *Entrega estimada:* '+fentWA);
+  if(row.idproy||row.proy)L.push('🏗️ *Proyecto:* '+(row.idproy?row.idproy+(row.proy?' — ':''):'')+(row.proy||''));
+  L.push('');
+  if(items.length){
+    L.push('*Ítems ('+items.length+'):*');
+    var mxWA=Math.min(items.length,60);
+    for(var iw=0;iw<mxWA;iw++){var itw=items[iw];L.push((iw+1)+'. '+itw.cod+' — '+itw.prod+' — *'+itw.cantOrd+'* '+(itw.unid||''));}
+    if(items.length>mxWA)L.push('… y '+(items.length-mxWA)+' ítem(s) más.');
+    L.push('');
+  }
+  L.push('_Área de Compras — FRIOPACKING S.A._');
+  var txtWA=L.join('\n');
+  var supWA=buscarSupervisor(resp);
+  var numWA='';
+  if(supWA&&supWA.celular){
+    var dg=String(supWA.celular).replace(/\D/g,'');
+    if(dg.length===9)dg='51'+dg;
+    if(dg.length>=10)numWA=dg;
+  }
+  var urlWA=numWA?('https://wa.me/'+numWA+'?text='+encodeURIComponent(txtWA)):('https://api.whatsapp.com/send?text='+encodeURIComponent(txtWA));
+  window.open(urlWA,'_blank');
 }
 function verCorreoFormateadoOC(oc){
   var items=SKUS[oc]||SKUS_P4[oc]||[];
@@ -4526,7 +4570,7 @@ function renderP4Table(){
       ? `<span class="cl" style="cursor:pointer" onclick="openSkuModalP4(this)" data-oc="${r.oc}" data-proy="" data-prov="${r.prov.replace(/"/g,'&quot;')}" title="Ver ${r.nItems} SKUs">${r.oc} <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:3px;margin-left:3px">${r.nItems} SKU</span></span>`
       : `<strong>${r.oc}</strong>`;
     return `<tr>
-      <td><div style="display:flex;align-items:center;gap:5px"><button onclick="verCorreoFormateadoOC('${ocEsc4}')" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="Ver correo formateado para proveedor">✉</button>${ocCell}</div></td>
+      <td><div style="display:flex;align-items:center;gap:5px"><button onclick="verCorreoFormateadoOC('${ocEsc4}')" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="Ver correo formateado para proveedor">✉</button><button onclick="enviarWhatsAppOC('${ocEsc4}')" style="background:linear-gradient(135deg,#16a34a,#25d366);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="WhatsApp informativo para el supervisor: su pedido ya tiene OC, estado y fecha estimada">💬</button>${ocCell}</div></td>
       <td>${r.foc||'—'}</td>
       <td>${r.fapro||'—'}</td>
       <td style="text-align:center;background:#f0fdf4"><input type="checkbox" ${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].correo)?'checked':''} onchange="toggleCorreo(this,'${r.oc}')" style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a"></td>
