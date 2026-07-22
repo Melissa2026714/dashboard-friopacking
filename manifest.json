@@ -1,0 +1,21 @@
+{
+  "name": "Plataforma LOGÍSTICA — FRIOPACKING",
+  "short_name": "FP Logística",
+  "description": "Compras e Inventario/Almacén de FRIOPACKING S.A.",
+  "lang": "es",
+  "start_url": "plataforma.html",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1120",
+  "theme_color": "#0b1120",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Compras", "url": "index.html", "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Inventario / Almacén", "url": "inventario.html", "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
