@@ -1585,6 +1585,33 @@ function verCorreoFormateadoOC(oc){
       CC_OC+=';eoscco@friopacking.pe';
     }
   }
+  // WhatsApp: número del supervisor (si está en DB Supervisores) y mensaje formateado
+  var waNum='';
+  if(respSup&&respSup.celular){
+    var _digs=String(respSup.celular).replace(/\D/g,'');
+    if(_digs.length===9)_digs='51'+_digs;
+    if(_digs.length>=10)waNum=_digs;
+  }
+  var waLines=[];
+  waLines.push('🏭 *FRIOPACKING S.A. — Área de Compras*');
+  waLines.push('📦 *Orden de Compra N° '+oc+'*');
+  waLines.push('');
+  waLines.push('*Proveedor:* '+prov);
+  if(foc)waLines.push('*Fecha OC:* '+foc);
+  if(items[0].fent)waLines.push('*Fecha Entrega:* '+items[0].fent);
+  if(idproy||proy)waLines.push('*Proyecto:* '+(idproy?idproy+(proy?' — ':''):'')+(proy||''));
+  if(items[0].resp)waLines.push('*Responsable:* '+items[0].resp);
+  waLines.push('');
+  waLines.push('*Detalle ('+items.length+' ítem'+(items.length===1?'':'s')+'):*');
+  var waMax=Math.min(items.length,60);
+  for(var wi=0;wi<waMax;wi++){
+    var _it=items[wi];
+    waLines.push((wi+1)+'. '+_it.cod+' — '+_it.prod+' — *'+_it.cantOrd+'* '+(_it.unid||''));
+  }
+  if(items.length>waMax)waLines.push('… y '+(items.length-waMax)+' ítem(s) más (ver detalle en el correo).');
+  waLines.push('');
+  waLines.push('_Agradecemos confirmar la recepción de esta Orden de Compra._');
+  var waText=waLines.join('\n');
   // Descripción para plantilla Recojo
   var descRecojo=items.length===1?items[0].prod:'los artículos detallados en la presente Orden de Compra';
   // Build table rows HTML
@@ -1612,6 +1639,7 @@ function verCorreoFormateadoOC(oc){
   h+='.btn-img{background:linear-gradient(135deg,#7c3aed,#a855f7)}';
   h+='.btn-ml{background:linear-gradient(135deg,#0369a1,#0891b2)}';
   h+='.btn-pdf{background:linear-gradient(135deg,#dc2626,#ef4444)}';
+  h+='.btn-wa{background:linear-gradient(135deg,#16a34a,#25d366)}';
   h+='.inner{max-width:1100px;margin:20px auto;padding:0 32px 40px}';
   /* Selector modalidad */
   h+='.mod-box{background:#fff;border:2px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:20px}';
@@ -1653,6 +1681,8 @@ function verCorreoFormateadoOC(oc){
   h+='<div class="topbar"><div class="logo-top">FP</div><div class="brand-top">OC '+oc+' &nbsp;&mdash;&nbsp; '+prov+'</div>';
   h+='<div style="margin-left:auto;display:flex;gap:8px">';
   h+='<button class="btn-s btn-img" onclick="copiarImagen()">&#128247; Copiar imagen</button>';
+  h+='<button class="btn-s btn-wa" onclick="abrirWhatsApp()" title="Enviar por WhatsApp — al abrirse, elige el contacto o grupo de destino">&#128172; WhatsApp</button>';
+  if(waNum)h+='<button class="btn-s btn-wa" onclick="abrirWhatsApp(_waNum)" title="Enviar al WhatsApp del responsable ('+String(items[0].resp||'').replace(/"/g,'&quot;')+')">&#128172; WhatsApp Supervisor</button>';
   h+='<button class="btn-s btn-ml" id="btn-outlook" disabled onclick="abrirOutlook()">&#9993; Abrir Outlook</button>';
   h+='<button class="btn-s btn-pdf" onclick="window.print()">&#128424; Guardar PDF</button>';
   h+='</div></div>';
@@ -1820,6 +1850,13 @@ function verCorreoFormateadoOC(oc){
   h+='  document.getElementById("btn-outlook").disabled=false;';
   h+='}';
   h+='var _MAILER_URL="http://127.0.0.1:5100";';
+  h+='var _waText='+JSON.stringify(waText).replace(/</g,'\\u003c')+';';
+  h+='var _waNum='+JSON.stringify(waNum)+';';
+  h+='function abrirWhatsApp(num){';
+  h+='  var u=num?("https://wa.me/"+num+"?text="+encodeURIComponent(_waText)):("https://api.whatsapp.com/send?text="+encodeURIComponent(_waText));';
+  h+='  window.open(u,"_blank");';
+  h+='  showToast(num?"💬 Abriendo WhatsApp del supervisor…":"💬 Abriendo WhatsApp — elige el contacto o grupo y presiona Enviar");';
+  h+='}';
   h+='function abrirOutlook(){';
   h+='  if(!_modActual)return;';
   h+='  var htmlBody=_modActual==="planta"?_htmlPlanta:(_modActual==="recojo"?_htmlRecojo:(_modActual==="regularizacion"?_htmlRegul:getHtmlAgencia()));';
@@ -5209,12 +5246,14 @@ function importSupervisores(wb){
   const g=(row,name)=>{const i=ci[name];return(i!==undefined)?xs(row[i]):'';};
   const supervisores=raw.slice(hdr+1)
     .filter(r=>r&&g(r,'Nombre'))
-    .map(r=>({nombre:g(r,'Nombre'),dni:g(r,'DNI'),correo:g(r,'Correo').toLowerCase()}));
+    .map(r=>({nombre:g(r,'Nombre'),dni:g(r,'DNI'),correo:g(r,'Correo').toLowerCase(),
+      celular:g(r,'Celular')||g(r,'Teléfono')||g(r,'Telefono')||g(r,'WhatsApp')||g(r,'Whatsapp')||g(r,'Cel')||''}));
   D.supervisores=supervisores;
   saveLocal();
   const t1=performance.now();
   const conCorreo=supervisores.filter(s=>s.correo).length;
-  alert(`✅ Supervisores importado (${Math.round(t1-t0)}ms)\n\n• ${supervisores.length} personas\n• ${conCorreo} con correo registrado`);
+  const conCel=supervisores.filter(s=>s.celular&&s.celular!=='-').length;
+  alert(`✅ Supervisores importado (${Math.round(t1-t0)}ms)\n\n• ${supervisores.length} personas\n• ${conCorreo} con correo registrado\n• ${conCel} con celular (para WhatsApp)`);
 }
 
 // Normaliza un nombre para comparar sin tildes, mayúsculas ni orden estricto
