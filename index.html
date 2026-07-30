@@ -1275,7 +1275,6 @@ function isVenc(ds){return dateStatus(ds)==='late';}
 // ── NAVIGATION ──────────────────────────────────────────────────
 let curPage='home', mapInited=false;
 function nav(id){
-  if(id==='p1'&&!sessionStorage.getItem('fp_p1_auth')){showP1Auth();return;}
   document.querySelectorAll('.pg').forEach(e=>e.classList.remove('act'));
   document.querySelectorAll('.tab').forEach(e=>e.classList.remove('act'));
   document.getElementById('ph').classList.remove('act');
