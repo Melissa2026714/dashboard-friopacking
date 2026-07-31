@@ -3562,7 +3562,7 @@ function markConsultasDirty(){
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-22T18:00:00Z-whatsapp-supervisor-suply';
+const BUILD_ID='2026-07-31T16:00:00Z-merge-ocmeta-cotmeta';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
@@ -3677,6 +3677,24 @@ async function loadGitHub(){
   }catch(e){console.warn('GitHub load failed:',e);return false;}
 }
 
+// Fusiona mapas de marcas manuales (ocMeta/cotMeta) campo por campo en vez de
+// sobrescribir el objeto completo — evita que una pestaña con datos desactualizados
+// borre marcas de REG./Cotización que otra persona guardó mientras tanto.
+function mergeOcMeta(remoteMeta,localMeta){
+  const merged=Object.assign({},remoteMeta||{});
+  Object.keys(localMeta||{}).forEach(function(oc){
+    const l=localMeta[oc],out=Object.assign({},merged[oc]||{});
+    Object.keys(l||{}).forEach(function(f){if(l[f])out[f]=l[f];});
+    merged[oc]=out;
+  });
+  return merged;
+}
+function mergeCotMeta(remoteMeta,localMeta){
+  const merged=Object.assign({},remoteMeta||{});
+  Object.keys(localMeta||{}).forEach(function(k){merged[k]=!!merged[k]||!!localMeta[k];});
+  return merged;
+}
+
 // ── Subir a GitHub (solo quién tenga el token) ────────────────────────────────
 async function saveGitHub(payload){
   const token=localStorage.getItem(GH_TOKEN_KEY);
@@ -3722,6 +3740,17 @@ async function saveGitHub(payload){
               if(r[f]&&!s[f]){s[f]=r[f];cambiado=true;}
             });
           });
+        }
+        // Anti-pisado: fusionar marcas manuales de Regularización (ocMeta) y
+        // Cotización (cotMeta) en vez de reemplazarlas — ver bug "se perdieron
+        // las marcas manuales" (2026-07-31).
+        if(remote.D&&remote.D.ocMeta){
+          localData.D.ocMeta=mergeOcMeta(remote.D.ocMeta,localData.D.ocMeta);
+          cambiado=true;
+        }
+        if(remote.D&&remote.D.cotMeta){
+          localData.D.cotMeta=mergeCotMeta(remote.D.cotMeta,localData.D.cotMeta);
+          cambiado=true;
         }
         if(cambiado){
           payload=JSON.stringify(localData);
