@@ -3696,6 +3696,38 @@ function mergeCotMeta(remoteMeta,localMeta){
   Object.keys(localMeta||{}).forEach(function(k){merged[k]=!!merged[k]||!!localMeta[k];});
   return merged;
 }
+// Fusiona el padrón de supervisores por nombre en vez de reemplazar la lista
+// completa — si esta pestaña no tiene el padrón cargado (o lo tiene vacío),
+// se conserva íntegro el de la nube; si trae contactos nuevos o campos que la
+// nube no tiene, se agregan/completan (ver bug "última escritura gana": el
+// 2026-07-31 un guardado con D.supervisores=[] dejó el padrón en 0 contactos
+// y ninguna fusión existente lo restauraba).
+function mergeSupervisores(remoteList,localList){
+  const norm=function(n){return String(n||'').trim().toUpperCase();};
+  const merged={};
+  (remoteList||[]).forEach(function(s){merged[norm(s.nombre)]=Object.assign({},s);});
+  (localList||[]).forEach(function(s){
+    const k=norm(s.nombre);
+    const out=Object.assign({},merged[k]||{});
+    ['nombre','celular','area','proyecto','dni','correo'].forEach(function(f){if(s[f])out[f]=s[f];});
+    merged[k]=out;
+  });
+  return Object.values(merged);
+}
+// Igual que mergeSupervisores pero para el directorio de proveedores (clave: RUC si
+// existe, si no nombre normalizado).
+function mergeProveedores(remoteList,localList){
+  const key=function(p){return(p.ruc&&String(p.ruc).trim())||_normNombre(p.nombre||'');};
+  const merged={};
+  (remoteList||[]).forEach(function(p){merged[key(p)]=Object.assign({},p);});
+  (localList||[]).forEach(function(p){
+    const k=key(p);
+    const out=Object.assign({},merged[k]||{});
+    ['nombre','ruc','correo'].forEach(function(f){if(p[f])out[f]=p[f];});
+    merged[k]=out;
+  });
+  return Object.values(merged);
+}
 
 // ── Subir a GitHub (solo quién tenga el token) ────────────────────────────────
 async function saveGitHub(payload){
@@ -3731,17 +3763,15 @@ async function saveGitHub(payload){
         Object.keys(remote.D||{}).forEach(function(k){
           if(localData.D[k]===undefined){localData.D[k]=remote.D[k];cambiado=true;}
         });
-        // Anti-pisado: preservar datos de contacto de supervisores (celular/área/proyecto/DNI/correo)
-        // que la nube ya tiene y esta pestaña cargó sin ellos (ver bug "última escritura gana")
-        if(Array.isArray(remote.D&&remote.D.supervisores)&&Array.isArray(localData.D.supervisores)){
-          const remBy={};remote.D.supervisores.forEach(function(s){remBy[String(s.nombre||'').trim().toUpperCase()]=s;});
-          localData.D.supervisores.forEach(function(s){
-            const r=remBy[String(s.nombre||'').trim().toUpperCase()];
-            if(!r)return;
-            ['celular','area','proyecto','dni','correo'].forEach(function(f){
-              if(r[f]&&!s[f]){s[f]=r[f];cambiado=true;}
-            });
-          });
+        // Anti-pisado: fusionar supervisores y proveedores en vez de reemplazar la
+        // lista completa (ver bug "última escritura gana", 2026-07-31: quedaron en 0)
+        if(Array.isArray(remote.D&&remote.D.supervisores)){
+          localData.D.supervisores=mergeSupervisores(remote.D.supervisores,localData.D.supervisores);
+          cambiado=true;
+        }
+        if(Array.isArray(remote.D&&remote.D.proveedores)){
+          localData.D.proveedores=mergeProveedores(remote.D.proveedores,localData.D.proveedores);
+          cambiado=true;
         }
         // Anti-pisado: fusionar marcas manuales de Regularización (ocMeta) y
         // Cotización (cotMeta) en vez de reemplazarlas — ver bug "se perdieron
