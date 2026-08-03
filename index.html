@@ -6001,11 +6001,13 @@ setInterval(function(){
     _initMail(function(inst,err){
       if(!inst){cb(null,err||'MSAL no disponible');return;}
       var accts=inst.getAllAccounts();
-      var req={scopes:_scopesMail};
-      if(accts.length>0){req.account=accts[0];}
-      inst.acquireTokenSilent(req).then(function(r){cb(r.accessToken,null);}).catch(function(){
-        inst.acquireTokenPopup({scopes:_scopesMail,prompt:'select_account'}).then(function(r){cb(r.accessToken,null);}).catch(function(e){cb(null,'No se pudo iniciar sesión: '+e.message);});
-      });
+      // Sin sesión guardada: NO se abre popup de login aquí. Este envío por Graph es
+      // un respaldo automático (silencioso) antes de caer al copiar+pegar; un popup
+      // interactivo tarda/se bloquea y para cuando fallaría ya se perdió el gesto de
+      // usuario del clic original, dejando el portapapeles sin escribir (Ctrl+V vacío).
+      if(!accts.length){cb(null,'Sin sesión Microsoft 365 guardada');return;}
+      var req={scopes:_scopesMail,account:accts[0]};
+      inst.acquireTokenSilent(req).then(function(r){cb(r.accessToken,null);}).catch(function(e){cb(null,'Token silencioso falló: '+e.message);});
     });
   }
   function _parseAddrs(s){
