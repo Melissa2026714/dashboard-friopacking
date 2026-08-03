@@ -2243,13 +2243,15 @@ function renderP3(){
   p3pg=0; renderP3Table();
 }
 function esEnTransito(cod){
-  if(!D||!D.p4||!cod)return false;
-  var p4=D.p4;
-  for(var i=0;i<p4.length;i++){
-    var x=p4[i];
-    var xCod=x.oc||x.codOrden||x.CodOrden||'';
-    if((x.cod||'')===(cod||'')&&String(xCod).startsWith('0002')&&(!x.frec||x.frec==='—'||x.frec===''||x.frec===null)&&String(x.estado||'').toLowerCase().includes('pendiente')){
-      return true;
+  if(!SKUS_P4||!cod)return false;
+  for(var oc in SKUS_P4){
+    if(!String(oc).startsWith('0002'))continue;
+    var items=SKUS_P4[oc]||[];
+    for(var i=0;i<items.length;i++){
+      var x=items[i];
+      if((x.cod||'')===(cod||'')&&(!x.frec||x.frec==='—'||x.frec===''||x.frec===null)&&String(x.estado||'').toLowerCase().includes('pendiente')){
+        return true;
+      }
     }
   }
   return false;
