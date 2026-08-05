@@ -1861,10 +1861,11 @@ function verCorreoFormateadoOC(oc){
     '  • Factura correspondiente a los productos entregados.\n'+
     '  • Guía de remisión correspondiente.\n\n'+
     'Estos documentos son indispensables para realizar la recepción de la mercancía.\n\n'+
-    'Asimismo, para temas de provisión, enviar a los siguientes correos:\n\n'+
+    'Asimismo, para el registro de sus facturas, enviar a los siguientes correos:\n\n'+
     '  • provision@friopacking.pe\n'+
     '  • agalindo@friopacking.pe\n'+
-    '  • dochante@grupofriopacking.pe\n\n'+
+    '  • dochante@grupofriopacking.pe\n'+
+    '  • jcenteno@friopacking.pe\n\n'+
     'Quedo atento a su confirmación.\nSaludos cordiales,\nÁrea de Compras — FRIOPACKING S.A.'
   )+';';
   h+='var _cuerpoRecojo='+JSON.stringify(
@@ -1887,8 +1888,8 @@ function verCorreoFormateadoOC(oc){
     '<p>Al momento de la entrega, el transportista deberá presentar en físico:</p>'+
     '<ul><li>Factura correspondiente a los productos entregados.</li><li>Guía de remisión correspondiente.</li></ul>'+
     '<p>Estos documentos son indispensables para realizar la recepción de la mercancía.</p>'+
-    '<p>Asimismo, para temas de provisión, enviar a los siguientes correos:</p>'+
-    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li></ul>'+
+    '<p>Asimismo, para el registro de sus facturas, enviar a los siguientes correos:</p>'+
+    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li></ul>'+
     '<p>Quedo atento a su confirmación.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>';
   var _hRecojo='<p>Estimados, buen día:</p>'+
     '<p>Adjunto la Orden de Compra <strong>'+oc+'</strong> correspondiente a la adquisición de '+descRecojo+'.</p>'+
@@ -1904,8 +1905,8 @@ function verCorreoFormateadoOC(oc){
     tablaHtmlBody+
     '<p>Agradeceremos confirmar la recepción de la presente Orden de Compra y enviarnos los siguientes documentos para completar la regularización:</p>'+
     '<ul><li>Factura por el monto total de la OC.</li><li>Guía de remisión correspondiente.</li></ul>'+
-    '<p>Asimismo, para temas de provisión, enviar a los siguientes correos:</p>'+
-    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li></ul>'+
+    '<p>Asimismo, para el registro de sus facturas, enviar a los siguientes correos:</p>'+
+    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li></ul>'+
     '<p>Quedamos atentos a cualquier consulta.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>';
   h+='var _htmlPlanta='+JSON.stringify(_hPlanta)+';';
   h+='var _htmlRecojo='+JSON.stringify(_hRecojo)+';';
@@ -1923,8 +1924,8 @@ function verCorreoFormateadoOC(oc){
   h+='    "<p>Enviar los productos por <strong>agencia "+ag+"</strong> a nombre de:</p>"+';
   h+='    "<ul>"+(dest||"<li>(completar destinatario)</li>")+"</ul>"+';
   h+='    "<p>Adjuntar por este medio <strong>voucher, clave y guía</strong>.</p>"+';
-  h+='    "<p>Asimismo, para temas de provisión, enviar a los siguientes correos:</p>"+';
-  h+='    "<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li></ul>"+';
+  h+='    "<p>Asimismo, para el registro de sus facturas, enviar a los siguientes correos:</p>"+';
+  h+='    "<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li></ul>"+';
   h+='    "<p>Quedamos atentos a su confirmación.<br>Saludos cordiales,<br><span class=\\"footer-firma\\">Área de Compras — FRIOPACKING S.A.</span></p>";';
   h+='}';
   h+='function autocompletarDNI(nId,dId){';
