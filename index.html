@@ -3523,18 +3523,25 @@ function renderPag(id,pages,cur,cb){
 
 // ── INIT ─────────────────────────────────────────────────────────
 
-// Fix OC estados based on SKUS data
-if(D.oc && typeof SKUS !== 'undefined'){
-  D.oc.forEach(function(o){
-    var skus = SKUS[o.oc];
-    if(!skus || skus.length <= 1) return;
-    var estados = [];
-    skus.forEach(function(s){ if(s.estado && estados.indexOf(s.estado)===-1) estados.push(s.estado); });
-    if(estados.length === 1){ o.estado = estados[0]; }
-    else if(estados.every(function(e){return e==='Atendido Completo';})){o.estado='Atendido Completo';}
-    else if(estados.every(function(e){return e==='Pendiente';})){o.estado='Pendiente';}
-    else{o.estado='Atendido Parcial';}
-  });
+// Fix OC estados based on SKUS data — deriva el estado de la OC completa a partir
+// de los estados de todos sus ítems (SKUS/SKUS_P4). Si hay ítems ya atendidos y
+// otros aún pendientes, la OC debe figurar como "Atendido Parcial", no "Pendiente".
+function fixOcEstados(){
+  function fix(list, skusMap){
+    if(!list || !skusMap) return;
+    list.forEach(function(o){
+      var skus = skusMap[o.oc];
+      if(!skus || skus.length <= 1) return;
+      var estados = [];
+      skus.forEach(function(s){ if(s.estado && estados.indexOf(s.estado)===-1) estados.push(s.estado); });
+      if(estados.length === 1){ o.estado = estados[0]; }
+      else if(estados.every(function(e){return e==='Atendido Completo';})){o.estado='Atendido Completo';}
+      else if(estados.every(function(e){return e==='Pendiente';})){o.estado='Pendiente';}
+      else{o.estado='Atendido Parcial';}
+    });
+  }
+  fix(D.oc, SKUS);
+  fix(D.p4, SKUS_P4);
 }
 
 // ── PERSISTENCIA LOCAL + GITHUB SYNC ─────────────────────────────────────────
@@ -3565,7 +3572,7 @@ function markConsultasDirty(){
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-07-31T16:00:00Z-merge-ocmeta-cotmeta';
+const BUILD_ID='2026-08-07T16:00:00Z-fix-estado-parcial-compras-directas';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
@@ -3884,6 +3891,7 @@ function showSavedLabel(text,color){
   nav('p2');
   const fromGH=await loadGitHub();
   if(!fromGH)loadLocal();
+  try{fixOcEstados();}catch(e){}
   try{refreshAllPages();}catch(e){}
 })();
 
@@ -5380,6 +5388,7 @@ function importMaestro(wb){
   SKUS=skusMap;
 
   // ── 8. Re-render everything ────────────────────────────────────────────────
+  try{fixOcEstados();}catch(e){}
   refreshAllPages();
   saveLocal();
 
@@ -5433,7 +5442,7 @@ function importPedidoSinReq(wb){
     if(!ocMap[cod]){
       ocMap[cod]={
         oc:cod,foc:gd(r,'FechaOrden'),fapro:gd(r,'FechaAprobacionOC')||gd(r,'FechaAprobacion')||gd(r,'Fecha Aprobacion')||gd(r,'FechaAprobacionOrden'),fent:gd(r,'ParaFechaOrden'),
-        respPed:g(r,'ResponsablePedido'),estado:g(r,'EstadoOrden'),
+        respPed:g(r,'ResponsablePedido'),estado:'',_estados:[],
         prov:g(r,'NombreProveedor').slice(0,35),ucomp:g(r,'UsuarioCompras'),
         ped:[],fpedido:gd(r,'FechaPedido')||gd(r,'Fecha Pedido')||gd(r,'FechaPed'),
         cod:g(r,'IdProducto')||g(r,'CodigoProducto')||'',
@@ -5446,6 +5455,8 @@ function importPedidoSinReq(wb){
     o.nItems++;
     const co=gn(r,'Cantidad de orden'), cr=gn(r,'CantRecepcion');
     o.cantOrd+=co; o.cantRec+=cr;
+    const itemEst4=g(r,'EstadoOrden');
+    if(itemEst4&&!o._estados.includes(itemEst4))o._estados.push(itemEst4);
     const ped=g(r,'CodPedido');
     if(ped&&!o.ped.includes(ped))o.ped.push(ped);
     if(!skusMap4[cod])skusMap4[cod]=[];
@@ -5465,6 +5476,15 @@ function importPedidoSinReq(wb){
   const p4Data=Object.values(ocMap).map(o=>{
     o.cantOrd=Math.round(o.cantOrd);o.cantRec=Math.round(o.cantRec);
     o.cantPend=Math.max(0,o.cantOrd-o.cantRec);
+    // Derive estado from all item estados (una OC con ítems ya atendidos y otros
+    // pendientes debe figurar como "Atendido Parcial", no quedarse con el estado
+    // del primer ítem leído del Excel)
+    const es4=o._estados;
+    if(es4.length===1){o.estado=es4[0];}
+    else if(es4.every(e=>e==='Atendido Completo')){o.estado='Atendido Completo';}
+    else if(es4.every(e=>e==='Pendiente')){o.estado='Pendiente';}
+    else{o.estado='Atendido Parcial';}
+    delete o._estados;
     return o;
   });
   p4Data.sort((a,b)=>{
@@ -5477,6 +5497,7 @@ function importPedidoSinReq(wb){
   });
 
   D.p4=p4Data;
+  try{fixOcEstados();}catch(e){}
   refreshP4();
   saveLocal();
 
