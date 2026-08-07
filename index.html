@@ -2557,7 +2557,7 @@ function exportSinOcXls(){
       var bg=isHist?(even?'FFF5F3FF':'FFEDE9FE'):isTransito?(even?'FFE0F7FA':'FFB2EBF2'):(even?'FFF8FAFC':'FFEFF6FF');
       cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
       cell.font={size:8,name:'Arial',color:{argb:isHist?'FF5B21B6':isTransito?'FF0E7490':CW},bold:isTransito&&cell.value==='SÍ'};
-      cell.alignment={horizontal:col<=2||col>=12?'center':(col===8||col===9?'center':'left'),vertical:'middle'};
+      cell.alignment={horizontal:col<=2||col>=12?'center':(col===9?'center':'left'),vertical:'middle'};
       cell.border={top:{style:'hair',color:{argb:'FFD1D5DB'}},left:{style:'hair',color:{argb:'FFD1D5DB'}},bottom:{style:'hair',color:{argb:'FFD1D5DB'}},right:{style:'hair',color:{argb:'FFD1D5DB'}}};
     });
   }
