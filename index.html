@@ -2257,6 +2257,33 @@ function esEnTransito(cod){
   }
   return false;
 }
+// Tooltip flotante para leer el texto completo de OBSERVACIÓN al pasar el mouse
+// (o al tocar en móvil) — la celda solo muestra el texto truncado con "…".
+function showObsTip(el){
+  var text=(el.dataset&&el.dataset.obs||'').trim();
+  if(!text)return;
+  var tip=document.getElementById('_obsTip');
+  if(!tip){
+    tip=document.createElement('div');
+    tip.id='_obsTip';
+    tip.style.cssText='position:fixed;z-index:10000;max-width:340px;background:#0f172a;color:#e2e8f0;font-size:12px;line-height:1.5;padding:10px 12px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);pointer-events:none;white-space:normal;display:none';
+    document.body.appendChild(tip);
+  }
+  tip.textContent=text;
+  tip.style.display='block';
+  var r=el.getBoundingClientRect();
+  var tw=tip.offsetWidth,th=tip.offsetHeight;
+  var left=Math.min(Math.max(8,r.left),window.innerWidth-tw-8);
+  var top=r.bottom+6;
+  if(top+th>window.innerHeight-8)top=Math.max(8,r.top-th-6);
+  tip.style.left=left+'px';
+  tip.style.top=top+'px';
+}
+function hideObsTip(){
+  var tip=document.getElementById('_obsTip');
+  if(tip)tip.style.display='none';
+}
+window.addEventListener('scroll',hideObsTip,true);
 function renderP3Table(){
   const sz=50, rows=p3fil.slice(p3pg*sz,(p3pg+1)*sz);
   document.getElementById('tb3').innerHTML=rows.map(r=>{
@@ -2279,7 +2306,7 @@ function renderP3Table(){
     <td style="font-size:11px;color:#475569">${r.freq||'—'}</td>
     <td style="text-align:center">${esEnTransito(r.cod)?'<span style="background:#0891b2;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">SÍ</span>':'<span style="color:#94a3b8;font-size:10px">—</span>'}</td>
     <td>${r.parcial?'<span style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">⚠ OC Parcial</span>':(()=>{var k=(r.ped||'')+'_'+(r.cod||'');return(D.cotMeta&&D.cotMeta[k])?'<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">En cotización</span>':badgeReq(r.estado);})()}</td>
-    <td style="max-width:220px" title="${esc(r.obs)}">${r.obs?'<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-size:11px;color:#475569">'+esc(r.obs)+'</span>':'<span style="color:#94a3b8;font-size:11px">—</span>'}</td>
+    <td style="max-width:220px;${r.obs?'cursor:help':''}" data-obs="${esc(r.obs)}" onmouseenter="showObsTip(this)" onmouseleave="hideObsTip()" onclick="showObsTip(this)">${r.obs?'<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-size:11px;color:#475569">'+esc(r.obs)+'</span>':'<span style="color:#94a3b8;font-size:11px">—</span>'}</td>
     <td style="text-align:center;background:#f0fdf4;position:sticky;right:0;z-index:1;box-shadow:-5px 0 8px -3px rgba(0,0,0,.12)"><input type="checkbox" ${(D.cotMeta&&D.cotMeta[_k])?'checked':''} onchange="p3SetCotiz('${_k}',this.checked)" title="Marcar como En cotización" style="width:15px;height:15px;cursor:pointer;accent-color:#16a34a"></td>
   </tr>`;}).join('');
   const tot=p3fil.length, pages=Math.ceil(tot/sz);
