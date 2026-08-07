@@ -3578,13 +3578,26 @@ function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;
   const b=document.createElement('div');
   b.id='_updBanner';
-  b.style.cssText='position:fixed;top:0;left:0;right:0;background:#d97706;color:#fff;padding:10px 16px;text-align:center;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 2px 8px rgba(0,0,0,.2)';
-  b.innerHTML='⚠️ Esta pestaña quedó con una versión antigua del sistema — recárgala antes de importar o guardar para no perder datos de otros usuarios. '
+  // z-index 210: por encima del navbar (.nb, z-index:200) pero por debajo de
+  // modales/toasts (99999) — antes usaba 99999 y, al ser fixed+top:0 igual que
+  // el navbar, quedaba pintado encima tapando IMPORTAR/GUARDAR y las pestañas.
+  b.style.cssText='position:fixed;top:0;left:0;right:0;background:#d97706;color:#fff;padding:8px 16px;text-align:center;font-size:12.5px;font-weight:600;z-index:210;box-shadow:0 2px 8px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap';
+  b.innerHTML='<span>⚠️ Esta pestaña quedó con una versión antigua del sistema — recárgala antes de importar o guardar para no perder datos de otros usuarios.</span>'
     // location.reload() normal puede servir la página cacheada por el navegador
     // (GitHub Pages cachea el HTML hasta 10 min) y seguir mostrando código viejo.
     // Navegar a una URL con cache-buster fuerza a descargar la versión real más reciente.
-    +'<button onclick="location.href=location.pathname+\'?_v=\'+Date.now()" style="margin-left:10px;background:#fff;color:#d97706;border:none;padding:4px 12px;border-radius:6px;font-weight:700;cursor:pointer">Recargar ahora</button>';
+    +'<button onclick="location.href=location.pathname+\'?_v=\'+Date.now()" style="background:#fff;color:#d97706;border:none;padding:4px 12px;border-radius:6px;font-weight:700;cursor:pointer;flex-shrink:0">Recargar ahora</button>';
   document.body.prepend(b);
+  // Empujar el navbar y el contenido hacia abajo la altura del banner, para que
+  // no quede oculto/inaccesible debajo (IMPORTAR, GUARDAR, pestañas, filtros…).
+  const h=b.offsetHeight;
+  const nb=document.querySelector('.nb');
+  if(nb)nb.style.top=h+'px';
+  document.querySelectorAll('.pg,#ph').forEach(function(el){
+    const baseMT=parseFloat(getComputedStyle(el).marginTop)||0;
+    el.style.marginTop=(baseMT+h)+'px';
+    el.style.height='calc(100vh - '+(baseMT+h)+'px)';
+  });
 }
 function checkForUpdate(){
   fetch(GH_INDEX_RAW+'?t='+Date.now()).then(function(r){return r.ok?r.text():null;}).then(function(txt){
