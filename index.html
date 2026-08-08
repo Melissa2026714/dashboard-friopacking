@@ -845,6 +845,11 @@ function instNav(id){
       <option value="11">Noviembre</option>
       <option value="12">Diciembre</option>
     </select>
+    <span style="font-size:11px;color:#94a3b8">Generadas entre</span>
+    <input type="date" id="g-f-desde" onchange="renderGerencial()" title="OC generadas desde (F. OC)" style="font-size:11px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#334155;cursor:pointer">
+    <span style="font-size:11px;color:#94a3b8">y</span>
+    <input type="date" id="g-f-hasta" onchange="renderGerencial()" title="OC generadas hasta (F. OC)" style="font-size:11px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#334155;cursor:pointer">
+    <button onclick="document.getElementById('g-f-desde').value='';document.getElementById('g-f-hasta').value='';renderGerencial()" style="font-size:11px;padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#64748b;cursor:pointer">✕ Limpiar fechas</button>
     <span id="g-f-cnt" style="font-size:11px;color:#94a3b8;margin-left:auto"></span>
   </div>
 
@@ -868,27 +873,14 @@ function instNav(id){
     </div>
   </div>
 
-  <!-- 6 indicadores en orden solicitado -->
+  <!-- 6 indicadores — orden correlativo del proceso (Almacén → Compradores → Velocidad
+       de Compra [subtotal 1+2] → Aprobación → Entrega a Piso → Cumplimiento de Entrega) -->
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
 
-    <!-- 1. VELOCIDAD DE COMPRA -->
-    <div style="background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
-      <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">⚡</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">1 — VELOCIDAD DE COMPRA</span><span id="g-sema-1" class="g-sema" title="Semáforo: verde ≤5d · amarillo ≤10d · rojo >10d"></span></div>
-      <div style="font-size:11px;opacity:.8;margin-bottom:12px">Requerimiento → OC · días hábiles</div>
-      <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
-        <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-req-oc">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
-        <div><div style="font-size:40px;font-weight:700" id="g-med-req-oc">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
-        <div style="margin-left:auto;text-align:right"><div style="font-size:11px;font-weight:600" id="g-n-req-oc">—</div><div style="font-size:10px;opacity:.8">OCs</div></div>
-      </div>
-      <div style="display:flex;gap:3px;height:70px;align-items:flex-end" id="g-bar-req-oc"></div>
-      <div style="display:flex;gap:3px;margin-top:3px" id="g-lbl-req-oc"></div>
-    </div>
-
-    <!-- 2. ALMACÉN -->
-    <div style="background:linear-gradient(135deg,#be185d,#f472b6);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
+    <!-- 1. ALMACÉN -->
+    <div style="background:linear-gradient(135deg,#0e7490,#22d3ee);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">🏪</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">2 — TIEMPO DE ALMACÉN</span><span id="g-sema-2" class="g-sema" title="Semáforo: verde ≤3d · amarillo ≤7d · rojo >7d"></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">1 — TIEMPO DE ALMACÉN</span><span id="g-sema-2" class="g-sema" title="Semáforo: verde ≤3d · amarillo ≤7d · rojo >7d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">Requerimiento → Pedido · días hábiles</div>
       <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
         <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-req-ped">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
@@ -899,10 +891,10 @@ function instNav(id){
       <div style="display:flex;gap:3px;margin-top:3px" id="g-lbl-req-ped"></div>
     </div>
 
-    <!-- 3. COMPRADORES -->
-    <div style="background:linear-gradient(135deg,#0891b2,#38bdf8);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
+    <!-- 2. COMPRADORES -->
+    <div style="background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">🛒</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">3 — TIEMPO DE COMPRADORES</span><span id="g-sema-3" class="g-sema" title="Semáforo: verde ≤5d · amarillo ≤10d · rojo >10d"></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">2 — TIEMPO DE COMPRADORES</span><span id="g-sema-3" class="g-sema" title="Semáforo: verde ≤5d · amarillo ≤10d · rojo >10d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">Pedido → OC · días hábiles</div>
       <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
         <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-ped-oc">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
@@ -913,8 +905,22 @@ function instNav(id){
       <div style="display:flex;gap:3px;margin-top:3px" id="g-lbl-ped-oc"></div>
     </div>
 
+    <!-- 3. VELOCIDAD DE COMPRA (subtotal: Almacén + Compradores) -->
+    <div style="background:linear-gradient(135deg,#0f172a,#475569);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">⚡</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">3 — VELOCIDAD DE COMPRA</span><span id="g-sema-1" class="g-sema" title="Semáforo: verde ≤5d · amarillo ≤10d · rojo >10d"></span></div>
+      <div style="font-size:11px;opacity:.8;margin-bottom:12px">Requerimiento → OC · días hábiles</div>
+      <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
+        <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-req-oc">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
+        <div><div style="font-size:40px;font-weight:700" id="g-med-req-oc">—</div><div style="font-size:10px;opacity:.8">mediana</div></div>
+        <div style="margin-left:auto;text-align:right"><div style="font-size:11px;font-weight:600" id="g-n-req-oc">—</div><div style="font-size:10px;opacity:.8">OCs</div></div>
+      </div>
+      <div style="display:flex;gap:3px;height:70px;align-items:flex-end" id="g-bar-req-oc"></div>
+      <div style="display:flex;gap:3px;margin-top:3px" id="g-lbl-req-oc"></div>
+    </div>
+
     <!-- 4. APROBACIÓN -->
-    <div style="background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#6d28d9,#a78bfa);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">✅</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">4 — TIEMPO DE APROBACIÓN</span><span id="g-sema-4" class="g-sema" title="Semáforo: verde ≤1d · amarillo ≤3d · rojo >3d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">OC → Aprobación Manuel · días hábiles</div>
@@ -927,24 +933,10 @@ function instNav(id){
       <div style="display:flex;gap:3px;margin-top:3px" id="g-lbl-oc-apro"></div>
     </div>
 
-    <!-- 5. CUMPLIMIENTO DE ENTREGA -->
-    <div style="background:linear-gradient(135deg,#065f46,#10b981);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
-      <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">📦</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">5 — CUMPLIMIENTO DE ENTREGA</span><span id="g-sema-5" class="g-sema" title="Semáforo: verde ≥80% · amarillo ≥60% · rojo <60%"></span></div>
-      <div style="font-size:11px;opacity:.8;margin-bottom:12px">F. Entrega pactada → Recepción · días hábiles</div>
-      <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
-        <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-ent-rec">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom. tardío</div></div>
-        <div><div style="font-size:40px;font-weight:700" id="g-pct-ontime">—</div><div style="font-size:10px;opacity:.8">% a tiempo</div></div>
-        <div style="margin-left:auto;text-align:right"><div style="font-size:11px;font-weight:600" id="g-n-ent-rec">—</div><div style="font-size:10px;opacity:.8">entregas</div></div>
-      </div>
-      <div style="display:flex;gap:3px;height:70px;align-items:flex-end" id="g-bar-ent-rec"></div>
-      <div style="display:flex;gap:3px;margin-top:3px" id="g-lbl-ent-rec"></div>
-    </div>
-
-    <!-- 6. ENTREGA A PISO -->
+    <!-- 5. ENTREGA A PISO -->
     <div style="background:linear-gradient(135deg,#b45309,#f59e0b);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">🏭</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">6 — ENTREGA A PISO</span><span id="g-sema-6" class="g-sema" title="Semáforo: verde ≤7d · amarillo ≤15d · rojo >15d"></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">5 — ENTREGA A PISO</span><span id="g-sema-6" class="g-sema" title="Semáforo: verde ≤7d · amarillo ≤15d · rojo >15d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">Aprobación → Recepción · días hábiles</div>
       <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
         <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-aprob-rec">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom.</div></div>
@@ -953,6 +945,20 @@ function instNav(id){
       </div>
       <div style="display:flex;gap:3px;height:70px;align-items:flex-end" id="g-bar-aprob-rec"></div>
       <div style="display:flex;gap:3px;margin-top:3px" id="g-lbl-aprob-rec"></div>
+    </div>
+
+    <!-- 6. CUMPLIMIENTO DE ENTREGA -->
+    <div style="background:linear-gradient(135deg,#15803d,#22c55e);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">📦</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">6 — CUMPLIMIENTO DE ENTREGA</span><span id="g-sema-5" class="g-sema" title="Semáforo: verde ≥80% · amarillo ≥60% · rojo <60%"></span></div>
+      <div style="font-size:11px;opacity:.8;margin-bottom:12px">F. Entrega pactada → Recepción · días hábiles</div>
+      <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px">
+        <div><div style="font-size:72px;font-weight:800;line-height:1" id="g-avg-ent-rec">—</div><div style="font-size:10px;opacity:.8;margin-top:3px">prom. tardío</div></div>
+        <div><div style="font-size:40px;font-weight:700" id="g-pct-ontime">—</div><div style="font-size:10px;opacity:.8">% a tiempo</div></div>
+        <div style="margin-left:auto;text-align:right"><div style="font-size:11px;font-weight:600" id="g-n-ent-rec">—</div><div style="font-size:10px;opacity:.8">entregas</div></div>
+      </div>
+      <div style="display:flex;gap:3px;height:70px;align-items:flex-end" id="g-bar-ent-rec"></div>
+      <div style="display:flex;gap:3px;margin-top:3px" id="g-lbl-ent-rec"></div>
     </div>
 
   </div>
@@ -971,6 +977,34 @@ function instNav(id){
     <div id="g-oc-por-comprador" style="display:flex;flex-direction:column;gap:10px">
       <span style="font-size:11px;color:#94a3b8">Cargando…</span>
     </div>
+  </div>
+
+  <!-- Indicadores financieros (Manuel): monto, crédito/contado, por día -->
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-top:12px" id="g-fin-wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px">💰 Indicadores Financieros — órdenes del período filtrado</div>
+      <span id="g-fin-cnt" style="font-size:10px;color:#94a3b8"></span>
+    </div>
+    <div id="g-fin-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px">
+        <div class="g-strip-box"><div class="g-strip-lbl">Monto Total</div><div class="g-strip-val" id="g-fin-monto-tot" style="font-size:20px">—</div><div class="g-strip-sub">equiv. soles</div></div>
+        <div class="g-strip-box"><div class="g-strip-lbl">OC al Crédito</div><div class="g-strip-val" id="g-fin-cred-n" style="font-size:20px">—</div><div class="g-strip-sub">órdenes</div></div>
+        <div class="g-strip-box"><div class="g-strip-lbl">Valorizado Crédito</div><div class="g-strip-val" id="g-fin-cred-monto" style="font-size:20px">—</div><div class="g-strip-sub">equiv. soles</div></div>
+        <div class="g-strip-box"><div class="g-strip-lbl">OC al Contado</div><div class="g-strip-val" id="g-fin-cont-n" style="font-size:20px">—</div><div class="g-strip-sub">órdenes</div></div>
+        <div class="g-strip-box"><div class="g-strip-lbl">Valorizado Contado</div><div class="g-strip-val" id="g-fin-cont-monto" style="font-size:20px">—</div><div class="g-strip-sub">equiv. soles</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;flex-wrap:wrap">
+        <div style="min-width:0">
+          <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Órdenes de Compra Generadas por Día</div>
+          <div id="g-fin-chart-oc" style="height:110px"></div>
+        </div>
+        <div style="min-width:0">
+          <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Monto Total de Compras por Día</div>
+          <div id="g-fin-chart-monto" style="height:110px"></div>
+        </div>
+      </div>
+    </div>
+    <div id="g-fin-empty" style="display:none;font-size:11px;color:#94a3b8;text-align:center;padding:20px 0">No hay datos financieros importados aún — importa <strong>CONSULTAS.xlsx</strong> (con la hoja "R.EOC" incluida) para ver monto, crédito/contado y compras por día.</div>
   </div>
 
   <!-- IDs ocultos para compatibilidad con initP1() -->
@@ -4276,6 +4310,11 @@ function renderGerencial(){
   const ucomp=(document.getElementById('g-f-ucomp')||{}).value||'';
   const tipo=(document.getElementById('g-f-tipo')||{}).value||'';
   const mes=parseInt((document.getElementById('g-f-mes')||{}).value||'')||0;
+  const gDesde=(document.getElementById('g-f-desde')||{}).value||'';
+  const gHasta=(document.getElementById('g-f-hasta')||{}).value||'';
+  // o.foc viene como 'DD/MM/YYYY'; los <input type=date> entregan 'YYYY-MM-DD' —
+  // se convierte a ISO para poder comparar con comparación de strings.
+  const focISO=(foc)=>{if(!foc)return'';const p=foc.split('/');return p.length===3?(p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0')):'';};
 
   // Normalizar campos de D.p4 al mismo esquema que D.oc
   // freq=null porque Compras Directas no tiene requerimiento
@@ -4305,6 +4344,13 @@ function renderGerencial(){
   if(ucomp)fil=fil.filter(o=>o.ucomp===ucomp);
   if(tipo)fil=fil.filter(o=>o.oc&&o.oc.startsWith(tipo));
   if(mes)fil=fil.filter(o=>o.foc&&parseInt(o.foc.split('/')[1])===mes);
+  if(gDesde||gHasta)fil=fil.filter(o=>{
+    const iso=focISO(o.foc);
+    if(!iso)return false;
+    if(gDesde&&iso<gDesde)return false;
+    if(gHasta&&iso>gHasta)return false;
+    return true;
+  });
 
   const directLabel=origen==='directas'?' (Compras Directas)':origen==='ambas'?' (Maestro + Directas)':' (Con Req.)';
   const elCnt=document.getElementById('g-f-cnt');
@@ -4462,9 +4508,9 @@ function renderGerencial(){
   const pipeEl=document.getElementById('g-pipeline-flow');
   if(pipeEl){
     const stages=[
-      {val:_avg2,col:'#be185d',lbl:'Almacén'},
-      {val:_avg3,col:'#0891b2',lbl:'Compras'},
-      {val:_avg4,col:'#7c3aed',lbl:'Aprobac.'},
+      {val:_avg2,col:'#0e7490',lbl:'Almacén'},
+      {val:_avg3,col:'#1e40af',lbl:'Compras'},
+      {val:_avg4,col:'#6d28d9',lbl:'Aprobac.'},
     ];
     let html=`<span style="font-size:10px;font-weight:600;color:#64748b">REQ</span>`;
     let ttl=0;
@@ -4507,14 +4553,18 @@ function renderGerencial(){
     }
   }
 
-  // ── OC colocadas por comprador ────────────────────────────────
+  // ── OC colocadas por comprador (+ monto, cuando hay dato financiero) ──────
   const ocByComp={};
   fil.forEach(o=>{
     const k=o.ucomp||'(sin asignar)';
-    ocByComp[k]=(ocByComp[k]||0)+1;
+    if(!ocByComp[k])ocByComp[k]={cnt:0,monto:0};
+    ocByComp[k].cnt++;
+    const fin=(D.ocFin||{})[o.oc];
+    if(fin)ocByComp[k].monto+=fin.montoSoles||0;
   });
-  const ocRank=Object.entries(ocByComp).map(([k,v])=>({name:k,cnt:v})).sort((a,b)=>b.cnt-a.cnt);
+  const ocRank=Object.entries(ocByComp).map(([k,v])=>({name:k,cnt:v.cnt,monto:v.monto})).sort((a,b)=>b.cnt-a.cnt);
   const ocEl=document.getElementById('g-oc-por-comprador');
+  const fmtSoles=(v)=>'S/ '+Math.round(v).toLocaleString('es-PE');
   if(ocEl){
     if(!ocRank.length){ocEl.innerHTML='<span style="font-size:11px;color:#94a3b8">Sin datos en el período filtrado.</span>';}
     else{
@@ -4528,7 +4578,7 @@ function renderGerencial(){
           <div style="min-width:160px;max-width:200px;font-size:12px;font-weight:600;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.name}">${r.name}</div>
           <div style="flex:1;background:#f1f5f9;border-radius:8px;height:28px;overflow:hidden;position:relative">
             <div style="width:${pct}%;background:${col};height:100%;border-radius:8px;transition:width .5s;display:flex;align-items:center;padding-left:10px;box-sizing:border-box">
-              <span style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap">${r.cnt} OC</span>
+              <span style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap">${r.cnt} OC${r.monto?' · '+fmtSoles(r.monto):''}</span>
             </div>
           </div>
           <div style="min-width:42px;text-align:right;font-size:12px;font-weight:700;color:#64748b">${pctTot}%</div>
@@ -4536,6 +4586,63 @@ function renderGerencial(){
       }).join('');
     }
   }
+
+  // ── Indicadores financieros: monto total, crédito/contado, por día ────────
+  // (requiere D.ocFin, poblado al importar CONSULTAS.xlsx con la hoja "R.EOC")
+  const hasFin=Object.keys(D.ocFin||{}).length>0;
+  const finBodyEl=document.getElementById('g-fin-body');
+  const finEmptyEl=document.getElementById('g-fin-empty');
+  if(finBodyEl)finBodyEl.style.display=hasFin?'':'none';
+  if(finEmptyEl)finEmptyEl.style.display=hasFin?'none':'';
+  if(hasFin){
+    const finItems=fil.map(o=>({o,fin:(D.ocFin||{})[o.oc]})).filter(r=>r.fin);
+    let montoTot=0,credN=0,credMonto=0,contN=0,contMonto=0;
+    const dayMap={};
+    finItems.forEach(({o,fin})=>{
+      const m=fin.montoSoles||0;
+      montoTot+=m;
+      if(fin.esCredito){credN++;credMonto+=m;}else{contN++;contMonto+=m;}
+      const iso=focISO(o.foc);
+      if(!iso)return;
+      if(!dayMap[iso])dayMap[iso]={n:0,monto:0};
+      dayMap[iso].n++;dayMap[iso].monto+=m;
+    });
+    setText('g-fin-monto-tot',fmtSoles(montoTot));
+    setText('g-fin-cred-n',credN.toLocaleString());
+    setText('g-fin-cred-monto',fmtSoles(credMonto));
+    setText('g-fin-cont-n',contN.toLocaleString());
+    setText('g-fin-cont-monto',fmtSoles(contMonto));
+    const cntEl=document.getElementById('g-fin-cnt');
+    if(cntEl)cntEl.textContent=finItems.length.toLocaleString()+' de '+fil.length.toLocaleString()+' OC con dato financiero';
+    const days=Object.keys(dayMap).sort();
+    const fmtLbl=(iso)=>{const p=iso.split('-');return p[2]+'/'+p[1];};
+    drawDailyLine('g-fin-chart-oc',days.map(d=>({v:dayMap[d].n,label:fmtLbl(d)})),'#1e40af');
+    drawDailyLine('g-fin-chart-monto',days.map(d=>({v:dayMap[d].monto,label:fmtLbl(d)})),'#15803d');
+  }
+}
+
+// Gráfico de línea compacto (SVG) para tendencias diarias — un solo color,
+// trazo delgado, relleno de área tenue y pocas etiquetas de eje para no
+// saturar cuando hay muchos días en el rango filtrado.
+function drawDailyLine(containerId,points,color){
+  const el=document.getElementById(containerId);
+  if(!el)return;
+  if(!points.length){el.innerHTML='<div style="font-size:11px;color:#94a3b8;text-align:center;padding-top:38px">Sin datos en el período filtrado</div>';return;}
+  const W=600,H=90,PAD=4;
+  const maxV=Math.max(...points.map(p=>p.v),1);
+  const n=points.length;
+  const stepX=n>1?(W-PAD*2)/(n-1):0;
+  const xy=points.map((p,i)=>[PAD+i*stepX,H-PAD-(p.v/maxV)*(H-PAD*2)]);
+  const lineD='M'+xy.map(([x,y])=>x.toFixed(1)+','+y.toFixed(1)).join(' L');
+  const areaD=lineD+' L'+xy[xy.length-1][0].toFixed(1)+','+(H-PAD)+' L'+xy[0][0].toFixed(1)+','+(H-PAD)+' Z';
+  const lblIdx=n<=6?points.map((_,i)=>i):[0,Math.round((n-1)*.25),Math.round((n-1)*.5),Math.round((n-1)*.75),n-1];
+  const labelsHtml=[...new Set(lblIdx)].map(i=>`<text x="${xy[i][0].toFixed(1)}" y="${H+12}" font-size="8" fill="#94a3b8" text-anchor="middle">${points[i].label}</text>`).join('');
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H+16}" style="width:100%;height:100%" preserveAspectRatio="none">
+    <path d="${areaD}" fill="${color}" opacity=".12"/>
+    <path d="${lineD}" fill="none" stroke="${color}" stroke-width="2"/>
+    <circle cx="${xy[xy.length-1][0].toFixed(1)}" cy="${xy[xy.length-1][1].toFixed(1)}" r="3" fill="${color}"/>
+    ${labelsHtml}
+  </svg>`;
 }
 
 function showP1Auth(){
@@ -4656,7 +4763,89 @@ function importConsultas(wb){
   _st('k7art',[...new Set(D.consultas.map(r=>r.codigo).filter(Boolean))].length);
   renderP7();
   markConsultasDirty();
-  alert('✅ CONSULTAS.xlsx importado: '+D.consultas.length+' registros');
+
+  // ── Hoja adicional "R.EOC" (Reporte Estado Ordenes de Compra) — monto total,
+  // forma de pago (crédito/contado) y comprador por OC. Si el mismo archivo
+  // Consulta.xlsx trae esta hoja, se usa para los indicadores financieros del
+  // Gerencial/KPIs (Manuel). Se guarda aparte (D.ocFin, por N° OC) y filtrado a
+  // 2026 para no inflar el payload — a diferencia de D.consultas (72k+ filas
+  // históricas) que se excluye deliberadamente del guardado principal.
+  let nFin=0;
+  const shEOC=wb.SheetNames.find(function(n){
+    const r0=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''}).slice(0,10);
+    return r0.some(function(row){
+      const up=row.map(function(c){return String(c||'').toUpperCase();});
+      return up.some(function(c){return c.indexOf('IDESTADO')>=0;})&&up.some(function(c){return c.indexOf('FORMA_PAGO')>=0;});
+    });
+  });
+  if(shEOC){
+    const rawE=XLSX.utils.sheet_to_json(wb.Sheets[shEOC],{header:1,defval:''});
+    let hdrE=0;
+    for(let i=0;i<Math.min(10,rawE.length);i++){
+      const up=rawE[i].map(function(c){return String(c||'').toUpperCase();});
+      if(up.some(function(c){return c.indexOf('IDESTADO')>=0;})){hdrE=i;break;}
+    }
+    const hdrsE=rawE[hdrE].map(function(c){return String(c||'').trim();});
+    const ciE={};hdrsE.forEach(function(h,i){if(h)ciE[h.toUpperCase()]=i;});
+    const giE=function(){
+      for(let a=0;a<arguments.length;a++){
+        const cand=arguments[a].toUpperCase();
+        const k=Object.keys(ciE).find(function(kk){return kk.indexOf(cand)>=0;});
+        if(k!==undefined)return ciE[k];
+      }
+      return -1;
+    };
+    const iOC2=giE('CONCATENADO');
+    const iTOTAL=giE('TOTAL');
+    const iFECHA2=giE('FECHA');
+    const iFAPRO2=giE('F_APROBADO','FAPROBADO');
+    const iEST2=giE('EST_DSC');
+    const iPROV2=giE('RAZON_SOCIAL');
+    const iMON2=giE('MON_DSC');
+    const iUSR2=giE('IDUSUARIOC');
+    const iTC2=giE('TIPOCAMBIO');
+    const iFPAGO2=giE('FORMA_PAGO');
+    const gv2=function(r,i){return i>=0?r[i]:'';};
+    const fmtFecha2=function(v){
+      if(!v)return'';
+      if(v instanceof Date)return v.getDate().toString().padStart(2,'0')+'/'+(v.getMonth()+1).toString().padStart(2,'0')+'/'+v.getFullYear();
+      const s=String(v).trim();
+      if(/^\d{2}\/\d{2}\/\d{4}$/.test(s))return s;
+      const d=new Date(s);
+      return isNaN(d.getTime())?s:(d.getDate().toString().padStart(2,'0')+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getFullYear());
+    };
+    D.ocFin=D.ocFin||{};
+    rawE.slice(hdrE+1).forEach(function(r){
+      if(!r||!r.some(function(c){return c!=null&&c!=='';}))return;
+      const oc=String(gv2(r,iOC2)||'').trim();
+      if(!oc)return;
+      const fecha=fmtFecha2(gv2(r,iFECHA2));
+      if(!is2026(fecha))return; // solo 2026, igual que el resto del dashboard
+      const total=parseFloat(String(gv2(r,iTOTAL)||'0').replace(',','.'))||0;
+      const tc=parseFloat(String(gv2(r,iTC2)||'0').replace(',','.'))||0;
+      const moneda=String(gv2(r,iMON2)||'').trim();
+      const esDolares=moneda.toLowerCase().indexOf('dolar')>=0;
+      const formaPago=String(gv2(r,iFPAGO2)||'').trim();
+      nFin++;
+      D.ocFin[oc]={
+        total:total,
+        moneda:esDolares?'US$':(moneda.toLowerCase().indexOf('sol')>=0?'S/':moneda),
+        tc:tc,
+        montoSoles:esDolares&&tc?Math.round(total*tc*100)/100:total,
+        formaPago:formaPago,
+        esCredito:formaPago.toUpperCase().indexOf('CREDITO')>=0,
+        usuario:String(gv2(r,iUSR2)||'').trim().toUpperCase(),
+        fecha:fecha,
+        fechaAprob:fmtFecha2(gv2(r,iFAPRO2)),
+        estado:String(gv2(r,iEST2)||'').trim(),
+        proveedor:String(gv2(r,iPROV2)||'').trim(),
+      };
+    });
+    if(nFin>0)saveLocal();
+  }
+
+  alert('✅ CONSULTAS.xlsx importado: '+D.consultas.length+' registros'
+    +(nFin?'\n✅ Datos financieros de OC (hoja "'+shEOC+'"): '+nFin+' órdenes 2026 — monto, crédito/contado y comprador listos para Gerencial/KPIs':''));
 }
 function handleConsultasUpload(input){
   if(!input.files[0])return;
