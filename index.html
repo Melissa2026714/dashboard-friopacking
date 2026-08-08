@@ -845,11 +845,9 @@ function instNav(id){
       <option value="11">Noviembre</option>
       <option value="12">Diciembre</option>
     </select>
-    <span style="font-size:11px;color:#94a3b8">Generadas entre</span>
-    <input type="date" id="g-f-desde" onchange="renderGerencial()" title="OC generadas desde (F. OC)" style="font-size:11px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#334155;cursor:pointer">
-    <span style="font-size:11px;color:#94a3b8">y</span>
-    <input type="date" id="g-f-hasta" onchange="renderGerencial()" title="OC generadas hasta (F. OC)" style="font-size:11px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#334155;cursor:pointer">
-    <button onclick="document.getElementById('g-f-desde').value='';document.getElementById('g-f-hasta').value='';renderGerencial()" style="font-size:11px;padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#64748b;cursor:pointer">✕ Limpiar fechas</button>
+    <span style="font-size:11px;color:#94a3b8">OC generadas el día:</span>
+    <input type="date" id="g-f-dia" onchange="renderGerencial()" title="Filtra OC generadas exactamente este día (F. OC)" style="font-size:11px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#334155;cursor:pointer">
+    <button onclick="document.getElementById('g-f-dia').value='';renderGerencial()" style="font-size:11px;padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#64748b;cursor:pointer">✕ Limpiar</button>
     <span id="g-f-cnt" style="font-size:11px;color:#94a3b8;margin-left:auto"></span>
   </div>
 
@@ -4310,8 +4308,7 @@ function renderGerencial(){
   const ucomp=(document.getElementById('g-f-ucomp')||{}).value||'';
   const tipo=(document.getElementById('g-f-tipo')||{}).value||'';
   const mes=parseInt((document.getElementById('g-f-mes')||{}).value||'')||0;
-  const gDesde=(document.getElementById('g-f-desde')||{}).value||'';
-  const gHasta=(document.getElementById('g-f-hasta')||{}).value||'';
+  const gDia=(document.getElementById('g-f-dia')||{}).value||'';
   // o.foc viene como 'DD/MM/YYYY'; los <input type=date> entregan 'YYYY-MM-DD' —
   // se convierte a ISO para poder comparar con comparación de strings.
   const focISO=(foc)=>{if(!foc)return'';const p=foc.split('/');return p.length===3?(p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0')):'';};
@@ -4344,13 +4341,7 @@ function renderGerencial(){
   if(ucomp)fil=fil.filter(o=>o.ucomp===ucomp);
   if(tipo)fil=fil.filter(o=>o.oc&&o.oc.startsWith(tipo));
   if(mes)fil=fil.filter(o=>o.foc&&parseInt(o.foc.split('/')[1])===mes);
-  if(gDesde||gHasta)fil=fil.filter(o=>{
-    const iso=focISO(o.foc);
-    if(!iso)return false;
-    if(gDesde&&iso<gDesde)return false;
-    if(gHasta&&iso>gHasta)return false;
-    return true;
-  });
+  if(gDia)fil=fil.filter(o=>focISO(o.foc)===gDia);
 
   const directLabel=origen==='directas'?' (Compras Directas)':origen==='ambas'?' (Maestro + Directas)':' (Con Req.)';
   const elCnt=document.getElementById('g-f-cnt');
