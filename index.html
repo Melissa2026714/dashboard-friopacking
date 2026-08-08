@@ -961,23 +961,7 @@ function instNav(id){
 
   </div>
 
-  <!-- Ranking de compradores -->
-  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-top:12px">
-    <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">🏆 Velocidad por Comprador — Req → OC · días hábiles promedio</div>
-    <div id="g-ranking-compradores" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px">
-      <span style="font-size:11px;color:#94a3b8">Cargando…</span>
-    </div>
-  </div>
-
-  <!-- OC por comprador -->
-  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-top:12px">
-    <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:16px">📊 Total OC Colocadas por Comprador — órdenes del período filtrado</div>
-    <div id="g-oc-por-comprador" style="display:flex;flex-direction:column;gap:10px">
-      <span style="font-size:11px;color:#94a3b8">Cargando…</span>
-    </div>
-  </div>
-
-  <!-- Indicadores financieros (Manuel): monto, crédito/contado, por día -->
+  <!-- Indicadores financieros (pedido de Jefatura): monto, crédito/contado, por día -->
   <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-top:12px" id="g-fin-wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px">💰 Indicadores Financieros — órdenes del período filtrado</div>
@@ -1002,7 +986,29 @@ function instNav(id){
         </div>
       </div>
     </div>
-    <div id="g-fin-empty" style="display:none;font-size:11px;color:#94a3b8;text-align:center;padding:20px 0">No hay datos financieros importados aún — importa <strong>CONSULTAS.xlsx</strong> (con la hoja "R.EOC" incluida) para ver monto, crédito/contado y compras por día.</div>
+    <div id="g-fin-empty" style="display:none;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:16px 20px;align-items:center;gap:12px">
+      <span style="font-size:26px;flex-shrink:0">⚠️</span>
+      <div style="font-size:12.5px;color:#78350f;line-height:1.5">
+        <strong style="display:block;font-size:13px;margin-bottom:2px">Faltan datos financieros por importar</strong>
+        Los indicadores de Monto Total, Crédito/Contado y compras por día (pedidos por Jefatura) necesitan la hoja <strong>"R.EOC"</strong> del archivo <strong>CONSULTAS.xlsx</strong> que exportas desde NISIRA. Vuelve a exportarlo asegurándote de incluir esa hoja junto con "Consulta", e impórtalo de nuevo con el botón IMPORTAR.
+      </div>
+    </div>
+  </div>
+
+  <!-- Ranking de compradores -->
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-top:12px">
+    <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">🏆 Velocidad por Comprador — Req → OC · días hábiles promedio</div>
+    <div id="g-ranking-compradores" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px">
+      <span style="font-size:11px;color:#94a3b8">Cargando…</span>
+    </div>
+  </div>
+
+  <!-- OC por comprador -->
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-top:12px">
+    <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:16px">📊 Total OC Colocadas por Comprador — órdenes del período filtrado</div>
+    <div id="g-oc-por-comprador" style="display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:11px;color:#94a3b8">Cargando…</span>
+    </div>
   </div>
 
   <!-- IDs ocultos para compatibilidad con initP1() -->
@@ -4584,7 +4590,7 @@ function renderGerencial(){
   const finBodyEl=document.getElementById('g-fin-body');
   const finEmptyEl=document.getElementById('g-fin-empty');
   if(finBodyEl)finBodyEl.style.display=hasFin?'':'none';
-  if(finEmptyEl)finEmptyEl.style.display=hasFin?'none':'';
+  if(finEmptyEl)finEmptyEl.style.display=hasFin?'none':'flex';
   if(hasFin){
     const finItems=fil.map(o=>({o,fin:(D.ocFin||{})[o.oc]})).filter(r=>r.fin);
     let montoTot=0,credN=0,credMonto=0,contN=0,contMonto=0;
