@@ -985,12 +985,16 @@ function instNav(id){
           <div id="g-fin-chart-monto" style="height:110px"></div>
         </div>
       </div>
+      <div id="g-fin-credit-note" style="display:none;margin-top:14px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:12px 16px;align-items:center;gap:10px">
+        <span style="font-size:18px;flex-shrink:0">ℹ️</span>
+        <div style="font-size:12px;color:#78350f;line-height:1.5">El monto ya se calcula automáticamente desde el Maestro. Para ver <strong>Crédito/Contado</strong> (marcados como "—" arriba), vuelve a exportar <strong>CONSULTAS.xlsx</strong> desde NISIRA incluyendo la hoja <strong>"R.EOC"</strong> junto con "Consulta", e impórtalo de nuevo.</div>
+      </div>
     </div>
     <div id="g-fin-empty" style="display:none;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:16px 20px;align-items:center;gap:12px">
       <span style="font-size:26px;flex-shrink:0">⚠️</span>
       <div style="font-size:12.5px;color:#78350f;line-height:1.5">
-        <strong style="display:block;font-size:13px;margin-bottom:2px">Faltan datos financieros por importar</strong>
-        Los indicadores de Monto Total, Crédito/Contado y compras por día (pedidos por Jefatura) necesitan la hoja <strong>"R.EOC"</strong> del archivo <strong>CONSULTAS.xlsx</strong> que exportas desde NISIRA. Vuelve a exportarlo asegurándote de incluir esa hoja junto con "Consulta", e impórtalo de nuevo con el botón IMPORTAR.
+        <strong style="display:block;font-size:13px;margin-bottom:2px">Sin datos financieros en este período</strong>
+        No se encontró monto para las OC filtradas. Si recién importaste el Maestro, revisa que el archivo tenga la columna "PRECIO UNITARIO SIN IGV" — o importa <strong>CONSULTAS.xlsx</strong> con la hoja <strong>"R.EOC"</strong> incluida.
       </div>
     </div>
   </div>
@@ -4556,8 +4560,9 @@ function renderGerencial(){
     const k=o.ucomp||'(sin asignar)';
     if(!ocByComp[k])ocByComp[k]={cnt:0,monto:0};
     ocByComp[k].cnt++;
-    const fin=(D.ocFin||{})[o.oc];
-    if(fin)ocByComp[k].monto+=fin.montoSoles||0;
+    // Monto: prioriza D.oc.montoSoles (viene del Maestro que ya se importa siempre);
+    // si no está (p.ej. origen Compras Directas), cae a D.ocFin (hoja "R.EOC").
+    ocByComp[k].monto+=o.montoSoles||((D.ocFin||{})[o.oc]||{}).montoSoles||0;
   });
   const ocRank=Object.entries(ocByComp).map(([k,v])=>({name:k,cnt:v.cnt,monto:v.monto})).sort((a,b)=>b.cnt-a.cnt);
   const ocEl=document.getElementById('g-oc-por-comprador');
@@ -4566,7 +4571,9 @@ function renderGerencial(){
     if(!ocRank.length){ocEl.innerHTML='<span style="font-size:11px;color:#94a3b8">Sin datos en el período filtrado.</span>';}
     else{
       const maxV=ocRank[0].cnt||1;
-      const palette=['#1e40af','#0891b2','#7c3aed','#be185d','#065f46','#b45309','#374151','#9d174d','#1e3a8a','#134e4a'];
+      // Misma familia azul/teal (claro→oscuro) que las 6 tarjetas, en vez del
+      // arcoíris anterior — más compradores que colores repite el ciclo.
+      const palette=['#0f172a','#1e3a8a','#1e40af','#2563eb','#0369a1','#0891b2','#0e7490','#38bdf8','#7dd3fc','#a5f3fc'];
       ocEl.innerHTML=ocRank.map((r,i)=>{
         const pct=Math.round(r.cnt/maxV*100);
         const col=palette[i%palette.length];
@@ -4584,33 +4591,40 @@ function renderGerencial(){
     }
   }
 
-  // ── Indicadores financieros: monto total, crédito/contado, por día ────────
-  // (requiere D.ocFin, poblado al importar CONSULTAS.xlsx con la hoja "R.EOC")
+  // ── Indicadores financieros ────────────────────────────────────────────────
+  // Monto: prioriza o.montoSoles (calculado al importar el Maestro — siempre
+  // disponible); si no está (p.ej. Compras Directas) cae a D.ocFin (hoja "R.EOC").
+  // Crédito/Contado: solo viene de D.ocFin, es la única fuente con Forma_pago.
   const hasFin=Object.keys(D.ocFin||{}).length>0;
+  const montoOf=o=>o.montoSoles||((D.ocFin||{})[o.oc]||{}).montoSoles||0;
+  const hasMonto=fil.some(o=>montoOf(o)>0);
   const finBodyEl=document.getElementById('g-fin-body');
   const finEmptyEl=document.getElementById('g-fin-empty');
-  if(finBodyEl)finBodyEl.style.display=hasFin?'':'none';
-  if(finEmptyEl)finEmptyEl.style.display=hasFin?'none':'flex';
-  if(hasFin){
-    const finItems=fil.map(o=>({o,fin:(D.ocFin||{})[o.oc]})).filter(r=>r.fin);
-    let montoTot=0,credN=0,credMonto=0,contN=0,contMonto=0;
+  const finCreditNoteEl=document.getElementById('g-fin-credit-note');
+  if(finBodyEl)finBodyEl.style.display=hasMonto?'':'none';
+  if(finEmptyEl)finEmptyEl.style.display=hasMonto?'none':'flex';
+  if(finCreditNoteEl)finCreditNoteEl.style.display=(hasMonto&&!hasFin)?'flex':'none';
+  if(hasMonto){
+    let montoTot=0,credN=0,credMonto=0,contN=0,contMonto=0,nMonto=0;
     const dayMap={};
-    finItems.forEach(({o,fin})=>{
-      const m=fin.montoSoles||0;
-      montoTot+=m;
-      if(fin.esCredito){credN++;credMonto+=m;}else{contN++;contMonto+=m;}
+    fil.forEach(o=>{
+      const m=montoOf(o);
+      if(!m)return;
+      nMonto++;montoTot+=m;
+      const fin=(D.ocFin||{})[o.oc];
+      if(fin){if(fin.esCredito){credN++;credMonto+=m;}else{contN++;contMonto+=m;}}
       const iso=focISO(o.foc);
       if(!iso)return;
       if(!dayMap[iso])dayMap[iso]={n:0,monto:0};
       dayMap[iso].n++;dayMap[iso].monto+=m;
     });
     setText('g-fin-monto-tot',fmtSoles(montoTot));
-    setText('g-fin-cred-n',credN.toLocaleString());
-    setText('g-fin-cred-monto',fmtSoles(credMonto));
-    setText('g-fin-cont-n',contN.toLocaleString());
-    setText('g-fin-cont-monto',fmtSoles(contMonto));
+    setText('g-fin-cred-n',hasFin?credN.toLocaleString():'—');
+    setText('g-fin-cred-monto',hasFin?fmtSoles(credMonto):'—');
+    setText('g-fin-cont-n',hasFin?contN.toLocaleString():'—');
+    setText('g-fin-cont-monto',hasFin?fmtSoles(contMonto):'—');
     const cntEl=document.getElementById('g-fin-cnt');
-    if(cntEl)cntEl.textContent=finItems.length.toLocaleString()+' de '+fil.length.toLocaleString()+' OC con dato financiero';
+    if(cntEl)cntEl.textContent=nMonto.toLocaleString()+' de '+fil.length.toLocaleString()+' OC con monto';
     const days=Object.keys(dayMap).sort();
     const fmtLbl=(iso)=>{const p=iso.split('-');return p[2]+'/'+p[1];};
     drawDailyLine('g-fin-chart-oc',days.map(d=>({v:dayMap[d].n,label:fmtLbl(d)})),'#1e40af');
@@ -5353,7 +5367,7 @@ function importMaestro(wb){
         nItems:0,cantOrd:0,cantRec:0,cantPend:0,
         frec:gd(r,'FechaRecepcion'),fsal:gd(r,'FechaSalida')||gd(r,'FechaSali'),ucomp:g(r,'UsuarioCompras'),
         ingreso:0,fingreso:'',
-        moneda:'',tc:0,_pus:[],
+        moneda:'',tc:0,_pus:[],montoSoles:0,
         reqs:[],
         ped:g(r,'CodPedido'),peds:[],fpedido:gd(r,'FechaPedido')||gd(r,'Fecha Pedido')||gd(r,'FechaPed')
       };
@@ -5367,6 +5381,11 @@ function importMaestro(wb){
     if(monR&&monR!=='-'){if(!o.moneda)o.moneda=monR;else if(o.moneda.indexOf(monR)<0)o.moneda+=' / '+monR;}
     o._pus.push(gn(r,'PRECIO UNITARIO SIN IGV'));
     const tcR=gn(r,'TIPO DE CAMBIO');if(tcR&&!o.tc)o.tc=tcR;
+    // Monto de la línea en soles (para indicadores financieros): si la moneda de la fila
+    // es dólares, convierte con el tipo de cambio de esa misma fila; si no, ya está en soles.
+    const puRow=gn(r,'PRECIO UNITARIO SIN IGV');
+    const esDolarRow=/DOLAR|DOLLAR|USD|US\$/.test((monR||'').toUpperCase());
+    o.montoSoles+=puRow*co*((esDolarRow&&tcR)?tcR:1);
     const fing=gd(r,'FechaIngreso');
     if(fing){
       const dkey=s=>s.split('/').reverse().join('');
@@ -5415,6 +5434,7 @@ function importMaestro(wb){
     const pus=(o._pus||[]).filter(v=>v>0);
     o.punit=pus.length&&pus.every(v=>v===pus[0])?pus[0]:(pus.length?null:0);
     delete o._pus;
+    o.montoSoles=Math.round(o.montoSoles*100)/100;
     return o;
   });
   // Sort desc by foc; si empatan en fecha, desempatar por número de OC descendente
