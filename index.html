@@ -876,7 +876,7 @@ function instNav(id){
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
 
     <!-- 1. ALMACÉN -->
-    <div style="background:linear-gradient(135deg,#0e7490,#22d3ee);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#0891b2,#22d3ee);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">🏪</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">1 — TIEMPO DE ALMACÉN</span><span id="g-sema-2" class="g-sema" title="Semáforo: verde ≤3d · amarillo ≤7d · rojo >7d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">Requerimiento → Pedido · días hábiles</div>
@@ -890,7 +890,7 @@ function instNav(id){
     </div>
 
     <!-- 2. COMPRADORES -->
-    <div style="background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#0369a1,#38bdf8);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">🛒</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">2 — TIEMPO DE COMPRADORES</span><span id="g-sema-3" class="g-sema" title="Semáforo: verde ≤5d · amarillo ≤10d · rojo >10d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">Pedido → OC · días hábiles</div>
@@ -904,7 +904,7 @@ function instNav(id){
     </div>
 
     <!-- 3. VELOCIDAD DE COMPRA (subtotal: Almacén + Compradores) -->
-    <div style="background:linear-gradient(135deg,#0f172a,#475569);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">⚡</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">3 — VELOCIDAD DE COMPRA</span><span id="g-sema-1" class="g-sema" title="Semáforo: verde ≤5d · amarillo ≤10d · rojo >10d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">Requerimiento → OC · días hábiles</div>
@@ -918,7 +918,7 @@ function instNav(id){
     </div>
 
     <!-- 4. APROBACIÓN -->
-    <div style="background:linear-gradient(135deg,#6d28d9,#a78bfa);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">✅</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">4 — TIEMPO DE APROBACIÓN</span><span id="g-sema-4" class="g-sema" title="Semáforo: verde ≤1d · amarillo ≤3d · rojo >3d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">OC → Aprobación Manuel · días hábiles</div>
@@ -932,7 +932,7 @@ function instNav(id){
     </div>
 
     <!-- 5. ENTREGA A PISO -->
-    <div style="background:linear-gradient(135deg,#b45309,#f59e0b);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#172554,#1e40af);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">🏭</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">5 — ENTREGA A PISO</span><span id="g-sema-6" class="g-sema" title="Semáforo: verde ≤7d · amarillo ≤15d · rojo >15d"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">Aprobación → Recepción · días hábiles</div>
@@ -946,7 +946,7 @@ function instNav(id){
     </div>
 
     <!-- 6. CUMPLIMIENTO DE ENTREGA -->
-    <div style="background:linear-gradient(135deg,#15803d,#22c55e);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#0f172a,#334155);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-15px;right:-15px;font-size:70px;opacity:.1">📦</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;font-weight:700;letter-spacing:1px;opacity:.8">6 — CUMPLIMIENTO DE ENTREGA</span><span id="g-sema-5" class="g-sema" title="Semáforo: verde ≥80% · amarillo ≥60% · rojo <60%"></span></div>
       <div style="font-size:11px;opacity:.8;margin-bottom:12px">F. Entrega pactada → Recepción · días hábiles</div>
@@ -4499,9 +4499,9 @@ function renderGerencial(){
   const pipeEl=document.getElementById('g-pipeline-flow');
   if(pipeEl){
     const stages=[
-      {val:_avg2,col:'#0e7490',lbl:'Almacén'},
-      {val:_avg3,col:'#1e40af',lbl:'Compras'},
-      {val:_avg4,col:'#6d28d9',lbl:'Aprobac.'},
+      {val:_avg2,col:'#0891b2',lbl:'Almacén'},
+      {val:_avg3,col:'#0369a1',lbl:'Compras'},
+      {val:_avg4,col:'#1e3a8a',lbl:'Aprobac.'},
     ];
     let html=`<span style="font-size:10px;font-weight:600;color:#64748b">REQ</span>`;
     let ttl=0;
