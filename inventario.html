@@ -1570,7 +1570,10 @@ function verReqItems(rk){
       </tbody>
     </table>
     </div>
-    <div style="padding:12px 20px 18px"><button class="btn br" onclick="cerrarFicha()">Cerrar</button></div>`;
+    <div style="padding:12px 20px 18px;display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn bi" onclick="guardarReqModal('${rk}')">💾 Guardar</button>
+      <button class="btn br" onclick="cerrarFicha()">Cerrar</button>
+    </div>`;
   fichaSize('min(96vw,1250px)');
   document.getElementById('fichaBg').style.display='flex';
 }
@@ -1888,10 +1891,21 @@ async function guardarDecisiones(){
     if(document.getElementById('tbreqitem'))renderReqItemTable();
     if(document.getElementById('pickGroups'))renderPick();
     updateHomeCounters();
+    return true;
   }catch(e){
     console.error(e);
     document.querySelectorAll('.saveLblEl').forEach(l=>l.textContent='⚠ Error al guardar: '+e.message);
+    return false;
   }
+}
+// Botón "💾 Guardar" dentro del modal de un requerimiento (verReqItems): guarda la repartición
+// Picking/Pedido que se acaba de hacer Y marca el check "Valid. Almacén" de ese requerimiento
+// por defecto — sin disparar el aviso de WhatsApp (eso sigue siendo un paso manual aparte).
+async function guardarReqModal(rk){
+  PENDING_VAL[rk]=new Date().toLocaleString('es-PE');
+  localStorage.setItem('fp_almacen_validado_pending',JSON.stringify(PENDING_VAL));
+  const ok=await guardarDecisiones();
+  if(ok)cerrarFicha();
 }
 
 /* ═══════════════ PÁGINA CÓDIGOS ═══════════════ */
