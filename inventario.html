@@ -235,6 +235,7 @@ tr:hover td{background:#f8fafc}
 
   <div class="savebar">
     <button class="btn bi" onclick="guardarDecisiones()">💾 Guardar decisiones</button>
+    <button class="btn br" onclick="descartarCambiosLocales()" title="Borra Picking/Validación/En obra que quedaron sin guardar en ESTE navegador — no afecta lo que ya comparten los demás">🗑 Descartar cambios locales</button>
     <span class="dirtyLbl"></span>
     <span class="saveLblEl"></span>
   </div>
@@ -304,6 +305,7 @@ tr:hover td{background:#f8fafc}
 
   <div class="savebar">
     <button class="btn bi" onclick="guardarDecisiones()">💾 Guardar decisiones</button>
+    <button class="btn br" onclick="descartarCambiosLocales()" title="Borra Picking/Validación/En obra que quedaron sin guardar en ESTE navegador — no afecta lo que ya comparten los demás">🗑 Descartar cambios locales</button>
     <span class="dirtyLbl"></span>
     <span class="saveLblEl"></span>
   </div>
@@ -2049,6 +2051,23 @@ async function confirmarCompletado(){
 /* Guardar decisiones en data.json compartido (mismo repo que Compras).
    Solo toca D.almacenPicking — nunca reescribe oc/p4/p5reqs/etc, para no
    arriesgar los datos de Compras (ver memoria del bug de "última escritura gana"). */
+// Bota los cambios hechos en ESTE navegador que todavía no se guardaron con "Guardar
+// decisiones" — útil para descartar pruebas/pilotos que nunca se llegaron a compartir.
+// No toca nada de lo que ya está guardado en data.json (eso hay que resetearlo aparte).
+function descartarCambiosLocales(){
+  const n=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length;
+  if(!n){alert('No hay cambios locales sin guardar en este navegador.');return;}
+  if(!confirm('Se van a descartar '+n+' cambio(s) sin guardar en ESTE navegador (Picking / Validación / En obra).\nEsto NO afecta lo que ya está guardado y ven los demás.\n\n¿Continuar?'))return;
+  PENDING={};PENDING_VAL={};PENDING_OBRA={};
+  localStorage.removeItem('fp_almacen_picking_pending');
+  localStorage.removeItem('fp_almacen_validado_pending');
+  localStorage.removeItem('fp_almacen_obra_pending');
+  if(document.getElementById('tbreq'))renderReqTable();
+  if(document.getElementById('tbreqitem'))renderReqItemTable();
+  if(document.getElementById('pickGroups'))renderPick();
+  updateHomeCounters();
+  alert('✔ Cambios locales descartados.');
+}
 async function guardarDecisiones(){
   const keys=Object.keys(PENDING);
   const vkeys=Object.keys(PENDING_VAL);
