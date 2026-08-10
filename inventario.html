@@ -1880,30 +1880,81 @@ function reqPickingCompleto(req){
   });
   return todosListos?asignados:null;
 }
-// Correo de constancia al terminar TODO el picking de un requerimiento — abre el cliente de
-// correo del usuario con destinatario/copias y detalle ya redactados, listo para enviar.
+function showToastAlm(msg){
+  let t=document.getElementById('_toastAlm');
+  if(!t){
+    t=document.createElement('div');
+    t.id='_toastAlm';
+    t.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 28px;border-radius:8px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.4)';
+    document.body.appendChild(t);
+  }
+  t.textContent=msg;t.style.display='block';
+  clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none';},4500);
+}
+// Correo de constancia al terminar TODO el picking de un requerimiento — mismo esquema visual
+// y de envío que usan las OC/cotizaciones de Compras: tabla con borde/color (no texto plano) y,
+// si hay sesión de Microsoft 365 guardada, se manda directo por Graph; si no, se copia la tabla
+// (con la foto de evidencia incrustada) al portapapeles y se abre un correo vacío para pegar
+// con Ctrl+V — así lo hacen hoy los compañeros con las OC y les funciona bien.
 function enviarCorreoPickingCompletado(req,items){
   const g0=items[0]||{};
   const asunto='PICKING REQ '+req+' — ATENDIDO';
-  const L=[];
-  L.push('Se completó el picking del requerimiento '+req+'.');
-  L.push('');
-  L.push('Proyecto: '+(g0.proy||'—'));
-  L.push('Responsable del requerimiento: '+(g0.resp||'—'));
-  L.push('');
-  L.push('Detalle de ítems atendidos:');
+  const to='kalbujar@friopacking.pe';
+  const cc='jcenteno@friopacking.pe,mcondori@grupofriopacking.pe,jmanueco@grupofriopacking.pe';
+
+  const THEAD='<thead><tr style="background:#dbeafe"><th style="padding:9px 12px;border:1px solid #93c5fd;color:#1e3a8a;font-weight:700;font-size:13px;width:30px">#</th>'
+    +'<th style="padding:9px 12px;border:1px solid #93c5fd;color:#1e3a8a;font-weight:700;font-size:13px;white-space:nowrap">Código</th>'
+    +'<th style="padding:9px 12px;border:1px solid #93c5fd;color:#1e3a8a;font-weight:700;font-size:13px;min-width:220px">Descripción</th>'
+    +'<th style="padding:9px 12px;border:1px solid #93c5fd;color:#1e3a8a;font-weight:700;font-size:13px;width:70px">Cant. Picking</th>'
+    +'<th style="padding:9px 12px;border:1px solid #93c5fd;color:#1e3a8a;font-weight:700;font-size:13px;white-space:nowrap">Preparado por</th></tr></thead>';
+  let filas='';
+  let fotoHtml='';
   items.forEach(function(r,idx){
     const key=r.req+'|'+r.cod;
     const rec=getRecord(key)||{};
     const picking=getDecision(key,AUTO_MAP[key]||0);
-    L.push('  '+(idx+1)+'. ['+r.cod+'] '+(r.prod||'—'));
-    L.push('     Cantidad a picking: '+picking+(r.unid?' '+r.unid:''));
-    L.push('     Preparado por: '+(rec.responsable||'—')+' — '+(rec.fechaHora||'—'));
-    L.push('');
+    const bg=idx%2===0?'#ffffff':'#eff6ff';
+    filas+='<tr style="background:'+bg+'">'
+      +'<td style="padding:9px 12px;border:1px solid #93c5fd;text-align:center;color:#64748b;font-size:13px">'+(idx+1)+'</td>'
+      +'<td style="padding:9px 12px;border:1px solid #93c5fd;color:#1e3a8a;font-weight:600;font-size:13px;white-space:nowrap">'+(r.cod||'—')+'</td>'
+      +'<td style="padding:9px 12px;border:1px solid #93c5fd;font-size:13px">'+(r.prod||'—')+'</td>'
+      +'<td style="padding:9px 12px;border:1px solid #93c5fd;text-align:center;font-weight:700;font-size:13px">'+picking+(r.unid?' '+r.unid:'')+'</td>'
+      +'<td style="padding:9px 12px;border:1px solid #93c5fd;font-size:12.5px">'+(rec.responsable||'—')+'<br><span style="color:#64748b;font-size:11px">'+(rec.fechaHora||'—')+'</span></td>'
+      +'</tr>';
+    if(!fotoHtml&&rec.fotoPath){
+      const fotoUrl=new URL(rec.fotoPath,location.href).href;
+      fotoHtml='<p style="margin-top:18px;font-weight:700;color:#1e3a8a">Evidencia fotográfica:</p>'
+        +'<img src="'+fotoUrl+'" alt="Evidencia de picking" style="max-width:320px;border:1px solid #93c5fd;border-radius:8px">';
+    }
   });
-  const to='kalbujar@friopacking.pe';
-  const cc='jcenteno@friopacking.pe,mcondori@grupofriopacking.pe,jmanueco@grupofriopacking.pe';
-  window.location.href='mailto:'+to+'?cc='+encodeURIComponent(cc)+'&subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(L.join('\r\n'));
+  const htmlBody='<div style="font-family:Calibri,Arial,sans-serif;font-size:14px;line-height:1.8;color:#1e293b;max-width:760px">'
+    +'<p>Se completó el picking del requerimiento <strong>'+req+'</strong>.</p>'
+    +'<p><strong>Proyecto:</strong> '+(g0.proy||'—')+'<br><strong>Responsable del requerimiento:</strong> '+(g0.resp||'—')+'</p>'
+    +'<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin:12px 0">'+THEAD+'<tbody>'+filas+'</tbody></table>'
+    +fotoHtml
+    +'</div>';
+
+  function abrirMailVacio(){
+    window.location.href='mailto:'+to+'?cc='+encodeURIComponent(cc)+'&subject='+encodeURIComponent(asunto);
+  }
+  function fallbackClipboard(){
+    if(navigator.clipboard&&window.ClipboardItem){
+      const blob=new Blob([htmlBody],{type:'text/html'});
+      const item=new ClipboardItem({'text/html':blob});
+      navigator.clipboard.write([item]).then(function(){
+        showToastAlm('📋 Correo copiado — pega con Ctrl+V en Outlook');
+        setTimeout(abrirMailVacio,400);
+      },function(){abrirMailVacio();});
+    }else{abrirMailVacio();}
+  }
+  if(typeof window.sendMailViaGraph==='function'){
+    window.sendMailViaGraph(to,cc,null,asunto,htmlBody,function(ok){
+      if(ok)showToastAlm('✅ Correo de picking enviado (Microsoft 365)');
+      else fallbackClipboard();
+    });
+  }else{
+    fallbackClipboard();
+  }
 }
 async function confirmarCompletado(){
   const keys=_completarKeys;
@@ -2552,6 +2603,78 @@ fillFilters();render();
 fillCodFilters();renderCod();
 setupFloatScrollbars();
 cargarLive();
+</script>
+
+<!-- Envío de correo por Microsoft Graph (Mail.Send) — mismo registro de Azure AD que usa Compras
+     para las OC/cotizaciones. Solo actúa si ya hay una sesión de Microsoft 365 guardada en este
+     navegador (no abre popup de login); si no la hay, enviarCorreoPickingCompletado() cae al
+     copiar+pegar (Ctrl+V) igual que hacen hoy los compañeros con las OC. -->
+<script>
+(function(){
+  var _msalMail=null;
+  var _cfgMail={auth:{clientId:'4aab5beb-5b53-45a0-81ea-b11f0fa8d50f',authority:'https://login.microsoftonline.com/friopacking.pe',redirectUri:location.origin+location.pathname}};
+  var _scopesMail=['Mail.Send','User.Read'];
+  var _msalUrlsMail=[
+    '/msal-browser.min.js',
+    'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js',
+    'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.js'
+  ];
+  function _loadMsalMail(urls,cb){
+    if(typeof msal!=='undefined'){cb(null);return;}
+    if(!urls.length){cb('No se pudo cargar la librería MSAL');return;}
+    var s=document.createElement('script');
+    s.src=urls[0];
+    s.onload=function(){cb(null);};
+    s.onerror=function(){_loadMsalMail(urls.slice(1),cb);};
+    document.head.appendChild(s);
+  }
+  function _initMail(cb){
+    if(_msalMail){cb(_msalMail,null);return;}
+    _loadMsalMail(_msalUrlsMail,function(err){
+      if(err){cb(null,err);return;}
+      try{
+        _msalMail=new msal.PublicClientApplication(_cfgMail);
+        _msalMail.initialize().then(function(){_msalMail.handleRedirectPromise().catch(function(){});cb(_msalMail,null);}).catch(function(e){cb(null,'MSAL init: '+e.message);});
+      }catch(e){cb(null,'MSAL error: '+e.message);}
+    });
+  }
+  function _getTokenMail(cb){
+    _initMail(function(inst,err){
+      if(!inst){cb(null,err||'MSAL no disponible');return;}
+      var accts=inst.getAllAccounts();
+      if(!accts.length){cb(null,'Sin sesión Microsoft 365 guardada');return;}
+      var req={scopes:_scopesMail,account:accts[0]};
+      inst.acquireTokenSilent(req).then(function(r){cb(r.accessToken,null);}).catch(function(e){cb(null,'Token silencioso falló: '+e.message);});
+    });
+  }
+  function _parseAddrs(s){
+    return (s||'').split(/[;,]/).map(function(x){return x.trim();}).filter(Boolean)
+      .map(function(a){return {emailAddress:{address:a}};});
+  }
+  window.sendMailViaGraph=function(to,cc,bcc,subject,htmlBody,done){
+    _getTokenMail(function(token,err){
+      if(!token){done(false,err);return;}
+      var msg={
+        message:{
+          subject:subject||'',
+          body:{contentType:'HTML',content:htmlBody||''},
+          toRecipients:_parseAddrs(to),
+          ccRecipients:_parseAddrs(cc),
+          bccRecipients:_parseAddrs(bcc)
+        },
+        saveToSentItems:true
+      };
+      fetch('https://graph.microsoft.com/v1.0/me/sendMail',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify(msg)
+      }).then(function(r){
+        if(r.status===202){done(true,null);}
+        else{r.text().then(function(t){done(false,t);});}
+      }).catch(function(e){done(false,e.message);});
+    });
+  };
+})();
 </script>
 </body>
 </html>
