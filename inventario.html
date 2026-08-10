@@ -1005,6 +1005,9 @@ let REQCOD_OC={};      // req+'|'+cod -> {ocs:[...], foc, fent, compras} — cru
 let RESV_BY_REQCOD={}; // req+'|'+cod -> cantidad reservada de stock (desde RESV de almacenTransito)
 let SINOC=[];           // D.sinoc — pedidos "Sin OC — Cotización" de Compras
 let SINOC_BY_REQCOD={}; // req+'|'+cod -> fila de SINOC (para saber si está en cotización/archivado)
+let OC_RAW=[];          // D.oc — para sacar el N° de Pedido de un ítem que YA tiene OC (sinoc deja de
+                        // traerlo apenas se genera la OC, ahí solo queda en el registro de la OC)
+let OC_BY_NUM={};       // N° OC -> fila de D.oc (trae .ped/.peds)
 let COTMETA={};         // D.cotMeta (clave ped+'_'+cod) — check "En cotización" de Compras
 let ARCHIVOMETA={};     // D.archivoMeta (clave ped+'_'+cod) — pedidos archivados en Sin OC
 let CONFIRMED_OBRA={}; // "En obra"/"N° guía" ya guardados en data.json (D.obraMeta)
@@ -1030,6 +1033,9 @@ async function cargarLive(){
     SINOC=s.D.sinoc||[];
     COTMETA=s.D.cotMeta||{};
     ARCHIVOMETA=s.D.archivoMeta||{};
+    OC_RAW=s.D.oc||[];
+    OC_BY_NUM={};
+    OC_RAW.forEach(function(o){if(o.oc)OC_BY_NUM[o.oc]=o;});
     buildReqCodOC();
     buildSinocLookup();
     if(!TRANS_DIRTY&&s.D.almacenTransito&&Array.isArray(s.D.almacenTransito.t)){
@@ -1046,7 +1052,7 @@ async function cargarLive(){
     CONFIRMED_VAL={};
     SUPERVISORES=[];
     CONFIRMED_COD=[];
-    PROJ=[];SKUS_RAW={};REQCOD_OC={};CONFIRMED_OBRA={};SINOC=[];SINOC_BY_REQCOD={};COTMETA={};ARCHIVOMETA={};
+    PROJ=[];SKUS_RAW={};REQCOD_OC={};CONFIRMED_OBRA={};SINOC=[];SINOC_BY_REQCOD={};COTMETA={};ARCHIVOMETA={};OC_RAW=[];OC_BY_NUM={};
     document.getElementById('reqLiveNote').className='note';
     document.getElementById('reqLiveNote').innerHTML='⚠️ No se pudo leer data.json (modo local sin servidor) — mostrando '+P5.length+' filas de ejemplo. En la web publicada esto carga automáticamente los '+'requerimientos reales.';
   }
@@ -1285,6 +1291,21 @@ function validatedLabel(picking,pedido){
   if(pedido>0)return{t:'Validado — Enviado a Pedido',c:'#d97706',bg:'#fffbeb'};
   return{t:'Validado',c:'#0d9488',bg:'#f0fdfa'};
 }
+// N° de Pedido de un ítem: si todavía está en Sin OC — Cotización, sale de ahí directo. Una vez
+// que se genera la OC, Compras ya no lo lista en Sin OC (por definición: "sin OC"), así que hay
+// que sacarlo del propio registro de la OC (D.oc trae .ped/.peds del pedido que la originó).
+function pedidoForItem(key){
+  const sr=SINOC_BY_REQCOD[key];
+  if(sr&&sr.ped)return sr.ped;
+  const oc=REQCOD_OC[key];
+  if(oc&&oc.ocs&&oc.ocs.length){
+    for(let i=0;i<oc.ocs.length;i++){
+      const ocRow=OC_BY_NUM[oc.ocs[i]];
+      if(ocRow&&ocRow.ped)return ocRow.ped;
+    }
+  }
+  return '';
+}
 function estadoItem(r){
   const key=r.req+'|'+r.cod;
   if(REQCOD_OC[key]&&REQCOD_OC[key].ocs.length){
@@ -1381,7 +1402,7 @@ function renderReqItemTable(){
       <td><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${r.req||'—'}</span></td>
       <td class="num" style="background:#ecfdf5">${pickCell}</td>
       <td class="num" style="background:#ecfdf5">${pedCell}</td>
-      <td style="background:#ecfdf5">${(SINOC_BY_REQCOD[key]&&SINOC_BY_REQCOD[key].ped)||'—'}</td>
+      <td style="background:#ecfdf5">${pedidoForItem(key)||'—'}</td>
       <td style="background:#fffbeb">${(oc.ocs||[]).join(', ')||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.foc||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.fent||'—'}</td>
