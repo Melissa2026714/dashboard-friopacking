@@ -4103,7 +4103,7 @@ function showSavedLabel(text,color){
 // ── Inicialización: carga GitHub primero, localStorage como fallback ───────────
 (async function init(){
   initP2();initP3();initP6();
-  nav('p2');
+  nav('home');
   const fromGH=await loadGitHub();
   if(!fromGH)loadLocal();
   try{fixOcEstados();}catch(e){}
