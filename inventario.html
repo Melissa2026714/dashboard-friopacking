@@ -1826,6 +1826,48 @@ function cerrarCompletar(){
   document.getElementById('pickCompleteBg').style.display='none';
   _completarKey=null;
 }
+// Devuelve las SKUs asignadas a Picking de un requerimiento si TODAS ya están completadas
+// (incluyendo la que se acaba de marcar) — null si aún queda alguna pendiente o si el
+// requerimiento no tiene nada asignado a Picking. Se usa para saber cuándo mandar el correo
+// de constancia (una vez por requerimiento, no una vez por SKU).
+function reqPickingCompleto(req){
+  const asignados=P5.filter(function(r){
+    if(r.req!==req||!r.estado.toLowerCase().includes('revisi'))return false;
+    const key=r.req+'|'+r.cod;
+    return getDecision(key,AUTO_MAP[key]||0)>0;
+  });
+  if(!asignados.length)return null;
+  const todosListos=asignados.every(function(r){
+    const rec=getRecord(r.req+'|'+r.cod);
+    return !!(rec&&rec.completado);
+  });
+  return todosListos?asignados:null;
+}
+// Correo de constancia al terminar TODO el picking de un requerimiento — abre el cliente de
+// correo del usuario con destinatario/copias y detalle ya redactados, listo para enviar.
+function enviarCorreoPickingCompletado(req,items){
+  const g0=items[0]||{};
+  const asunto='PICKING REQ '+req+' — ATENDIDO';
+  const L=[];
+  L.push('Se completó el picking del requerimiento '+req+'.');
+  L.push('');
+  L.push('Proyecto: '+(g0.proy||'—'));
+  L.push('Responsable del requerimiento: '+(g0.resp||'—'));
+  L.push('');
+  L.push('Detalle de ítems atendidos:');
+  items.forEach(function(r,idx){
+    const key=r.req+'|'+r.cod;
+    const rec=getRecord(key)||{};
+    const picking=getDecision(key,AUTO_MAP[key]||0);
+    L.push('  '+(idx+1)+'. ['+r.cod+'] '+(r.prod||'—'));
+    L.push('     Cantidad a picking: '+picking+(r.unid?' '+r.unid:''));
+    L.push('     Preparado por: '+(rec.responsable||'—')+' — '+(rec.fechaHora||'—'));
+    L.push('');
+  });
+  const to='kalbujar@friopacking.pe';
+  const cc='jcenteno@friopacking.pe,mcondori@grupofriopacking.pe,jmanueco@grupofriopacking.pe';
+  window.location.href='mailto:'+to+'?cc='+encodeURIComponent(cc)+'&subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(L.join('\r\n'));
+}
 async function confirmarCompletado(){
   const key=_completarKey;
   if(!key)return;
@@ -1863,10 +1905,13 @@ async function confirmarCompletado(){
     }
     PENDING[key]=rec;
     localStorage.setItem('fp_almacen_picking_pending',JSON.stringify(PENDING));
+    const req=key.split('|')[0];
+    const itemsCompletos=reqPickingCompleto(req);
     cerrarCompletar();
     renderPick();
     if(document.getElementById('tbreq'))renderReqTable();
     updateHomeCounters();
+    if(itemsCompletos)enviarCorreoPickingCompletado(req,itemsCompletos);
   }catch(e){
     console.error(e);
     alert('No se pudo registrar el cierre: '+e.message);
