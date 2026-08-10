@@ -2268,9 +2268,11 @@ function renderP3(){
     if(q&&![r.ped,r.prod,r.cod,r.proy,r.idproy,r.req,r.resp,r.respPed,r.obs].join(' ').toLowerCase().includes(q))return false;
     return true;
   });
-  const nArch=(D.sinoc||[]).filter(p3IsArchivado).length;
+  const archRows=(D.sinoc||[]).filter(p3IsArchivado);
+  const nArch=archRows.length;
+  const nPendNisira=archRows.filter(function(r){var am=D.archivoMeta[p3ArchKey(r)];return !(am&&am.nisira);}).length;
   const _fca=document.getElementById('f3cntArch');
-  if(_fca)_fca.textContent='🗄 '+nArch+' archivados';
+  if(_fca)_fca.textContent='🗄 '+nArch+' archivados'+(nPendNisira?' · ⏳ '+nPendNisira+' sin anular en NISIRA':'');
   p3fil.sort((a,b)=>{
     const pa=a.fecha?a.fecha.split('/').reverse().join(''):'';
     const pb=b.fecha?b.fecha.split('/').reverse().join(''):'';
@@ -2362,12 +2364,15 @@ function renderP3Table(){
     })()}</td>
     <td style="max-width:220px;cursor:help" data-obs="${(function(){var am=D.archivoMeta&&D.archivoMeta[_k];return am&&am.archivado?esc('Motivo de archivo: '+(am.motivo||'')+' — '+(am.fecha||'')):esc(r.obs);})()}" onmouseenter="showObsTip(this)" onmouseleave="hideObsTip()" onclick="showObsTip(this)">${(function(){
       var am=D.archivoMeta&&D.archivoMeta[_k];
-      if(am&&am.archivado)return '<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-size:11px;color:#6d28d9;font-weight:600">🗄 '+esc(am.motivo||'')+' ('+esc(am.fecha||'')+')</span>';
+      if(am&&am.archivado)return '<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-size:11px;color:#6d28d9;font-weight:600">🗄 '+esc(am.motivo||'')+' ('+esc(am.fecha||'')+') · NISIRA: '+(am.nisira?'✔ anulado':'⏳ pendiente')+'</span>';
       return r.obs?'<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-size:11px;color:#475569">'+esc(r.obs)+'</span>':'<span style="color:#94a3b8;font-size:11px">—</span>';
     })()}</td>
     <td style="text-align:center">${(function(){
       var am=D.archivoMeta&&D.archivoMeta[_k];
-      if(am&&am.archivado)return '<button onclick="desarchivarPedido(\''+_k+'\')" title="Motivo: '+esc(am.motivo||'')+' · '+esc(am.fecha||'')+'" style="background:#f5f3ff;color:#6d28d9;border:1px solid #c4b5fd;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">↩ Restaurar</button>';
+      if(am&&am.archivado)return '<div style="display:flex;flex-direction:column;align-items:center;gap:5px">'+
+        '<button onclick="desarchivarPedido(\''+_k+'\')" title="Motivo: '+esc(am.motivo||'')+' · '+esc(am.fecha||'')+'" style="background:#f5f3ff;color:#6d28d9;border:1px solid #c4b5fd;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">↩ Restaurar</button>'+
+        '<label title="Marca esto solo cuando ya hayas anulado este requerimiento en el sistema NISIRA — archivar aquí no lo hace automáticamente" style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;white-space:nowrap;cursor:pointer;color:'+(am.nisira?'#16a34a':'#b45309')+'"><input type="checkbox" '+(am.nisira?'checked':'')+' onchange="toggleNisiraConfirm(\''+_k+'\',this.checked)" style="width:13px;height:13px;cursor:pointer;accent-color:#16a34a">'+(am.nisira?'✔ NISIRA':'⏳ NISIRA')+'</label>'+
+      '</div>';
       return '<button onclick="archivarPedido(\''+_k+'\',\''+esc(r.ped)+'\')" title="Archivar este pedido" style="background:#faf5ff;color:#7c3aed;border:1px solid #ddd6fe;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">🗄 Archivar</button>';
     })()}</td>
     <td style="text-align:center;background:#f0fdf4;position:sticky;right:0;z-index:1;box-shadow:-5px 0 8px -3px rgba(0,0,0,.12)"><input type="checkbox" ${(D.cotMeta&&D.cotMeta[_k])?'checked':''} onchange="p3SetCotiz('${_k}',this.checked)" title="Marcar como En cotización" style="width:15px;height:15px;cursor:pointer;accent-color:#16a34a"></td>
@@ -2711,6 +2716,16 @@ function p3ArchivarSeleccion(){
 function p3VerArchivados(){
   var fe=document.getElementById('f3est');
   if(fe){fe.value='Archivado';renderP3();}
+}
+// Archivar aquí solo oculta el pedido en el dashboard — el requerimiento sigue
+// vivo en NISIRA (sistema origen) hasta que alguien lo anule ahí. Este checkbox
+// es la confirmación manual de que sí se hizo esa anulación en el sistema real.
+function toggleNisiraConfirm(key,checked){
+  if(!D.archivoMeta)D.archivoMeta={};
+  var prev=D.archivoMeta[key]||{};
+  D.archivoMeta[key]=Object.assign({},prev,{nisira:checked});
+  saveLocal();
+  renderP3();
 }
 function p3RowObj(r,i){var key=(r.ped||'')+'_'+(r.cod||'');return{i:i,ped:r.ped||'',fecha:r.fecha||'',respPed:r.respPed||'',resp:r.resp||'',idproy:r.idproy||'',proy:r.proy||'',cod:r.cod||'',prod:r.prod||'',cant:r.cant||0,unid:r.unid||'',req:r.req||'',freq:r.freq||'',estado:r.estado||'',key:key,cotiz:!!(D.cotMeta&&D.cotMeta[key])};}
 function p3AllRows(){return (D.sinoc||[]).map(p3RowObj);}
