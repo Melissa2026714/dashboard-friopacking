@@ -467,6 +467,7 @@ tr:hover td{background:#f8fafc}
       <div style="font-size:11px;color:#ccfbf1;margin-top:2px">Registra quién lo hizo y adjunta una foto de evidencia (opcional)</div>
     </div>
     <div style="padding:18px 20px">
+      <div id="pc-req-info" style="font-size:11.5px;color:#0d9488;font-weight:700;background:#f0fdfa;border-radius:8px;padding:8px 10px;margin-bottom:14px"></div>
       <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Responsable (quién preparó el pedido)</label>
       <input id="pc-resp" type="text" placeholder="Nombre y apellido" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:14px">
       <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Foto de evidencia (opcional)</label>
@@ -1739,6 +1740,7 @@ function renderPick(){
       <div class="reqgroup-hd">
         <span class="rg-req">${rc}</span>
         <span class="rg-meta">${g.length} SKUs en picking · ${gPick} und. · ${g[0].resp||'—'} · ${g[0].fecha||'—'}</span>
+        <button class="btn bi" style="padding:6px 12px;font-size:11px" onclick="abrirCompletarGrupo('${rc}')">✅ Marcar todo completado</button>
       </div>
       <table>
         <thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant. req.</th><th class="num">Cant. a Picking</th><th>Cierre de ciclo</th></tr></thead>
@@ -1750,7 +1752,7 @@ function renderPick(){
           <td class="num"><input type="number" min="0" max="${r.cant}" value="${r.picking}" style="width:64px;padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setDecision('${r.key}',this.value,${r.cant})"></td>
           <td>${r.completado
             ? `<span class="pill p-ok">✅ COMPLETADO</span> <span style="font-size:10.5px;color:#64748b">${r.responsable} · ${r.fechaHora}</span>${r.fotoPath?` · <a href="${r.fotoPath}" target="_blank" style="font-size:10.5px;font-weight:600">📷 ver foto</a>`:''}`
-            : `<button class="btn bi" style="padding:5px 10px;font-size:10.5px" onclick="abrirCompletar('${r.key}')">✅ Marcar completado</button>`}
+            : '<span style="color:#cbd5e1;font-size:11px">pendiente — usa "Marcar todo completado" arriba</span>'}
           </td>
         </tr>`).join('')}
         </tbody>
@@ -1836,16 +1838,30 @@ function renderPickDone(){
 }
 
 /* ═══════════════ CIERRE DE CICLO DE PICKING (foto + responsable + fecha/hora) ═══════════════ */
-let _completarKey=null;
-function abrirCompletar(key){
-  _completarKey=key;
+// El cierre es por TODO el requerimiento a la vez (una sola persona/foto/hora para todas
+// las SKUs pendientes de ese N° Req.), no SKU por SKU — así lo pidió Almacén.
+let _completarKeys=null;
+let _completarReq=null;
+function abrirCompletarGrupo(rk){
+  const keys=P5.filter(function(r){
+    if(r.req!==rk||!r.estado.toLowerCase().includes('revisi'))return false;
+    const key=r.req+'|'+r.cod;
+    if(getDecision(key,AUTO_MAP[key]||0)<=0)return false;
+    const rec=getRecord(key);
+    return !(rec&&rec.completado);
+  }).map(function(r){return r.req+'|'+r.cod;});
+  if(!keys.length){alert('Ya no queda nada pendiente de cerrar en este requerimiento.');return;}
+  _completarKeys=keys;
+  _completarReq=rk;
   document.getElementById('pc-resp').value='';
   document.getElementById('pc-foto').value='';
+  document.getElementById('pc-req-info').textContent='Requerimiento '+rk+' — '+keys.length+' SKU(s) pendiente(s) de cerrar';
   document.getElementById('pickCompleteBg').style.display='flex';
 }
 function cerrarCompletar(){
   document.getElementById('pickCompleteBg').style.display='none';
-  _completarKey=null;
+  _completarKeys=null;
+  _completarReq=null;
 }
 // Devuelve las SKUs asignadas a Picking de un requerimiento si TODAS ya están completadas
 // (incluyendo la que se acaba de marcar) — null si aún queda alguna pendiente o si el
@@ -1890,8 +1906,9 @@ function enviarCorreoPickingCompletado(req,items){
   window.location.href='mailto:'+to+'?cc='+encodeURIComponent(cc)+'&subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(L.join('\r\n'));
 }
 async function confirmarCompletado(){
-  const key=_completarKey;
-  if(!key)return;
+  const keys=_completarKeys;
+  const req=_completarReq;
+  if(!keys||!keys.length)return;
   const responsable=document.getElementById('pc-resp').value.trim();
   if(!responsable){alert('Indica quién realizó el picking.');return;}
   const btn=document.getElementById('pc-confirmar');
@@ -1900,8 +1917,7 @@ async function confirmarCompletado(){
     if(btn){btn.disabled=true;btn.textContent='⏳ Guardando…';}
     const file=document.getElementById('pc-foto').files[0];
     const ahora=new Date().toLocaleString('es-PE');
-    const prev=getRecord(key)||{};
-    const rec={...prev,completado:true,responsable,fechaHora:ahora};
+    let fotoPath='';
     if(file){
       const token=localStorage.getItem(GH_TOKEN_KEY);
       if(!token){
@@ -1912,21 +1928,23 @@ async function confirmarCompletado(){
         try{
           if(status)status.textContent='⏳ Subiendo foto de evidencia…';
           const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
-          const path='assets/picking/'+key.replace(/[|/\\]/g,'_')+'_'+Date.now()+'.'+ext;
+          const path='assets/picking/'+req.replace(/[|/\\]/g,'_')+'_'+Date.now()+'.'+ext;
           const base64=await leerArchivoBase64(file);
           // La subida no puede colgar el cierre: máximo 30 segundos y se continúa sin foto.
           const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('tiempo de espera agotado (30 s)')),30000));
-          await Promise.race([subirArchivoGitHub(path,base64,'almacen: evidencia de picking '+key),timeout]);
-          rec.fotoPath=path;
+          await Promise.race([subirArchivoGitHub(path,base64,'almacen: evidencia de picking '+req),timeout]);
+          fotoPath=path;
         }catch(e){
           console.error(e);
           alert('No se pudo subir la foto de evidencia ('+e.message+'). Se guarda el resto de la información igual.');
         }
       }
     }
-    PENDING[key]=rec;
+    keys.forEach(function(key){
+      const prev=getRecord(key)||{};
+      PENDING[key]={...prev,completado:true,responsable,fechaHora:ahora,fotoPath:fotoPath||prev.fotoPath||''};
+    });
     localStorage.setItem('fp_almacen_picking_pending',JSON.stringify(PENDING));
-    const req=key.split('|')[0];
     const itemsCompletos=reqPickingCompleto(req);
     cerrarCompletar();
     renderPick();
