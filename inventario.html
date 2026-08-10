@@ -602,6 +602,12 @@ const GH_FILE='data.json';
 const GH_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE;
 const GH_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE;
 const GH_TOKEN_KEY='fp_gh_token_almacen'; // token propio de Almacén, independiente del que usa Compras
+// Existencias vive en su propio archivo — pesaba ~7 MB dentro de data.json (casi la mitad del
+// total) y ni Compras ni Requerimientos/Picking lo necesitan, así que se separó para que esas
+// pantallas no tengan que esperar a que baje/parsee ese bloque.
+const GH_FILE_EXIST='almacen_existencias.json';
+const GH_RAW_EXIST='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE_EXIST;
+const GH_API_EXIST='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE_EXIST;
 function setupGHToken(){
   const cur=localStorage.getItem(GH_TOKEN_KEY)||'';
   const t=prompt('Ingresa el Token de GitHub de Almacén\n(propio de este módulo, no el de Compras — se guarda solo en este navegador):',cur);
@@ -1024,16 +1030,13 @@ async function cargarLive(){
     ARCHIVOMETA=s.D.archivoMeta||{};
     buildReqCodOC();
     buildSinocLookup();
-    if(Array.isArray(s.D.almacenExistencias)&&s.D.almacenExistencias.length){
-      DATA=s.D.almacenExistencias;
-      rebuildDataByCod();
-      EXISTENCIAS_LIVE=true;
-    }
     if(!TRANS_DIRTY&&s.D.almacenTransito&&Array.isArray(s.D.almacenTransito.t)){
       setTransito(s.D.almacenTransito.t,s.D.almacenTransito.r||[],false,s.D.almacenTransito.ts);
     }
     applyTransitoADatos();
     document.getElementById('reqLiveNote').innerHTML='☁️ <b>Datos en vivo</b> desde data.json — '+P5.length.toLocaleString('es-PE')+' requerimientos (mismos que ve Compras).';
+    // Existencias se carga aparte, sin esperarla — no bloquea Requerimientos/Picking (ver GH_FILE_EXIST)
+    cargarExistenciasLive();
   }catch(e){
     P5=P5_DEMO;
     P5_LIVE=false;
@@ -1060,6 +1063,24 @@ async function cargarLive(){
   renderAlertBox();
   renderCod();
   updateHomeCounters();
+}
+// Existencias (Kardex) en su propio archivo, ~7 MB — se carga en paralelo y se aplica cuando
+// llegue, sin retrasar Requerimientos/Picking (que ya terminaron de renderizar arriba).
+async function cargarExistenciasLive(){
+  try{
+    const r=await fetch(GH_FILE_EXIST+'?t='+Date.now());
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const s=await r.json();
+    if(!Array.isArray(s.existencias)||!s.existencias.length)throw new Error('formato inesperado');
+    DATA=s.existencias;
+    rebuildDataByCod();
+    EXISTENCIAS_LIVE=true;
+    applyTransitoADatos();
+    render();
+    updateHomeCounters();
+  }catch(e){
+    console.warn('[Almacén] No se pudo cargar Existencias en vivo:',e);
+  }
 }
 
 /* ═══════════════ PÁGINA GENERAL — EXISTENCIAS ═══════════════ */
@@ -1945,6 +1966,7 @@ async function guardarDecisiones(){
     if(!remoteRaw.ok)throw new Error('No se pudo leer el contenido actual de data.json');
     const remote=await remoteRaw.json();
     if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
+    delete remote.D.almacenExistencias; // limpieza: ya vive en su propio archivo, no en data.json
     const merged={...(remote.D.almacenPicking||{}),...PENDING};
     remote.D.almacenPicking=merged;
     // Validaciones de almacén (check ✔): true → se agrega/actualiza; false → se retira
@@ -2333,15 +2355,20 @@ async function guardarCodigos(){
   }
 }
 
-/* Botón principal de la barra: guarda Existencias + Picking + Códigos en un solo commit,
-   igual que el botón GUARDAR de Compras. Solo toca D.almacenExistencias/almacenPicking/almacenCodigos —
-   nunca reescribe oc/p4/p5reqs/etc. */
+/* Botón principal de la barra: guarda Existencias + Picking + Códigos + Tránsito.
+   Existencias vive en su propio archivo (almacen_existencias.json, ver GH_FILE_EXIST) —
+   se sube en un commit aparte. Picking/Códigos/Tránsito siguen en un solo commit a data.json,
+   igual que antes. Nunca reescribe oc/p4/p5reqs/etc. */
 async function guardarTodo(){
   const hayExistencias=EXISTENCIAS_DIRTY;
   const hayPicking=Object.keys(PENDING).length>0;
   const hayCodigos=PENDING_COD.length>0;
   const hayTransito=TRANS_DIRTY;
-  if(!hayExistencias&&!hayPicking&&!hayCodigos&&!hayTransito){alert('No hay cambios nuevos para guardar.');return;}
+  // Recalcular Tránsito/Reservas toca las columnas En Tránsito/Reservas de Existencias —
+  // si eso pasó y hay Existencias reales cargadas, hay que volver a subirlas aunque no se
+  // haya importado un Kardex nuevo en este navegador.
+  const hayExistenciasEfectivo=hayExistencias||(hayTransito&&EXISTENCIAS_LIVE&&Array.isArray(DATA)&&DATA.length>0);
+  if(!hayExistenciasEfectivo&&!hayPicking&&!hayCodigos&&!hayTransito){alert('No hay cambios nuevos para guardar.');return;}
   const token=localStorage.getItem(GH_TOKEN_KEY);
   if(!token){
     if(confirm('Para guardar (compartido con todos) necesitas un Token de GitHub de Almacén.\n¿Configurarlo ahora?'))setupGHToken();
@@ -2351,45 +2378,53 @@ async function guardarTodo(){
   if(btn){btn.disabled=true;btn.textContent='⏳ Guardando…';}
   document.querySelectorAll('.saveLblEl,.codSaveLblEl').forEach(l=>l.innerHTML='⏳ Guardando…');
   try{
-    const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
-    if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
-    const meta=await check.json();
-    const sha=meta.sha;
-    const remoteRaw=await fetch(GH_RAW+'?t='+Date.now());
-    if(!remoteRaw.ok)throw new Error('No se pudo leer el contenido actual de data.json');
-    const remote=await remoteRaw.json();
-    if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
-
-    if(hayPicking)remote.D.almacenPicking={...(remote.D.almacenPicking||{}),...PENDING};
-    let colisionesCod=[];
-    if(hayCodigos){
-      const remoteCodigos=remote.D.almacenCodigos||[];
-      const remoteCods=new Set(remoteCodigos.map(c=>c.cod));
-      colisionesCod=PENDING_COD.filter(c=>remoteCods.has(c.cod));
-      const nuevosCod=PENDING_COD.filter(c=>!remoteCods.has(c.cod));
-      remote.D.almacenCodigos=remoteCodigos.concat(nuevosCod);
-    }
-    if(hayExistencias)remote.D.almacenExistencias=DATA;
-    if(hayTransito){
-      remote.D.almacenTransito={t:TRANS,r:RESV,ts:(TRANS_META&&TRANS_META.ts)||Date.now()};
-      // guarda también las Existencias con las columnas En Tránsito/Reservas ya aplicadas
-      if(!hayExistencias&&Array.isArray(remote.D.almacenExistencias)&&remote.D.almacenExistencias.length&&EXISTENCIAS_LIVE)remote.D.almacenExistencias=DATA;
-    }
-
-    const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
     const partes=[];
-    if(hayExistencias)partes.push('Existencias ('+DATA.length+' SKUs)');
-    if(hayPicking)partes.push('Picking ('+Object.keys(PENDING).length+' cambios)');
-    if(hayCodigos)partes.push('Códigos ('+PENDING_COD.length+' nuevos)');
-    if(hayTransito)partes.push('Tránsito/Reservas ('+TRANS.length+' + '+RESV.length+' líneas)');
-    const body={message:'almacen: guardar '+partes.join(' + ')+' — '+new Date().toISOString(),content,sha};
-    const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
+    if(hayExistenciasEfectivo){
+      const checkE=await fetch(GH_API_EXIST,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+      const shaE=checkE.ok?(await checkE.json()).sha:undefined;
+      const contentE=btoa(unescape(encodeURIComponent(JSON.stringify({existencias:DATA,ts:Date.now()}))));
+      const bodyE={message:'almacen: guardar Existencias ('+DATA.length+' SKUs) — '+new Date().toISOString(),content:contentE};
+      if(shaE)bodyE.sha=shaE;
+      const resE=await fetch(GH_API_EXIST,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(bodyE)});
+      if(!resE.ok)throw new Error('GitHub rechazó la subida de Existencias (HTTP '+resE.status+')');
+      partes.push('Existencias ('+DATA.length+' SKUs)');
+    }
 
-    if(hayPicking){CONFIRMED=remote.D.almacenPicking;PENDING={};localStorage.removeItem('fp_almacen_picking_pending');}
-    if(hayCodigos){CONFIRMED_COD=remote.D.almacenCodigos;PENDING_COD=colisionesCod;savePendingCodigos();}
-    if(hayExistencias){EXISTENCIAS_DIRTY=false;}
-    if(hayTransito){TRANS_DIRTY=false;}
+    let colisionesCod=[];
+    if(hayPicking||hayCodigos||hayTransito){
+      const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+      if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
+      const meta=await check.json();
+      const sha=meta.sha;
+      const remoteRaw=await fetch(GH_RAW+'?t='+Date.now());
+      if(!remoteRaw.ok)throw new Error('No se pudo leer el contenido actual de data.json');
+      const remote=await remoteRaw.json();
+      if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
+      delete remote.D.almacenExistencias; // limpieza: ya vive en su propio archivo, no en data.json
+
+      if(hayPicking)remote.D.almacenPicking={...(remote.D.almacenPicking||{}),...PENDING};
+      if(hayCodigos){
+        const remoteCodigos=remote.D.almacenCodigos||[];
+        const remoteCods=new Set(remoteCodigos.map(c=>c.cod));
+        colisionesCod=PENDING_COD.filter(c=>remoteCods.has(c.cod));
+        const nuevosCod=PENDING_COD.filter(c=>!remoteCods.has(c.cod));
+        remote.D.almacenCodigos=remoteCodigos.concat(nuevosCod);
+      }
+      if(hayTransito)remote.D.almacenTransito={t:TRANS,r:RESV,ts:(TRANS_META&&TRANS_META.ts)||Date.now()};
+
+      const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
+      if(hayPicking)partes.push('Picking ('+Object.keys(PENDING).length+' cambios)');
+      if(hayCodigos)partes.push('Códigos ('+PENDING_COD.length+' nuevos)');
+      if(hayTransito)partes.push('Tránsito/Reservas ('+TRANS.length+' + '+RESV.length+' líneas)');
+      const body={message:'almacen: guardar '+partes.join(' + ')+' — '+new Date().toISOString(),content,sha};
+      const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
+
+      if(hayPicking){CONFIRMED=remote.D.almacenPicking;PENDING={};localStorage.removeItem('fp_almacen_picking_pending');}
+      if(hayCodigos){CONFIRMED_COD=remote.D.almacenCodigos;PENDING_COD=colisionesCod;savePendingCodigos();}
+      if(hayTransito){TRANS_DIRTY=false;}
+    }
+    if(hayExistenciasEfectivo){EXISTENCIAS_DIRTY=false;}
 
     let savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE')+' — '+partes.join(' + ');
     if(colisionesCod.length)savedTxt+=` — ⚠ ${colisionesCod.length} código(s) ya existían y no se subieron, regenéralos`;
