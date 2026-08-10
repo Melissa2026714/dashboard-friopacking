@@ -2360,7 +2360,11 @@ function renderP3Table(){
       if(r.parcial)return '<span style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">⚠ OC Parcial</span>';
       return(D.cotMeta&&D.cotMeta[_k])?'<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">En cotización</span>':badgeReq(r.estado);
     })()}</td>
-    <td style="max-width:220px;${r.obs?'cursor:help':''}" data-obs="${esc(r.obs)}" onmouseenter="showObsTip(this)" onmouseleave="hideObsTip()" onclick="showObsTip(this)">${r.obs?'<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-size:11px;color:#475569">'+esc(r.obs)+'</span>':'<span style="color:#94a3b8;font-size:11px">—</span>'}</td>
+    <td style="max-width:220px;cursor:help" data-obs="${(function(){var am=D.archivoMeta&&D.archivoMeta[_k];return am&&am.archivado?esc('Motivo de archivo: '+(am.motivo||'')+' — '+(am.fecha||'')):esc(r.obs);})()}" onmouseenter="showObsTip(this)" onmouseleave="hideObsTip()" onclick="showObsTip(this)">${(function(){
+      var am=D.archivoMeta&&D.archivoMeta[_k];
+      if(am&&am.archivado)return '<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-size:11px;color:#6d28d9;font-weight:600">🗄 '+esc(am.motivo||'')+' ('+esc(am.fecha||'')+')</span>';
+      return r.obs?'<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-size:11px;color:#475569">'+esc(r.obs)+'</span>':'<span style="color:#94a3b8;font-size:11px">—</span>';
+    })()}</td>
     <td style="text-align:center">${(function(){
       var am=D.archivoMeta&&D.archivoMeta[_k];
       if(am&&am.archivado)return '<button onclick="desarchivarPedido(\''+_k+'\')" title="Motivo: '+esc(am.motivo||'')+' · '+esc(am.fecha||'')+'" style="background:#f5f3ff;color:#6d28d9;border:1px solid #c4b5fd;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">↩ Restaurar</button>';
