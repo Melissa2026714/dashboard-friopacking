@@ -274,6 +274,7 @@ tr:hover td{background:#f8fafc}
         <th>Código</th><th>Descripción</th><th class="num">Cant.</th><th>Unidad</th><th>N° Req.</th>
         <th class="num" style="background:#ecfdf5;color:#065f46" title="Cantidad que Almacén repartió a Picking (stock) en el modal del requerimiento">Cant. a Picking</th>
         <th class="num" style="background:#ecfdf5;color:#065f46" title="Cantidad que Almacén repartió a Pedido (compra) en el modal del requerimiento">Cant. a Pedido</th>
+        <th style="background:#ecfdf5;color:#065f46" title="N° de pedido generado en Compras (Sin OC — Cotización) para este código — aparece cuando Compras ya lo proceso">N° Pedido</th>
         <th style="background:#fef3c7;color:#92400e">N° OC</th><th style="background:#fef3c7;color:#92400e">F. Emisión OC</th><th style="background:#fef3c7;color:#92400e">F. Est. Entrega</th><th class="num" style="background:#fef3c7;color:#92400e">En Compras</th>
         <th class="num">Reserv. Stock</th>
         <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad ya despachada al proyecto — se digita a mano al momento del despacho">En Obra</th>
@@ -1380,6 +1381,7 @@ function renderReqItemTable(){
       <td><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${r.req||'—'}</span></td>
       <td class="num" style="background:#ecfdf5">${pickCell}</td>
       <td class="num" style="background:#ecfdf5">${pedCell}</td>
+      <td style="background:#ecfdf5">${(SINOC_BY_REQCOD[key]&&SINOC_BY_REQCOD[key].ped)||'—'}</td>
       <td style="background:#fffbeb">${(oc.ocs||[]).join(', ')||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.foc||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.fent||'—'}</td>
@@ -1389,7 +1391,7 @@ function renderReqItemTable(){
       <td style="background:#fffbeb"><input type="text" value="${esc(ob.guia)}" placeholder="—" style="width:78px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="setGuia('${key}',this.value)"></td>
       <td class="num" style="background:#fffbeb;font-weight:700;color:${falta>0?'#dc2626':'#16a34a'}">${falta}</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="18" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
+  }).join('')||'<tr><td colspan="19" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
   const tot=f.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqItemInfo').textContent=tot?`Mostrando ${reqItemPage*sz+1}–${Math.min((reqItemPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} ítems`:'Sin resultados';
   const pagEl=document.getElementById('reqItemPag');
