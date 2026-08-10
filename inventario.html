@@ -1251,10 +1251,25 @@ function buildSinocLookup(){
 // Estado "efectivo" de un ítem para la vista Por Ítem: si ya tiene OC, lo dice explícitamente
 // (en vez de solo repetir el estado de Almacén); si no tiene OC, cruza con Sin OC — Cotización
 // de Compras (cotMeta/archivoMeta, misma clave ped+'_'+cod que usa esa pantalla).
+// Etiqueta para un ítem que Almacén ya revisó y repartió entre Picking/Pedido (Valid. Almacén
+// marcado) — reemplaza el "En Revisión" del dato crudo, que no se actualiza hasta el próximo
+// import de NISIRA aunque Almacén ya haya decidido y guardado la repartición.
+function validatedLabel(picking,pedido){
+  if(picking>0&&pedido>0)return{t:'Validado — Picking + Pedido',c:'#0d9488',bg:'#f0fdfa'};
+  if(picking>0)return{t:'Validado — En Picking',c:'#16a34a',bg:'#f0fdf4'};
+  if(pedido>0)return{t:'Validado — Enviado a Pedido',c:'#d97706',bg:'#fffbeb'};
+  return{t:'Validado',c:'#0d9488',bg:'#f0fdfa'};
+}
 function estadoItem(r){
   const key=r.req+'|'+r.cod;
   if(REQCOD_OC[key]&&REQCOD_OC[key].ocs.length){
     return{t:'Enviado a pedido — cuenta con OC',c:'#0f766e',bg:'#f0fdfa'};
+  }
+  if((r.estado||'').toLowerCase().includes('revisi')&&isValidadoReq(r.req)){
+    const auto=AUTO_MAP[key]||0;
+    const picking=getDecision(key,auto);
+    const pedido=Math.max(0,(r.cant||0)-picking);
+    return validatedLabel(picking,pedido);
   }
   const sr=SINOC_BY_REQCOD[key];
   if(sr){
@@ -1388,8 +1403,8 @@ function renderReqTable(){
     const items=groups[rk];
     const g0=items[0];
     const estados=[...new Set(items.map(i=>i.estado))];
-    const s=estados.length===1?semReq(estados[0]):{c:'#64748b',bg:'#f1f5f9',t:'Mixto'};
-    const estadoLbl=estados.length===1?estadoDisplay(estados[0]):`Mixto (${estados.length} estados)`;
+    let s=estados.length===1?semReq(estados[0]):{c:'#64748b',bg:'#f1f5f9',t:'Mixto'};
+    let estadoLbl=estados.length===1?estadoDisplay(estados[0]):`Mixto (${estados.length} estados)`;
     const cantTotal=items.reduce((a,i)=>a+(i.cant||0),0);
     let pickTotal=0,pedTotal=0;
     items.forEach(i=>{
@@ -1402,6 +1417,10 @@ function renderReqTable(){
         pedTotal+=(i.cant-picking);
       }
     });
+    if(isValidadoReq(rk)&&(pickTotal>0||pedTotal>0)){
+      const vl=validatedLabel(pickTotal,pedTotal);
+      s={c:vl.c,bg:vl.bg};estadoLbl=vl.t;
+    }
     return `<tr>
     <td style="color:#64748b">${g0.fecha||'—'}</td>
     <td>${g0.resp||'—'}</td>
@@ -1542,9 +1561,10 @@ function verReqItems(rk){
       </tr></thead>
       <tbody>
         ${items.map((r,i)=>{
-          const s=semReq(r.estado);
           const enRevision=r.estado.toLowerCase().includes('revisi');
           const key=r.req+'|'+r.cod;
+          const yaValidado=isValidadoReq(rk);
+          let s,estadoLbl;
           let pickCell,pedCell;
           if(enRevision){
             const auto=AUTO_MAP[key]||0;
@@ -1552,9 +1572,12 @@ function verReqItems(rk){
             const pedido=r.cant-picking;
             pickCell=`<input type="number" min="0" max="${r.cant}" value="${picking}" style="width:64px;padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setDecision('${key}',this.value,${r.cant});verReqItems('${rk}')">`;
             pedCell=`${pedido}${pedido>0?' <span class="pill p-crit">PEDIDO</span>':' <span class="pill p-ok">COMPLETO</span>'}`;
+            if(yaValidado){const vl=validatedLabel(picking,pedido);s={c:vl.c,bg:vl.bg};estadoLbl=vl.t;}
+            else{const sr=semReq(r.estado);s={c:sr.c,bg:sr.bg};estadoLbl=estadoDisplay(r.estado);}
           }else{
             pickCell='<span style="color:#cbd5e1">—</span>';
             pedCell='<span style="color:#cbd5e1">—</span>';
+            const sr=semReq(r.estado);s={c:sr.c,bg:sr.bg};estadoLbl=estadoDisplay(r.estado);
           }
           return `<tr>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8">${i+1}</td>
@@ -1562,7 +1585,7 @@ function verReqItems(rk){
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;white-space:normal;max-width:260px;font-weight:500">${r.prod||'—'}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700">${(r.cant||0).toLocaleString('es-PE')}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#64748b">${r.unid||'—'}</td>
-            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9"><span class="pill" style="background:${s.bg};color:${s.c}">${estadoDisplay(r.estado)}</span></td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9"><span class="pill" style="background:${s.bg};color:${s.c};white-space:nowrap">${estadoLbl}</span></td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${pickCell}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${pedCell}</td>
           </tr>`;
