@@ -993,6 +993,10 @@ let PROJ=[];           // D.proj — para derivar Zona por nombre de proyecto en
 let SKUS_RAW={};       // s.SKUS (top-level) — líneas de OC agrupadas por N° OC, para cruzar por req+código
 let REQCOD_OC={};      // req+'|'+cod -> {ocs:[...], foc, fent, compras} — cruce con SKUS_RAW
 let RESV_BY_REQCOD={}; // req+'|'+cod -> cantidad reservada de stock (desde RESV de almacenTransito)
+let SINOC=[];           // D.sinoc — pedidos "Sin OC — Cotización" de Compras
+let SINOC_BY_REQCOD={}; // req+'|'+cod -> fila de SINOC (para saber si está en cotización/archivado)
+let COTMETA={};         // D.cotMeta (clave ped+'_'+cod) — check "En cotización" de Compras
+let ARCHIVOMETA={};     // D.archivoMeta (clave ped+'_'+cod) — pedidos archivados en Sin OC
 let CONFIRMED_OBRA={}; // "En obra"/"N° guía" ya guardados en data.json (D.obraMeta)
 let PENDING_OBRA={};   // ediciones de En obra/N° guía en este navegador aún no guardadas
 let reqViewMode='grupo'; // 'grupo' (agrupado por requerimiento, actual) | 'item' (por ítem, para vista de zona)
@@ -1013,7 +1017,11 @@ async function cargarLive(){
     PROJ=s.D.proj||[];
     SKUS_RAW=s.SKUS||{};
     CONFIRMED_OBRA=s.D.obraMeta||{};
+    SINOC=s.D.sinoc||[];
+    COTMETA=s.D.cotMeta||{};
+    ARCHIVOMETA=s.D.archivoMeta||{};
     buildReqCodOC();
+    buildSinocLookup();
     if(Array.isArray(s.D.almacenExistencias)&&s.D.almacenExistencias.length){
       DATA=s.D.almacenExistencias;
       rebuildDataByCod();
@@ -1031,7 +1039,7 @@ async function cargarLive(){
     CONFIRMED_VAL={};
     SUPERVISORES=[];
     CONFIRMED_COD=[];
-    PROJ=[];SKUS_RAW={};REQCOD_OC={};CONFIRMED_OBRA={};
+    PROJ=[];SKUS_RAW={};REQCOD_OC={};CONFIRMED_OBRA={};SINOC=[];SINOC_BY_REQCOD={};COTMETA={};ARCHIVOMETA={};
     document.getElementById('reqLiveNote').className='note';
     document.getElementById('reqLiveNote').innerHTML='⚠️ No se pudo leer data.json (modo local sin servidor) — mostrando '+P5.length+' filas de ejemplo. En la web publicada esto carga automáticamente los '+'requerimientos reales.';
   }
@@ -1231,6 +1239,34 @@ function buildReqCodOC(){
     });
   });
 }
+// Lookup req+'|'+cod -> fila de D.sinoc, para saber si el ítem está en la ventana
+// "Sin OC — Cotización" de Compras y en qué estado (en cotización / archivado / pendiente).
+function buildSinocLookup(){
+  SINOC_BY_REQCOD={};
+  (SINOC||[]).forEach(function(r){
+    if(!r.req||!r.cod)return;
+    SINOC_BY_REQCOD[r.req+'|'+r.cod]=r;
+  });
+}
+// Estado "efectivo" de un ítem para la vista Por Ítem: si ya tiene OC, lo dice explícitamente
+// (en vez de solo repetir el estado de Almacén); si no tiene OC, cruza con Sin OC — Cotización
+// de Compras (cotMeta/archivoMeta, misma clave ped+'_'+cod que usa esa pantalla).
+function estadoItem(r){
+  const key=r.req+'|'+r.cod;
+  if(REQCOD_OC[key]&&REQCOD_OC[key].ocs.length){
+    return{t:'Enviado a pedido — cuenta con OC',c:'#0f766e',bg:'#f0fdfa'};
+  }
+  const sr=SINOC_BY_REQCOD[key];
+  if(sr){
+    const ck=(sr.ped||'')+'_'+(sr.cod||'');
+    const am=ARCHIVOMETA[ck];
+    if(am&&am.archivado)return{t:'Archivado en Sin OC',c:'#6d28d9',bg:'#f5f3ff'};
+    if(COTMETA[ck])return{t:'En cotización',c:'#1d4ed8',bg:'#eff6ff'};
+    return{t:'Pendiente — sin OC',c:'#dc2626',bg:'#fef2f2'};
+  }
+  const s=semReq(r.estado);
+  return{t:estadoDisplay(r.estado),c:s.c,bg:s.bg};
+}
 // Deriva la Zona (NORTE/CENTRO/SUR) de un requerimiento a partir del nombre del proyecto —
 // D.proj no trae un ID en común con los requerimientos, así que se cruza por coincidencia de
 // nombre (el nombre corto del proyecto en Proyectos PMO suele ser parte de la razón social
@@ -1283,12 +1319,12 @@ function renderReqItemTable(){
     const resv=RESV_BY_REQCOD[key]||0;
     const ob=getObra(key);
     const falta=Math.max(0,(r.cant||0)-(ob.obra||0));
-    const s=semReq(r.estado);
+    const ei=estadoItem(r);
     return `<tr>
       <td style="color:#64748b">${r.fecha||'—'}</td>
       <td>${r.resp||'—'}</td>
       <td style="white-space:normal;max-width:180px;font-size:11px" title="${esc(r.proy)}">${r.proy||'—'}</td>
-      <td><span class="pill" style="background:${s.bg};color:${s.c}">${estadoDisplay(r.estado)}</span></td>
+      <td><span class="pill" style="background:${ei.bg};color:${ei.c};white-space:nowrap">${ei.t}</span></td>
       <td class="mono">${r.cod||'—'}</td>
       <td style="white-space:normal;max-width:240px">${r.prod||'—'}</td>
       <td class="num" style="font-weight:700">${(r.cant||0).toLocaleString('es-PE')}</td>
