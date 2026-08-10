@@ -1264,9 +1264,10 @@ function buildReqCodOC(){
     (SKUS_RAW[oc]||[]).forEach(function(line){
       if(!line.req||!line.cod)return;
       const k=line.req+'|'+line.cod;
-      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fent:line.fent||'',compras:0};
+      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fent:line.fent||'',compras:0,cantOrd:0};
       else if(REQCOD_OC[k].ocs.indexOf(oc)<0)REQCOD_OC[k].ocs.push(oc);
       REQCOD_OC[k].compras+=(line.cantPend||0);
+      REQCOD_OC[k].cantOrd+=(line.cantOrd||0);
     });
   });
 }
@@ -1389,6 +1390,16 @@ function renderReqItemTable(){
       const pedido=Math.max(0,(r.cant||0)-picking);
       pickCell=picking.toLocaleString('es-PE');
       pedCell=pedido.toLocaleString('es-PE');
+    }else if(oc.cantOrd>0){
+      // Ya no está "en revisión" — se resolvió sin pasar por el reparto de Almacén en este
+      // dashboard (venía de antes, o de flujo directo). Se infiere el reparto a partir de lo
+      // realmente ordenado por OC para este código: lo que cubrió la OC fue a Pedido, el resto
+      // (si el requerido es mayor) se asume cubierto por Picking/stock.
+      const pedidoInf=Math.min(r.cant||0,oc.cantOrd);
+      const pickingInf=Math.max(0,(r.cant||0)-pedidoInf);
+      const tip='Inferido desde la OC (no pasó por el reparto de Almacén en este dashboard)';
+      pickCell='<span title="'+tip+'" style="color:#64748b">~'+pickingInf.toLocaleString('es-PE')+'</span>';
+      pedCell='<span title="'+tip+'" style="color:#64748b">~'+pedidoInf.toLocaleString('es-PE')+'</span>';
     }
     return `<tr>
       <td style="color:#64748b">${r.fecha||'—'}</td>
