@@ -1101,6 +1101,7 @@ function instNav(id){
     <input class="fsrch" id="f3q" oninput="renderP3()" placeholder="Buscar pedido / código / descripción…"/>
     <button class="fclr" onclick="clearF3()">✕ Limpiar</button>
     <span class="fcnt" id="f3cnt">— registros</span>
+    <span id="f3cntArch" onclick="p3VerArchivados()" title="Ver pedidos archivados" style="cursor:pointer;font-size:11px;color:#7c3aed;font-weight:700;white-space:nowrap;border:1px solid #ddd6fe;background:#f5f3ff;border-radius:12px;padding:4px 10px">🗄 — archivados</span>
   </div>
   <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
     <div style="font-size:12px;color:#64748b;flex:1;min-width:200px"><strong id="p3selcnt" style="color:#1e40af;font-size:13px">0</strong> pedidos seleccionados &nbsp;&middot;&nbsp; <span id="p3viscnt">—</span></div>
@@ -1108,12 +1109,13 @@ function instNav(id){
     <button onclick="p3Deselect()" id="p3btndesel" style="display:none;background:transparent;color:#94a3b8;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit">☐ Quitar selección</button>
     <button onclick="abrirModalExport()" style="background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">📥 Exportar Excel</button>
     <button onclick="openConsolidar()" style="background:linear-gradient(135deg,#1e40af,#2563eb);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">📋 Consolidar selección</button>
+    <button onclick="p3ArchivarSeleccion()" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">🗄 Archivar selección</button>
   </div>
   <div class="tw">
     <div class="th"><span class="thtt">Pedidos sin OC — En Cotización</span><div class="thr"><button class="thb" onclick="exportSinOcXls()" style="background:#16A34A;color:#fff;font-weight:600;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;margin-right:6px;">⬇ EXPORTAR</button></div></div>
     <table class="ttbl"><thead><tr>
       <th style="width:36px;text-align:center"><input type="checkbox" id="p3chkall" onchange="p3ToggleAll(this.checked)" title="Seleccionar todos los visibles" style="width:15px;height:15px;accent-color:#2563eb;cursor:pointer"></th>
-      <th>N° PEDIDO</th><th>FECHA PEDIDO</th><th>RESP. PEDIDO</th><th>RESPONSABLE / SOLICITANTE</th><th>ID PROYECTO</th><th>PROYECTO</th><th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>CANT.</th><th>UNIDAD</th><th>REQUERIMIENTO</th><th>FECHA REQ.</th><th style="white-space:nowrap">EN TRÁNSITO</th><th>ESTADO</th><th>OBSERVACIÓN</th>
+      <th>N° PEDIDO</th><th>FECHA PEDIDO</th><th>RESP. PEDIDO</th><th>RESPONSABLE / SOLICITANTE</th><th>ID PROYECTO</th><th>PROYECTO</th><th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>CANT.</th><th>UNIDAD</th><th>REQUERIMIENTO</th><th>FECHA REQ.</th><th style="white-space:nowrap">EN TRÁNSITO</th><th>ESTADO</th><th>OBSERVACIÓN</th><th style="text-align:center;white-space:nowrap">ARCHIVO</th>
       <th style="background:#16a34a;color:#fff;text-align:center;white-space:nowrap;position:sticky;right:0;z-index:5;box-shadow:-5px 0 8px -3px rgba(0,0,0,.25)"><div style="display:flex;align-items:center;justify-content:center;gap:5px"><input type="checkbox" onchange="p3ToggleAllCotiz(this.checked)" title="Marcar todos los visibles" style="width:14px;height:14px;cursor:pointer;accent-color:#fff"> COTIZ.</div></th>
     </tr></thead><tbody id="tb3"></tbody></table>
     <div class="pag"><span id="p3info">—</span><div class="pbts" id="p3pag"></div></div>
@@ -2235,8 +2237,8 @@ function initP3(){
   const fp=document.getElementById('f3proj');
   fp.innerHTML='<option value="">Proyecto: Todos</option>';
   proj.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;fp.appendChild(o);});
-  document.getElementById('bdg3').textContent=D.sinoc.length;
-  document.getElementById('hc3').textContent=D.sinoc.length+' pedidos';
+  document.getElementById('bdg3').textContent=sinocActivos().length;
+  document.getElementById('hc3').textContent=sinocActivos().length+' pedidos';
   document.getElementById('f3q').value='';
   try{document.getElementById('f3resp').value='';}catch(e){}
   try{document.getElementById('f3proj').value='';}catch(e){}
@@ -2251,27 +2253,32 @@ function renderP3(){
   const fe=document.getElementById('f3est');
   const estSel=fe?fe.value:'';
   if(fe){
-    const getEstLabel=r=>{if(r.parcial)return 'OC Parcial';var k=(r.ped||'')+'_'+(r.cod||'');return(D.cotMeta&&D.cotMeta[k])?'En cotización':r.estado;};
     const ests=[...new Set((D.sinoc||[]).map(getEstLabel).filter(Boolean))].sort();
     fe.innerHTML='<option value="">Estado: Todos</option>';
     ests.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;fe.appendChild(o);});
     fe.value=estSel; // restaurar selección previa
   }
-  const getEstLabel=r=>{if(r.parcial)return 'OC Parcial';var k=(r.ped||'')+'_'+(r.cod||'');return(D.cotMeta&&D.cotMeta[k])?'En cotización':r.estado;};
   p3fil=D.sinoc.filter(r=>{
+    const archivado=p3IsArchivado(r);
+    if(estSel==='Archivado'){if(!archivado)return false;}
+    else{if(archivado)return false;if(estSel){if(getEstLabel(r)!==estSel)return false;}}
     if(respPedSel.length&&!respPedSel.includes(r.respPed))return false;
     if(est&&r.resp!==est)return false;
     if(proj&&r.proy!==proj)return false;
-    if(estSel){if(getEstLabel(r)!==estSel)return false;}
     if(q&&![r.ped,r.prod,r.cod,r.proy,r.idproy,r.req,r.resp,r.respPed,r.obs].join(' ').toLowerCase().includes(q))return false;
     return true;
   });
+  const nArch=(D.sinoc||[]).filter(p3IsArchivado).length;
+  const _fca=document.getElementById('f3cntArch');
+  if(_fca)_fca.textContent='🗄 '+nArch+' archivados';
   p3fil.sort((a,b)=>{
     const pa=a.fecha?a.fecha.split('/').reverse().join(''):'';
     const pb=b.fecha?b.fecha.split('/').reverse().join(''):'';
     return pb.localeCompare(pa);
   });
   document.getElementById('f3cnt').textContent=p3fil.length+' pedidos';
+  try{document.getElementById('bdg3').textContent=sinocActivos().length;}catch(e){}
+  try{document.getElementById('hc3').textContent=sinocActivos().length+' pedidos';}catch(e){}
   // KPIs
   document.getElementById('k3tot').textContent=p3fil.length;
   document.getElementById('k3resp').textContent=new Set(p3fil.map(r=>r.resp)).size;
@@ -2347,8 +2354,18 @@ function renderP3Table(){
     <td>${r.req}</td>
     <td style="font-size:11px;color:#475569">${r.freq||'—'}</td>
     <td style="text-align:center">${esEnTransito(r.cod)?'<span style="background:#0891b2;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">SÍ</span>':'<span style="color:#94a3b8;font-size:10px">—</span>'}</td>
-    <td>${r.parcial?'<span style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">⚠ OC Parcial</span>':(()=>{var k=(r.ped||'')+'_'+(r.cod||'');return(D.cotMeta&&D.cotMeta[k])?'<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">En cotización</span>':badgeReq(r.estado);})()}</td>
+    <td>${(function(){
+      var am=D.archivoMeta&&D.archivoMeta[_k];
+      if(am&&am.archivado)return '<span title="Motivo: '+esc(am.motivo||'')+' · '+esc(am.fecha||'')+'" style="background:#f5f3ff;color:#6d28d9;border:1px solid #c4b5fd;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap;cursor:help">🗄 Archivado</span>';
+      if(r.parcial)return '<span style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">⚠ OC Parcial</span>';
+      return(D.cotMeta&&D.cotMeta[_k])?'<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">En cotización</span>':badgeReq(r.estado);
+    })()}</td>
     <td style="max-width:220px;${r.obs?'cursor:help':''}" data-obs="${esc(r.obs)}" onmouseenter="showObsTip(this)" onmouseleave="hideObsTip()" onclick="showObsTip(this)">${r.obs?'<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-size:11px;color:#475569">'+esc(r.obs)+'</span>':'<span style="color:#94a3b8;font-size:11px">—</span>'}</td>
+    <td style="text-align:center">${(function(){
+      var am=D.archivoMeta&&D.archivoMeta[_k];
+      if(am&&am.archivado)return '<button onclick="desarchivarPedido(\''+_k+'\')" title="Motivo: '+esc(am.motivo||'')+' · '+esc(am.fecha||'')+'" style="background:#f5f3ff;color:#6d28d9;border:1px solid #c4b5fd;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">↩ Restaurar</button>';
+      return '<button onclick="archivarPedido(\''+_k+'\',\''+esc(r.ped)+'\')" title="Archivar este pedido" style="background:#faf5ff;color:#7c3aed;border:1px solid #ddd6fe;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">🗄 Archivar</button>';
+    })()}</td>
     <td style="text-align:center;background:#f0fdf4;position:sticky;right:0;z-index:1;box-shadow:-5px 0 8px -3px rgba(0,0,0,.12)"><input type="checkbox" ${(D.cotMeta&&D.cotMeta[_k])?'checked':''} onchange="p3SetCotiz('${_k}',this.checked)" title="Marcar como En cotización" style="width:15px;height:15px;cursor:pointer;accent-color:#16a34a"></td>
   </tr>`;}).join('');
   const tot=p3fil.length, pages=Math.ceil(tot/sz);
@@ -2646,6 +2663,51 @@ function exportSinOcXls(){
 var p3sel=new Set();
 var _pdfUrls=[null,null,null,null,null,null];
 var _nProv=6;
+// ── Archivar pedidos Sin OC — motivo + fecha obligatorios, mismo patrón que cotMeta/ocMeta ──
+function p3ArchKey(r){return (r.ped||'')+'_'+(r.cod||'');}
+function p3IsArchivado(r){var k=p3ArchKey(r);return !!(D.archivoMeta&&D.archivoMeta[k]&&D.archivoMeta[k].archivado);}
+function sinocActivos(){return (D.sinoc||[]).filter(function(r){return !p3IsArchivado(r);});}
+function getEstLabel(r){if(p3IsArchivado(r))return 'Archivado';if(r.parcial)return 'OC Parcial';var k=p3ArchKey(r);return(D.cotMeta&&D.cotMeta[k])?'En cotización':r.estado;}
+function archivarPedido(key,ped){
+  var motivo=prompt('Motivo para archivar el pedido '+(ped||'')+':\n(obligatorio — este pedido saldrá de la lista Sin OC — Cotización)','');
+  if(motivo===null)return;
+  motivo=motivo.trim();
+  if(!motivo){alert('Debes indicar un motivo para archivar el pedido.');return;}
+  if(!D.archivoMeta)D.archivoMeta={};
+  D.archivoMeta[key]={archivado:true,motivo:motivo,fecha:_hoy()};
+  saveLocal();
+  renderP3();
+}
+function desarchivarPedido(key){
+  if(!confirm('¿Restaurar este pedido a la lista de Sin OC — Cotización?'))return;
+  if(!D.archivoMeta)D.archivoMeta={};
+  var prev=D.archivoMeta[key]||{};
+  D.archivoMeta[key]={archivado:false,motivo:prev.motivo||'',fecha:prev.fecha||''};
+  saveLocal();
+  renderP3();
+}
+function p3ArchivarSeleccion(){
+  if(!p3sel.size){alert('Selecciona al menos un pedido para archivar.');return;}
+  var n=p3sel.size;
+  var motivo=prompt('Motivo para archivar los '+n+' pedidos seleccionados:\n(obligatorio)','');
+  if(motivo===null)return;
+  motivo=motivo.trim();
+  if(!motivo){alert('Debes indicar un motivo para archivar.');return;}
+  if(!D.archivoMeta)D.archivoMeta={};
+  var fecha=_hoy();
+  p3sel.forEach(function(i){
+    var r=(D.sinoc||[])[i];
+    if(!r)return;
+    D.archivoMeta[p3ArchKey(r)]={archivado:true,motivo:motivo,fecha:fecha};
+  });
+  p3sel.clear();
+  saveLocal();
+  renderP3();
+}
+function p3VerArchivados(){
+  var fe=document.getElementById('f3est');
+  if(fe){fe.value='Archivado';renderP3();}
+}
 function p3RowObj(r,i){var key=(r.ped||'')+'_'+(r.cod||'');return{i:i,ped:r.ped||'',fecha:r.fecha||'',respPed:r.respPed||'',resp:r.resp||'',idproy:r.idproy||'',proy:r.proy||'',cod:r.cod||'',prod:r.prod||'',cant:r.cant||0,unid:r.unid||'',req:r.req||'',freq:r.freq||'',estado:r.estado||'',key:key,cotiz:!!(D.cotMeta&&D.cotMeta[key])};}
 function p3AllRows(){return (D.sinoc||[]).map(p3RowObj);}
 function p3VisRows(){return (p3fil||[]).map(function(r){return p3RowObj(r,(D.sinoc||[]).indexOf(r));});}
@@ -3919,6 +3981,11 @@ async function saveGitHub(payload){
         }
         if(remote.D&&remote.D.cotMeta){
           localData.D.cotMeta=mergeCotMeta(remote.D.cotMeta,localData.D.cotMeta);
+          cambiado=true;
+        }
+        // Igual anti-pisado para los motivos/fechas de Archivar en Sin OC — Cotización
+        if(remote.D&&remote.D.archivoMeta){
+          localData.D.archivoMeta=mergeOcMeta(remote.D.archivoMeta,localData.D.archivoMeta);
           cambiado=true;
         }
         if(cambiado){
@@ -5939,14 +6006,14 @@ function softSelect(id, options, defaultLabel){
 function refreshAllPages(){
   // Update badges
   try{document.getElementById('bdg2').textContent=D.oc.length;}catch(e){}
-  try{document.getElementById('bdg3').textContent=D.sinoc.length;}catch(e){}
+  try{document.getElementById('bdg3').textContent=sinocActivos().length;}catch(e){}
   try{document.getElementById('bdg4').textContent=D.p4?D.p4.length:0;}catch(e){}
   try{document.getElementById('bdg6').textContent=D.proj.length;}catch(e){}
   // Update home card counts
   const cards=document.querySelectorAll('.hcs');
   if(cards.length>=5){
     cards[0].textContent=D.oc.length+' órdenes';
-    cards[1].textContent=D.sinoc.length+' pedidos';
+    cards[1].textContent=sinocActivos().length+' pedidos';
     cards[3].textContent=D.proj.length+' proyectos';
   }
   // P2 — repopulate options, preserve filters, re-render
@@ -5963,8 +6030,8 @@ function refreshAllPages(){
     buildMsel('f3respPedDrop','f3respPedBtn','f3respPedLbl',[...new Set(D.sinoc.map(r=>r.respPed).filter(Boolean))].sort(),'Resp. Pedido: Todos',renderP3);
     softSelect('f3resp',[...new Set(D.sinoc.map(r=>r.resp).filter(Boolean))].sort(),'Responsable: Todos');
     softSelect('f3proj',[...new Set(D.sinoc.map(r=>r.proy).filter(Boolean))].sort(),'Proyecto: Todos');
-    document.getElementById('bdg3').textContent=D.sinoc.length;
-    document.getElementById('hc3').textContent=D.sinoc.length+' pedidos';
+    document.getElementById('bdg3').textContent=sinocActivos().length;
+    document.getElementById('hc3').textContent=sinocActivos().length+' pedidos';
     renderP3();
   }catch(e){console.log('p3 skip',e);}
   // P4 — repopulate options, preserve filters, re-render
