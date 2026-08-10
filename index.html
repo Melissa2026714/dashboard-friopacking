@@ -5570,18 +5570,31 @@ function importMaestro(wb){
 
   // ── 4. Build Req sin Pedido (Page 5) ───────────────────────────────────────
   const p5Rows=rows.filter(r=>!!g(r,'EstadoRequerimiento'));
-  // Dedup by Req+Product
-  const p5Seen=new Set();
+  // El Maestro repite la MISMA línea (req+código+cantidad idéntica) una vez por cada evento de
+  // recepción/salida que se registra — esas hay que ignorarlas o se duplicaría la cantidad. Pero
+  // un mismo req+código con una cantidad DISTINTA es una línea de requerimiento real aparte (ver
+  // caso 0001-0022802: código 001904900016 con cant 2 y cant 1 en filas separadas) y hay que
+  // sumarla, no descartarla — antes se perdía silenciosamente quedándose solo con la primera.
+  const p5Seen=new Set();     // req+código+cantidad exacta ya contado (repetición de recepción)
+  const p5IdxByReqCod={};     // req+código -> índice en p5Data, para sumar cuando aparece otra cant
   const p5Data=[];
   p5Rows.forEach(r=>{
-    const key=g(r,'CodRequerimiento')+'|'+g(r,'IdProducto');
-    if(p5Seen.has(key))return;
-    p5Seen.add(key);
+    const req=g(r,'CodRequerimiento'),cod=g(r,'IdProducto');
+    const cant=Math.round(gn(r,'CantidadRequerimiento'));
+    const key3=req+'|'+cod+'|'+cant;
+    if(p5Seen.has(key3))return;
+    p5Seen.add(key3);
+    const key2=req+'|'+cod;
+    if(p5IdxByReqCod[key2]!=null){
+      p5Data[p5IdxByReqCod[key2]].cant+=cant;
+      return;
+    }
+    p5IdxByReqCod[key2]=p5Data.length;
     p5Data.push({
-      req:g(r,'CodRequerimiento'),fecha:gd(r,'FechaRequerimiento'),
+      req:req,fecha:gd(r,'FechaRequerimiento'),
       resp:g(r,'NombreResponsable'),idproy:g(r,'IdProyecto'),
-      proy:g(r,'NombreProyecto'),cod:g(r,'IdProducto'),
-      prod:g(r,'Producto'),cant:Math.round(gn(r,'CantidadRequerimiento')),
+      proy:g(r,'NombreProyecto'),cod:cod,
+      prod:g(r,'Producto'),cant:cant,
       unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||g(r,'UM')||g(r,'Um')||g(r,'Und')||g(r,'UndMed')||g(r,'Unidad de Medida')||g(r,'UnidMed')||'',
       freq:gd(r,'FechaRequerida')||gd(r,'FechaEntrega')||gd(r,'ParaFechaOrden')||gd(r,'Fecha Requerida')||gd(r,'FechaRequerimiento')||'',
       estado:g(r,'EstadoRequerimiento')
