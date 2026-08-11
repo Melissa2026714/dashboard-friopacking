@@ -1484,8 +1484,8 @@ function estadoItem(r){
     const ck=(sr.ped||'')+'_'+(sr.cod||'');
     const am=ARCHIVOMETA[ck];
     if(am&&am.archivado)return{t:'Archivado en Sin OC',c:'#6d28d9',bg:'#f5f3ff'};
-    if(COTMETA[ck])return{t:'En cotización',c:'#1d4ed8',bg:'#eff6ff'};
-    return{t:'Pendiente — sin OC',c:'#dc2626',bg:'#fef2f2'};
+    if(COTMETA[ck])return{t:'Pedido en cotización',c:'#1d4ed8',bg:'#eff6ff'};
+    return{t:'Pedido pendiente',c:'#dc2626',bg:'#fef2f2'};
   }
   const s=semReq(r.estado);
   return{t:estadoDisplay(r.estado),c:s.c,bg:s.bg};
