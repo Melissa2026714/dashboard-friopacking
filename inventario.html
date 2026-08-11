@@ -1615,6 +1615,9 @@ function renderReq(){
     if(q && ![r.req,r.cod,r.prod,r.proy,r.resp].join(' ').toLowerCase().includes(q))return false;
     return true;
   });
+  // Más reciente primero — N° Req. es correlativo (mismo prefijo, mismo largo), así que
+  // ordenar el texto de mayor a menor equivale a ordenar por número de requerimiento.
+  window._reqFil.sort((a,b)=>String(b.req||'').localeCompare(String(a.req||'')));
   const f=window._reqFil;
   document.getElementById('reqKpis').innerHTML=`
    <div class="kpi"><div class="kl">Total Req.</div><div class="kv">${f.length.toLocaleString('es-PE')}</div><div class="kd">filtrados</div></div>
