@@ -131,6 +131,16 @@ tr:hover td{background:#f8fafc}
 .dirty-badge{background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px}
 .savebar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 #saveLbl{font-size:11px;color:#64748b}
+/* MULTI-SELECT — mismo patrón que el filtro de Estado en Compras (index.html) */
+.ms-wrap{position:relative;display:inline-block}
+.ms-btn{border:1px solid #e2e8f0;border-radius:6px;padding:5px 10px;font-size:11px;color:#475569;background:#f8fafc;cursor:pointer;white-space:nowrap;user-select:none;min-width:130px;display:flex;align-items:center;gap:4px}
+.ms-btn.ms-on{border-color:#1d4ed8;color:#1d4ed8;background:#eff6ff}
+.ms-arr{margin-left:auto;font-size:9px;color:#94a3b8}
+.ms-dd{position:absolute;top:calc(100% + 3px);left:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:9999;min-width:220px;max-height:280px;overflow-y:auto;padding:4px 0;display:none}
+.ms-item{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;font-size:11px;color:#475569;transition:background .1s}
+.ms-item:hover{background:#f8fafc}
+.ms-item input[type=checkbox]{accent-color:#1d4ed8;cursor:pointer;width:13px;height:13px;flex-shrink:0}
+.ms-badge{background:#1d4ed8;color:#fff;border-radius:10px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:2px}
 </style>
 </head>
 <body>
@@ -245,7 +255,7 @@ tr:hover td{background:#f8fafc}
     <input id="rq" type="text" placeholder="🔍 Buscar por requerimiento / código / descripción / proyecto…" oninput="renderReq()">
     <select id="rfresp" onchange="renderReq()"><option value="">Responsable: Todos</option></select>
     <select id="rfproy" onchange="renderReq()"><option value="">Proyecto: Todos</option></select>
-    <select id="rfest" onchange="renderReq()"><option value="">Estado: Todos</option></select>
+    <div class="ms-wrap"><div class="ms-btn" id="rfest-btn" data-label="Estado" onclick="toggleMS('rfest')"><span id="rfest-lbl">Estado: Todos</span><span class="ms-arr">▼</span></div><div class="ms-dd" id="rfest-dd"></div></div>
     <select id="rfzona" onchange="renderReq()" title="Zona derivada del proyecto (Proyectos PMO) — si un proyecto no aparece bajo su zona, búscalo por nombre en el buscador"><option value="">Zona: Todas</option><option>NORTE</option><option>CENTRO</option><option>SUR</option></select>
     <button class="btn br" onclick="limpiarFiltrosReq()" title="Quita todos los filtros de esta pantalla">✕ Limpiar filtros</button>
     <span class="fx" id="rcnt"></span>
@@ -1408,11 +1418,48 @@ function verFichaExistencia(cod){
 
 /* ═══════════════ PÁGINA REQUERIMIENTOS ═══════════════ */
 let reqPage=0;
+// ── MULTI-SELECT ESTADO — mismo patrón que Compras (index.html), para poder marcar más de
+// un estado a la vez (ej. "Pedido pendiente" + "Pedido en cotización") ──
+const _msState={};
+function getMS(id){return _msState[id]?[..._msState[id]]:[];}
+function clearMS(id){if(_msState[id])_msState[id].clear();_updateMSBtn(id);}
+function buildMS(id,options,label,onChangeFn){
+  if(!_msState[id])_msState[id]=new Set();
+  [...(_msState[id]||[])].forEach(v=>{if(!options.includes(v))_msState[id].delete(v);});
+  const dd=document.getElementById(id+'-dd');
+  if(!dd)return;
+  dd.innerHTML=options.map(o=>`<label class="ms-item"><input type="checkbox" value="${o.replace(/"/g,'&quot;')}" ${_msState[id].has(o)?'checked':''} onchange="_msCheck('${id}','${o.replace(/'/g,"\\'")}',this.checked,'${onChangeFn}')"><span>${o}</span></label>`).join('');
+  _updateMSBtn(id,label);
+}
+function _msCheck(id,val,checked,fn){
+  if(!_msState[id])_msState[id]=new Set();
+  if(checked)_msState[id].add(val);else _msState[id].delete(val);
+  _updateMSBtn(id);
+  if(fn&&window[fn])window[fn]();
+}
+function _updateMSBtn(id){
+  const lbl=document.getElementById(id+'-lbl');
+  const btn=document.getElementById(id+'-btn');
+  if(!lbl||!btn)return;
+  const label=btn.dataset.label||'Estado';
+  const sel=_msState[id]?[..._msState[id]]:[];
+  if(sel.length===0){lbl.innerHTML=label+': Todos';btn.classList.remove('ms-on');}
+  else if(sel.length===1){lbl.innerHTML=`<span class="ms-badge">1</span> ${sel[0]}`;btn.classList.add('ms-on');}
+  else{lbl.innerHTML=`<span class="ms-badge">${sel.length}</span> Estados sel.`;btn.classList.add('ms-on');}
+}
+function toggleMS(id){
+  const dd=document.getElementById(id+'-dd');
+  if(!dd)return;
+  const open=dd.style.display==='block';
+  document.querySelectorAll('.ms-dd').forEach(d=>d.style.display='none');
+  if(!open)dd.style.display='block';
+}
+document.addEventListener('click',function(e){if(!e.target.closest('.ms-wrap'))document.querySelectorAll('.ms-dd').forEach(d=>d.style.display='none');});
 function limpiarFiltrosReq(){
   document.getElementById('rq').value='';
   document.getElementById('rfresp').value='';
   document.getElementById('rfproy').value='';
-  document.getElementById('rfest').value='';
+  clearMS('rfest');
   const rz=document.getElementById('rfzona');if(rz)rz.value='';
   renderReq();
 }
@@ -1423,10 +1470,10 @@ function fillReqFilters(){
   // columna Estado de la tabla (estadoItem, ya cruzada con OC/Cotización/Validado) — no el
   // estado crudo del Excel, que no distingue "Pedido pendiente" de "Pedido en cotización".
   const ests=[...new Set(P5.map(r=>estadoItem(r).t))].filter(Boolean).sort();
-  const fr=document.getElementById('rfresp'),fp=document.getElementById('rfproy'),fe=document.getElementById('rfest');
+  const fr=document.getElementById('rfresp'),fp=document.getElementById('rfproy');
   fr.innerHTML='<option value="">Responsable: Todos</option>'+resps.map(r=>`<option>${esc(r)}</option>`).join('');
   fp.innerHTML='<option value="">Proyecto: Todos</option>'+proys.map(p=>`<option>${esc(p)}</option>`).join('');
-  fe.innerHTML='<option value="">Estado: Todos</option>'+ests.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
+  buildMS('rfest',ests,'Estado','renderReq');
 }
 function semReq(e){
   const l=(e||'').toLowerCase();
@@ -1672,12 +1719,12 @@ function renderReq(){
   const q=document.getElementById('rq').value.toLowerCase().trim();
   const fr=document.getElementById('rfresp').value;
   const fp=document.getElementById('rfproy').value;
-  const fe=document.getElementById('rfest').value;
+  const fe=getMS('rfest');
   const fz=(document.getElementById('rfzona')||{}).value||'';
   window._reqFil=P5.filter(r=>{
     if(fr && r.resp!==fr)return false;
     if(fp && r.proy!==fp)return false;
-    if(fe && estadoItem(r).t!==fe)return false;
+    if(fe.length && !fe.includes(estadoItem(r).t))return false;
     if(fz && zonaForProy(r.proy)!==fz)return false;
     if(q && ![r.req,r.cod,r.prod,r.proy,r.resp].join(' ').toLowerCase().includes(q))return false;
     return true;
