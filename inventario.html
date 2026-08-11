@@ -291,8 +291,7 @@ tr:hover td{background:#f8fafc}
         <th class="num" style="background:#ecfdf5;color:#065f46" title="Cantidad que Almacén repartió a Pedido (compra) en el modal del requerimiento">Cant. a Pedido</th>
         <th style="background:#ecfdf5;color:#065f46" title="N° de pedido generado para este código">N° Pedido</th>
         <th style="background:#ecfdf5;color:#065f46" title="Quién está a cargo de gestionar la compra de este pedido">Resp. Pedido</th>
-        <th style="background:#fef3c7;color:#92400e">N° OC</th><th style="background:#fef3c7;color:#92400e">F. Emisión OC</th><th style="background:#fef3c7;color:#92400e">F. Est. Entrega</th><th class="num" style="background:#fef3c7;color:#92400e">En Compras</th>
-        <th class="num">Reserv. Stock</th>
+        <th style="background:#fef3c7;color:#92400e">N° OC</th><th style="background:#fef3c7;color:#92400e">F. Emisión OC</th><th style="background:#fef3c7;color:#92400e">F. Est. Entrega</th>
         <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad ya despachada al proyecto — sale sola del Excel (CantidadSalida) cuando ya hay despacho registrado; si no, se digita a mano">En Obra</th>
         <th style="background:#fef3c7;color:#92400e">N° Guía</th>
         <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad requerida menos lo ya despachado a obra">Falta</th>
@@ -1022,7 +1021,6 @@ function setTransito(t,r,marcarDirty,ts){
   if(marcarDirty)TRANS_DIRTY=true;
   TRANS_BY_COD={};TRANS.forEach(x=>{if(x.cod)TRANS_BY_COD[x.cod]=(TRANS_BY_COD[x.cod]||0)+(x.cantPend!=null?x.cantPend:(x.cant||0));});
   RESV_BY_COD={};RESV.forEach(x=>{if(x.cod)RESV_BY_COD[x.cod]=(RESV_BY_COD[x.cod]||0)+(+x.cant||0);});
-  RESV_BY_REQCOD={};RESV.forEach(x=>{if(x.req&&x.cod){const k=x.req+'|'+x.cod;RESV_BY_REQCOD[k]=(RESV_BY_REQCOD[k]||0)+(+x.cant||0);}});
 }
 
 // Aplica los totales calculados a cada ítem de Existencias (columnas "En Tránsito" y "Reservas" de la hoja General).
@@ -1173,7 +1171,6 @@ let PROJ=[];           // D.proj (data.json, sigue compartido) — para derivar 
 // del código de cruce (REQCOD_OC, estadoItem, pedidoForItem, etc.) no necesitó cambiar.
 let SKUS_RAW={};       // líneas de OC agrupadas por N° OC, para cruzar por req+código
 let REQCOD_OC={};      // req+'|'+cod -> {ocs:[...], foc, fent, compras} — cruce con SKUS_RAW
-let RESV_BY_REQCOD={}; // req+'|'+cod -> cantidad reservada de stock (desde RESV de almacenTransito, data.json)
 let SINOC=[];           // pedidos "Sin OC — Cotización" propios de Almacén
 let SINOC_BY_REQCOD={}; // req+'|'+cod -> fila de SINOC (para saber si está en cotización/archivado)
 let OC_RAW=[];          // OC propias de Almacén — para sacar el N° de Pedido de un ítem que YA tiene
@@ -1640,7 +1637,6 @@ function renderReqItemTable(){
   document.getElementById('tbreqitem').innerHTML=rows.map(function(r){
     const key=r.req+'|'+r.cod;
     const oc=REQCOD_OC[key]||{};
-    const resv=RESV_BY_REQCOD[key]||0;
     const salidaExcel=SALIDAS_ALM[key];
     const ob=getObra(key);
     const obraEfectiva=salidaExcel?salidaExcel.obra:(ob.obra||0);
@@ -1691,8 +1687,6 @@ function renderReqItemTable(){
       <td style="background:#fffbeb">${(oc.ocs||[]).join(', ')||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.foc||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.fent||'—'}</td>
-      <td class="num" style="background:#fffbeb">${oc.compras||0}</td>
-      <td class="num">${resv||'—'}</td>
       <td class="num" style="background:#fffbeb">${salidaExcel
         ?'<span title="Cantidad de salida real, del Excel — no editable" style="color:#0f766e;font-weight:700">'+salidaExcel.obra.toLocaleString('es-PE')+'</span>'
         :'<input type="number" min="0" max="'+(r.cant||0)+'" value="'+(ob.obra||0)+'" style="width:56px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setObraQty(\''+key+'\',this.value,'+(r.cant||0)+')">'}</td>
@@ -1701,7 +1695,7 @@ function renderReqItemTable(){
         :'<input type="text" value="'+esc(ob.guia)+'" placeholder="—" style="width:78px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="setGuia(\''+key+'\',this.value)">'}</td>
       <td class="num" style="background:#fffbeb;font-weight:700;color:${falta>0?'#dc2626':'#16a34a'}">${falta}</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="20" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
+  }).join('')||'<tr><td colspan="19" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
   const tot=f.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqItemInfo').textContent=tot?`Mostrando ${reqItemPage*sz+1}–${Math.min((reqItemPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} ítems`:'Sin resultados';
   const pagEl=document.getElementById('reqItemPag');
