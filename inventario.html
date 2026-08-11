@@ -280,7 +280,7 @@ tr:hover td{background:#f8fafc}
         <th style="background:#ecfdf5;color:#065f46" title="Quién está a cargo de gestionar la compra de este pedido">Resp. Pedido</th>
         <th style="background:#fef3c7;color:#92400e">N° OC</th><th style="background:#fef3c7;color:#92400e">F. Emisión OC</th><th style="background:#fef3c7;color:#92400e">F. Est. Entrega</th><th class="num" style="background:#fef3c7;color:#92400e">En Compras</th>
         <th class="num">Reserv. Stock</th>
-        <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad ya despachada al proyecto — se digita a mano al momento del despacho">En Obra</th>
+        <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad ya despachada al proyecto — sale sola del Excel (CantidadSalida) cuando ya hay despacho registrado; si no, se digita a mano">En Obra</th>
         <th style="background:#fef3c7;color:#92400e">N° Guía</th>
         <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad requerida menos lo ya despachado a obra">Falta</th>
       </tr></thead>
@@ -621,6 +621,7 @@ const GH_FILE_REQALM='almacen_requerimientos.json';
 const GH_RAW_REQALM='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE_REQALM;
 const GH_API_REQALM='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE_REQALM;
 let REQ_ALM_LIVE=false,REQ_ALM_DIRTY=false;
+let SALIDAS_ALM={}; // req+'|'+cod -> {obra, guias:[...], fsal} — despachos reales desde el Excel
 function setupGHToken(){
   const cur=localStorage.getItem(GH_TOKEN_KEY)||'';
   const t=prompt('Ingresa el Token de GitHub de Almacén\n(propio de este módulo, no el de Compras — se guarda solo en este navegador):',cur);
@@ -722,8 +723,8 @@ function handleImportAlmacen(input){
         // Requerimientos/OC/Sin OC propios de Almacén (independiente de Compras) — misma hoja "Reporte Maestro"
         const req=parseRequerimientosWorkbook(wb);
         if(req){
-          setRequerimientosAlm(req.p5,req.oc,req.skus,req.sinoc,true);
-          partes.push(req.p5.length.toLocaleString('es-PE')+' requerimientos ('+req.oc.length+' OC · '+req.sinoc.length+' sin OC)');
+          setRequerimientosAlm(req.p5,req.oc,req.skus,req.sinoc,req.salidas,true);
+          partes.push(req.p5.length.toLocaleString('es-PE')+' requerimientos ('+req.oc.length+' OC · '+req.sinoc.length+' sin OC · '+Object.keys(req.salidas).length+' con salida a obra)');
         }
         if(!partes.length)throw new Error('no se encontraron filas con código válido');
         results.push('✅ '+file.name+' ('+partes.join(' · ')+')');
@@ -949,13 +950,34 @@ function parseRequerimientosWorkbook(wb){
     });
   });
 
-  return {p5:p5,oc:oc,skus:skus,sinoc:sinoc};
+  // Salidas a obra (equivalente a "En Obra"/"N° Guía"): columnas DocumentoDeOrigen (guía),
+  // CantidadSalida y FechaSalida, mismo join req+código. Una fila sin salida trae estas 3
+  // columnas vacías, así que se ignora — solo se suma cuando hay un despacho real registrado.
+  // Cuando ya existe esto, "En Obra"/"N° Guía" salen del Excel (solo lectura) en vez de digitarse
+  // a mano; el campo manual queda solo para lo que todavía no aparece en el Excel.
+  const salBy={};
+  rows.forEach(function(r){
+    const cantSal=toNum(r['CantidadSalida']);
+    const guia=xtexto(r['DocumentoDeOrigen']);
+    if(!cantSal&&!guia)return;
+    const req=xcodigo(r['CodRequerimiento']),cod=xtexto(r['IdProducto']);
+    if(!req||!cod)return;
+    const key=req+'|'+cod;
+    if(!salBy[key])salBy[key]={obra:0,guias:[],fsal:''};
+    salBy[key].obra+=cantSal;
+    if(guia&&salBy[key].guias.indexOf(guia)<0)salBy[key].guias.push(guia);
+    const fsal=xfecha(r['FechaSalida']);
+    if(fsal&&(!salBy[key].fsal||dmyOrd(fsal)>dmyOrd(salBy[key].fsal)))salBy[key].fsal=fsal;
+  });
+
+  return {p5:p5,oc:oc,skus:skus,sinoc:sinoc,salidas:salBy};
 }
-function setRequerimientosAlm(p5,oc,skus,sinoc,marcarDirty){
+function setRequerimientosAlm(p5,oc,skus,sinoc,salidas,marcarDirty){
   P5=(Array.isArray(p5)?p5:[]).map(function(r){return {...r,estado:fixEnc(r.estado)};});
   OC_RAW=Array.isArray(oc)?oc:[];
   SKUS_RAW=skus||{};
   SINOC=Array.isArray(sinoc)?sinoc:[];
+  SALIDAS_ALM=salidas||{};
   P5_LIVE=true;
   REQ_ALM_LIVE=true;
   OC_BY_NUM={};
@@ -1182,7 +1204,7 @@ async function cargarRequerimientosLive(){
     if(!r.ok)throw new Error('HTTP '+r.status);
     const s=await r.json();
     if(!s||!Array.isArray(s.p5))throw new Error('formato inesperado');
-    setRequerimientosAlm(s.p5,s.oc||[],s.skus||{},s.sinoc||[],false);
+    setRequerimientosAlm(s.p5,s.oc||[],s.skus||{},s.sinoc||[],s.salidas||{},false);
     document.getElementById('reqLiveNote').className='note live';
     document.getElementById('reqLiveNote').innerHTML='☁️ <b>Datos en vivo</b> — '+P5.length.toLocaleString('es-PE')+' requerimientos (import propio de Almacén, independiente de Compras).';
   }catch(e){
@@ -1518,8 +1540,10 @@ function renderReqItemTable(){
     const key=r.req+'|'+r.cod;
     const oc=REQCOD_OC[key]||{};
     const resv=RESV_BY_REQCOD[key]||0;
+    const salidaExcel=SALIDAS_ALM[key];
     const ob=getObra(key);
-    const falta=Math.max(0,(r.cant||0)-(ob.obra||0));
+    const obraEfectiva=salidaExcel?salidaExcel.obra:(ob.obra||0);
+    const falta=Math.max(0,(r.cant||0)-obraEfectiva);
     const ei=estadoItem(r);
     const enRevision=(r.estado||'').toLowerCase().includes('revisi');
     let pickCell='—',pedCell='—';
@@ -1559,8 +1583,12 @@ function renderReqItemTable(){
       <td style="background:#fffbeb;color:#64748b">${oc.fent||'—'}</td>
       <td class="num" style="background:#fffbeb">${oc.compras||0}</td>
       <td class="num">${resv||'—'}</td>
-      <td class="num" style="background:#fffbeb"><input type="number" min="0" max="${r.cant||0}" value="${ob.obra||0}" style="width:56px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setObraQty('${key}',this.value,${r.cant||0})"></td>
-      <td style="background:#fffbeb"><input type="text" value="${esc(ob.guia)}" placeholder="—" style="width:78px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="setGuia('${key}',this.value)"></td>
+      <td class="num" style="background:#fffbeb">${salidaExcel
+        ?'<span title="Cantidad de salida real, del Excel — no editable" style="color:#0f766e;font-weight:700">'+salidaExcel.obra.toLocaleString('es-PE')+'</span>'
+        :'<input type="number" min="0" max="'+(r.cant||0)+'" value="'+(ob.obra||0)+'" style="width:56px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setObraQty(\''+key+'\',this.value,'+(r.cant||0)+')">'}</td>
+      <td style="background:#fffbeb">${salidaExcel
+        ?'<span title="Documento de origen (guía), del Excel — no editable">'+esc(salidaExcel.guias.join(', ')||'—')+'</span>'
+        :'<input type="text" value="'+esc(ob.guia)+'" placeholder="—" style="width:78px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="setGuia(\''+key+'\',this.value)">'}</td>
       <td class="num" style="background:#fffbeb;font-weight:700;color:${falta>0?'#dc2626':'#16a34a'}">${falta}</td>
     </tr>`;
   }).join('')||'<tr><td colspan="20" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
@@ -2660,7 +2688,7 @@ async function guardarTodo(){
     if(hayRequerimientos){
       const checkR=await fetch(GH_API_REQALM,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
       const shaR=checkR.ok?(await checkR.json()).sha:undefined;
-      const contentR=btoa(unescape(encodeURIComponent(JSON.stringify({p5:P5,oc:OC_RAW,skus:SKUS_RAW,sinoc:SINOC,ts:Date.now()}))));
+      const contentR=btoa(unescape(encodeURIComponent(JSON.stringify({p5:P5,oc:OC_RAW,skus:SKUS_RAW,sinoc:SINOC,salidas:SALIDAS_ALM,ts:Date.now()}))));
       const bodyR={message:'almacen: guardar Requerimientos propios ('+P5.length+' líneas) — '+new Date().toISOString(),content:contentR};
       if(shaR)bodyR.sha=shaR;
       const resR=await fetch(GH_API_REQALM,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(bodyR)});
