@@ -5575,26 +5575,15 @@ function importMaestro(wb){
   // un mismo req+código con una cantidad DISTINTA es una línea de requerimiento real aparte (ver
   // caso 0001-0022802: código 001904900016 con cant 2 y cant 1 en filas separadas) y hay que
   // sumarla, no descartarla — antes se perdía silenciosamente quedándose solo con la primera.
-  // Ese dedup por cantidad exacta solo es válido si la fila muestra evidencia de una OC o de una
-  // recepción/salida real — tener apenas un N° de Pedido asignado no basta, porque eso no implica
-  // que ya se haya recepcionado o despachado nada. Sin OC ni movimiento no puede haber repetición
-  // por recepción, así que dos líneas con el mismo req+código+cantidad mientras sigue "Pendiente"
-  // son dos ítems reales distintos (caso real: req 0001-0022016, 2 líneas de 2 CIL cada una = 4,
-  // no 2 — NISIRA las trae como ítems 001 y 002 separados, y el Maestro no exporta ese N° de ítem
-  // para diferenciarlas).
   const p5Seen=new Set();     // req+código+cantidad exacta ya contado (repetición de recepción)
   const p5IdxByReqCod={};     // req+código -> índice en p5Data, para sumar cuando aparece otra cant
   const p5Data=[];
   p5Rows.forEach(r=>{
     const req=g(r,'CodRequerimiento'),cod=g(r,'IdProducto');
     const cant=Math.round(gn(r,'CantidadRequerimiento'));
-    const codOrd=g(r,'CodOrden');
-    const hayActividad=(codOrd&&codOrd!=='-'&&codOrd!=='nan')||gn(r,'CantRecepcion')>0||gn(r,'CantidadSalida')>0;
-    if(hayActividad){
-      const key3=req+'|'+cod+'|'+cant;
-      if(p5Seen.has(key3))return;
-      p5Seen.add(key3);
-    }
+    const key3=req+'|'+cod+'|'+cant;
+    if(p5Seen.has(key3))return;
+    p5Seen.add(key3);
     const key2=req+'|'+cod;
     if(p5IdxByReqCod[key2]!=null){
       p5Data[p5IdxByReqCod[key2]].cant+=cant;
