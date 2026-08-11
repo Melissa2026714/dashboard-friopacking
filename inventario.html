@@ -139,7 +139,7 @@ tr:hover td{background:#f8fafc}
 .ms-dd{position:absolute;top:calc(100% + 3px);left:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:9999;min-width:220px;max-height:280px;overflow-y:auto;padding:4px 0;display:none}
 .ms-item{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;font-size:11px;color:#475569;transition:background .1s}
 .ms-item:hover{background:#f8fafc}
-.ms-item input[type=checkbox]{accent-color:#1d4ed8;cursor:pointer;width:13px;height:13px;flex-shrink:0}
+.ms-item input[type=checkbox]{accent-color:#1d4ed8;cursor:pointer;width:13px;min-width:13px;height:13px;flex-shrink:0}
 .ms-badge{background:#1d4ed8;color:#fff;border-radius:10px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:2px}
 </style>
 </head>
@@ -290,6 +290,7 @@ tr:hover td{background:#f8fafc}
         <th class="num" style="background:#ecfdf5;color:#065f46" title="Cantidad que Almacén repartió a Picking (stock) en el modal del requerimiento">Cant. a Picking</th>
         <th class="num" style="background:#ecfdf5;color:#065f46" title="Cantidad que Almacén repartió a Pedido (compra) en el modal del requerimiento">Cant. a Pedido</th>
         <th style="background:#ecfdf5;color:#065f46" title="N° de pedido generado para este código">N° Pedido</th>
+        <th style="background:#ecfdf5;color:#065f46" title="Fecha en la que se generó el pedido">F. Pedido</th>
         <th style="background:#ecfdf5;color:#065f46" title="Quién está a cargo de gestionar la compra de este pedido">Resp. Pedido</th>
         <th style="background:#fef3c7;color:#92400e">N° OC</th><th style="background:#fef3c7;color:#92400e">F. Emisión</th><th style="background:#fef3c7;color:#92400e">F. Aprobación</th><th style="background:#fef3c7;color:#92400e">F. Entrega</th>
         <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad ya despachada al proyecto — sale sola del Excel (CantidadSalida) cuando ya hay despacho registrado; si no, se digita a mano">En Obra</th>
@@ -790,6 +791,15 @@ function dmyOrd(s){const p=(s||'').split('/');return p.length===3?(+p[2])*10000+
 function xtexto(v){return v==null?'':String(v).trim();}
 function xcodigo(v){const s=xtexto(v);return (s==='-'||s.toLowerCase()==='nan'||s.toLowerCase()==='none')?'':s;} // el Maestro usa "-" cuando no hay OC/pedido
 function fmtq(n){return (n||0).toLocaleString('es-PE',{maximumFractionDigits:2});}
+// El nombre exacto de la columna de fecha de aprobación de OC varía entre exports del Reporte
+// Almacén (visto también en Compras/index.html) — se prueban los nombres conocidos en orden.
+function xfechaAny(r,names){
+  for(let i=0;i<names.length;i++){
+    const v=xfecha(r[names[i]]);
+    if(v)return v;
+  }
+  return '';
+}
 
 // Lee una hoja cuyos encabezados pueden no estar en la fila 1 (el Reporte Almacen los trae en la fila 3).
 function hojaAObjetos(ws){
@@ -940,9 +950,10 @@ function parseRequerimientosWorkbook(wb){
     const req=xcodigo(r['CodRequerimiento']),cod=xtexto(r['IdProducto']);
     const ped=xcodigo(r['CodPedido']);
     const co=toNum(r['Cantidad de orden']),cr=toNum(r['CantRecepcion']);
+    const fapro=xfechaAny(r,['FechaAprobacionOC','FechaAprobacion','Fecha Aprobacion','FechaAprobacionOrden']);
     if(!ocMap[ocNum]){
       ocMap[ocNum]={oc:ocNum,ped:ped,peds:[],estado:xtexto(r['EstadoOrden']),
-        foc:xfecha(r['FechaOrden']),fapro:xfecha(r['FechaAprobacionOC']),fent:xfecha(r['ParaFechaOrden']),prov:xtexto(r['NombreProveedor']),
+        fped:xfecha(r['FechaPedido']),foc:xfecha(r['FechaOrden']),fapro:fapro,fent:xfecha(r['ParaFechaOrden']),prov:xtexto(r['NombreProveedor']),
         respPed:xtexto(r['ResponsablePedido'])};
     }
     if(ped&&ocMap[ocNum].peds.indexOf(ped)<0)ocMap[ocNum].peds.push(ped);
@@ -950,7 +961,7 @@ function parseRequerimientosWorkbook(wb){
     skus[ocNum].push({
       cod:cod,prod:xtexto(r['Producto']),
       cantOrd:round2(co),cantRec:round2(cr),cantPend:Math.max(0,round2(co-cr)),
-      foc:xfecha(r['FechaOrden']),fapro:xfecha(r['FechaAprobacionOC']),fent:xfecha(r['ParaFechaOrden']),
+      foc:xfecha(r['FechaOrden']),fapro:fapro,fent:xfecha(r['ParaFechaOrden']),
       estado:xtexto(r['EstadoOrden']),req:req,freq:xfecha(r['FechaRequerimiento']),
       unid:xtexto(r['UnidadMedida'])||xtexto(r['Medida'])||''
     });
@@ -969,7 +980,7 @@ function parseRequerimientosWorkbook(wb){
     if(sinocSeen.has(key))return;
     sinocSeen.add(key);
     sinoc.push({
-      ped:ped,req:req,cod:cod,prod:xtexto(r['Producto']),
+      ped:ped,fped:xfecha(r['FechaPedido']),req:req,cod:cod,prod:xtexto(r['Producto']),
       cant:round2(toNum(r['CantidadRequerimiento'])),
       resp:xtexto(r['NombreResponsable']),proy:xtexto(r['NombreProyecto']),idproy:xtexto(r['IdProyecto']),
       estado:xtexto(r['EstadoPedido']),respPed:xtexto(r['ResponsablePedido'])
@@ -1552,6 +1563,20 @@ function pedidoForItem(key){
   }
   return '';
 }
+// Fecha en la que se generó el pedido (columna "FechaPedido" del Excel) — mismo cruce que
+// pedidoForItem: sale de Sin OC — Cotización o, si ya tiene OC, del registro de esa OC.
+function fpedidoForItem(key){
+  const sr=SINOC_BY_REQCOD[key];
+  if(sr&&sr.fped)return sr.fped;
+  const oc=REQCOD_OC[key];
+  if(oc&&oc.ocs&&oc.ocs.length){
+    for(let i=0;i<oc.ocs.length;i++){
+      const ocRow=OC_BY_NUM[oc.ocs[i]];
+      if(ocRow&&ocRow.fped)return ocRow.fped;
+    }
+  }
+  return '';
+}
 // Responsable del pedido (columna "ResponsablePedido" del Excel) — quién está a cargo de
 // gestionar esa compra, distinto del responsable del requerimiento (quien lo solicitó).
 function respPedidoForItem(key){
@@ -1683,6 +1708,7 @@ function renderReqItemTable(){
       <td class="num" style="background:#ecfdf5">${pickCell}</td>
       <td class="num" style="background:#ecfdf5">${pedCell}</td>
       <td style="background:#ecfdf5">${pedidoForItem(key)||'—'}</td>
+      <td style="background:#ecfdf5">${fpedidoForItem(key)||'—'}</td>
       <td style="background:#ecfdf5">${respPedidoForItem(key)||'—'}</td>
       <td style="background:#fffbeb">${(oc.ocs||[]).join(', ')||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.foc||'—'}</td>
@@ -1696,7 +1722,7 @@ function renderReqItemTable(){
         :'<input type="text" value="'+esc(ob.guia)+'" placeholder="—" style="width:78px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="setGuia(\''+key+'\',this.value)">'}</td>
       <td class="num" style="background:#fffbeb;font-weight:700;color:${falta>0?'#dc2626':'#16a34a'}">${falta}</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="20" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
+  }).join('')||'<tr><td colspan="21" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
   const tot=f.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqItemInfo').textContent=tot?`Mostrando ${reqItemPage*sz+1}–${Math.min((reqItemPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} ítems`:'Sin resultados';
   const pagEl=document.getElementById('reqItemPag');
