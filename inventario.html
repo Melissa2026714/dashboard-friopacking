@@ -224,11 +224,11 @@ tr:hover td{background:#f8fafc}
   <div class="hd">
     <div>
       <h2>Requerimientos</h2>
-      <div class="sub">Requerimientos pendientes de todas las áreas — mismos datos que ve Compras</div>
+      <div class="sub">Requerimientos pendientes de todas las áreas — import propio de Almacén desde Reporte Almacén.xlsx</div>
     </div>
   </div>
 
-  <div class="note live" id="reqLiveNote">☁️ Cargando datos en vivo desde <b>data.json</b>…</div>
+  <div class="note live" id="reqLiveNote">☁️ Cargando Requerimientos (import propio de Almacén)…</div>
 
   <div class="note crit">🧰 Los requerimientos <b>en revisión de almacén</b> traen columnas editables <b>Cant. a Picking / Cant. a Pedido</b> — el reparto que hagas aquí se refleja automáticamente en la pestaña <b>Picking</b>, agrupado por N° de requerimiento.</div>
 
@@ -288,7 +288,7 @@ tr:hover td{background:#f8fafc}
     <div class="pag"><span id="reqItemInfo">—</span><div id="reqItemPag" style="display:flex;gap:4px"></div></div>
   </div>
 
-  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba) — copia de "Req. sin Pedido" de Compras</div>
+  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba) — datos propios, independientes de Compras</div>
 </div>
 
 <!-- ══════════════ PÁGINA 3: PICKING ══════════════ -->
@@ -613,6 +613,13 @@ const GH_TOKEN_KEY='fp_gh_token_almacen'; // token propio de Almacén, independi
 const GH_FILE_EXIST='almacen_existencias.json';
 const GH_RAW_EXIST='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE_EXIST;
 const GH_API_EXIST='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE_EXIST;
+// Requerimientos/OC/Sin OC propios de Almacén (import independiente de Reporte Almacen.xlsx) —
+// aparte de data.json para no pisar ni depender de lo que Compras genera con MAESTRO.xlsx, y
+// para no volver a engordar data.json (ver por qué se separaron las Existencias, arriba).
+const GH_FILE_REQALM='almacen_requerimientos.json';
+const GH_RAW_REQALM='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE_REQALM;
+const GH_API_REQALM='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE_REQALM;
+let REQ_ALM_LIVE=false,REQ_ALM_DIRTY=false;
 function setupGHToken(){
   const cur=localStorage.getItem(GH_TOKEN_KEY)||'';
   const t=prompt('Ingresa el Token de GitHub de Almacén\n(propio de este módulo, no el de Compras — se guarda solo en este navegador):',cur);
@@ -711,6 +718,12 @@ function handleImportAlmacen(input){
           setTransito(tr.t,tr.r,true);
           partes.push('tránsito ('+tr.t.length+' líneas OC) y reservas ('+tr.r.length+' líneas req.)');
         }
+        // Requerimientos/OC/Sin OC propios de Almacén (independiente de Compras) — misma hoja "Reporte Maestro"
+        const req=parseRequerimientosWorkbook(wb);
+        if(req){
+          setRequerimientosAlm(req.p5,req.oc,req.skus,req.sinoc,true);
+          partes.push(req.p5.length.toLocaleString('es-PE')+' requerimientos ('+req.oc.length+' OC · '+req.sinoc.length+' sin OC)');
+        }
         if(!partes.length)throw new Error('no se encontraron filas con código válido');
         results.push('✅ '+file.name+' ('+partes.join(' · ')+')');
       }catch(err){
@@ -728,7 +741,8 @@ function handleImportAlmacen(input){
         render();
         renderAlertBox();
         updateHomeCounters();
-        alert('Importación completada:\n\n'+results.join('\n')+((existenciasAcum.length||TRANS_DIRTY)?'\n\nRecuerda hacer clic en 💾 GUARDAR para compartirlo con todos.':''));
+        if(document.getElementById('tbreq')){fillReqFilters();renderReq();renderPick();}
+        alert('Importación completada:\n\n'+results.join('\n')+((existenciasAcum.length||TRANS_DIRTY||REQ_ALM_DIRTY)?'\n\nRecuerda hacer clic en 💾 GUARDAR para compartirlo con todos.':''));
       }
     };
     reader.readAsArrayBuffer(file);
@@ -851,6 +865,102 @@ function parseTransitoWorkbook(wb){
   const resv=[];R.forEach(x=>resv.push(x));
   resv.sort((a,b)=>dmyOrd(a.fecha)-dmyOrd(b.fecha));
   return {t:trans,r:resv};
+}
+
+// Construye, desde la MISMA hoja "Reporte Maestro" de Reporte Almacen.xlsx, una copia propia e
+// independiente de Requerimientos / OC / Sin OC — Cotización, para que Almacén ya no dependa de
+// que Compras haga su propio import. Nunca toca D.p5reqs/D.oc/D.sinoc/SKUS (siguen siendo
+// exclusivos de Compras) — esto se guarda aparte en almacen_requerimientos.json.
+function parseRequerimientosWorkbook(wb){
+  const shM=wb.SheetNames.find(n=>/maestro/i.test(n));
+  if(!shM)return null;
+  const rows=hojaAObjetos(wb.Sheets[shM])||[];
+  if(!rows.length)return null;
+
+  // Requerimientos: mismo fix que en Compras — una fila con el mismo req+código+cantidad EXACTA
+  // ya vista es el Maestro repitiendo la línea por cada recepción/salida (se ignora); una fila
+  // con el mismo req+código pero OTRA cantidad es una línea real aparte (se suma, no se pierde).
+  const p5Seen=new Set(),p5IdxByReqCod={},p5=[];
+  rows.forEach(function(r){
+    const estado=xtexto(r['EstadoRequerimiento']);
+    if(!estado)return;
+    const req=xcodigo(r['CodRequerimiento']),cod=xtexto(r['IdProducto']);
+    if(!req||!cod)return;
+    const cant=Math.round(toNum(r['CantidadRequerimiento']));
+    const key3=req+'|'+cod+'|'+cant;
+    if(p5Seen.has(key3))return;
+    p5Seen.add(key3);
+    const key2=req+'|'+cod;
+    if(p5IdxByReqCod[key2]!=null){p5[p5IdxByReqCod[key2]].cant+=cant;return;}
+    p5IdxByReqCod[key2]=p5.length;
+    p5.push({
+      req:req,fecha:xfecha(r['FechaRequerimiento']),
+      resp:xtexto(r['NombreResponsable']),idproy:xtexto(r['IdProyecto']),
+      proy:xtexto(r['NombreProyecto']),cod:cod,
+      prod:xtexto(r['Producto']),cant:cant,
+      unid:xtexto(r['UnidadMedida'])||xtexto(r['Medida'])||'',
+      freq:xfecha(r['ParaFechaRequerimiento'])||xfecha(r['FechaRequerimiento']),
+      estado:estado
+    });
+  });
+
+  // OC + cruce por requerimiento (equivalente a D.oc / SKUS) — agrupado por N° de OC.
+  const ocMap={},skus={};
+  rows.forEach(function(r){
+    const ocNum=xcodigo(r['CodOrden']);
+    if(!ocNum)return;
+    const req=xcodigo(r['CodRequerimiento']),cod=xtexto(r['IdProducto']);
+    const ped=xcodigo(r['CodPedido']);
+    const co=toNum(r['Cantidad de orden']),cr=toNum(r['CantRecepcion']);
+    if(!ocMap[ocNum]){
+      ocMap[ocNum]={oc:ocNum,ped:ped,peds:[],estado:xtexto(r['EstadoOrden']),
+        foc:xfecha(r['FechaOrden']),fent:xfecha(r['ParaFechaOrden']),prov:xtexto(r['NombreProveedor'])};
+    }
+    if(ped&&ocMap[ocNum].peds.indexOf(ped)<0)ocMap[ocNum].peds.push(ped);
+    if(!skus[ocNum])skus[ocNum]=[];
+    skus[ocNum].push({
+      cod:cod,prod:xtexto(r['Producto']),
+      cantOrd:Math.round(co),cantRec:Math.round(cr),cantPend:Math.max(0,Math.round(co-cr)),
+      foc:xfecha(r['FechaOrden']),fent:xfecha(r['ParaFechaOrden']),
+      estado:xtexto(r['EstadoOrden']),req:req,freq:xfecha(r['FechaRequerimiento']),
+      unid:xtexto(r['UnidadMedida'])||xtexto(r['Medida'])||''
+    });
+  });
+  const oc=Object.values(ocMap);
+
+  // Sin OC — Cotización (equivalente a D.sinoc): pedidos con N° de pedido pero sin OC todavía.
+  const sinocSeen=new Set(),sinoc=[];
+  rows.forEach(function(r){
+    if(xcodigo(r['CodOrden']))return;
+    const ped=xcodigo(r['CodPedido']);
+    if(!ped)return;
+    const req=xcodigo(r['CodRequerimiento']),cod=xtexto(r['IdProducto']);
+    if(!req||!cod)return;
+    const key=ped+'|'+cod;
+    if(sinocSeen.has(key))return;
+    sinocSeen.add(key);
+    sinoc.push({
+      ped:ped,req:req,cod:cod,prod:xtexto(r['Producto']),
+      cant:Math.round(toNum(r['CantidadRequerimiento'])),
+      resp:xtexto(r['NombreResponsable']),proy:xtexto(r['NombreProyecto']),idproy:xtexto(r['IdProyecto']),
+      estado:xtexto(r['EstadoPedido'])
+    });
+  });
+
+  return {p5:p5,oc:oc,skus:skus,sinoc:sinoc};
+}
+function setRequerimientosAlm(p5,oc,skus,sinoc,marcarDirty){
+  P5=(Array.isArray(p5)?p5:[]).map(function(r){return {...r,estado:fixEnc(r.estado)};});
+  OC_RAW=Array.isArray(oc)?oc:[];
+  SKUS_RAW=skus||{};
+  SINOC=Array.isArray(sinoc)?sinoc:[];
+  P5_LIVE=true;
+  REQ_ALM_LIVE=true;
+  OC_BY_NUM={};
+  OC_RAW.forEach(function(o){if(o.oc)OC_BY_NUM[o.oc]=o;});
+  buildReqCodOC();
+  buildSinocLookup();
+  if(marcarDirty)REQ_ALM_DIRTY=true;
 }
 
 function setTransito(t,r,marcarDirty,ts){
@@ -1002,15 +1112,19 @@ let AUTO_MAP={};   // sugerencia automática de cant. a Picking por req+código 
 let CONFIRMED_VAL={}; // validaciones de almacén ya guardadas en data.json (D.almacenValidado)
 let PENDING_VAL={};   // validaciones marcadas en este navegador y aún no guardadas
 let SUPERVISORES=[];  // directorio D.supervisores (nombre/correo/celular) para el aviso WhatsApp
-let PROJ=[];           // D.proj — para derivar Zona por nombre de proyecto en vista Por Ítem
-let SKUS_RAW={};       // s.SKUS (top-level) — líneas de OC agrupadas por N° OC, para cruzar por req+código
+let PROJ=[];           // D.proj (data.json, sigue compartido) — para derivar Zona por nombre de proyecto
+// SKUS_RAW/OC_RAW/SINOC se llenan con el import PROPIO de Almacén (Reporte Almacén.xlsx →
+// almacen_requerimientos.json, ver parseRequerimientosWorkbook/setRequerimientosAlm) — ya NO
+// vienen de data.json ni de lo que importa Compras. Los nombres se conservan porque el resto
+// del código de cruce (REQCOD_OC, estadoItem, pedidoForItem, etc.) no necesitó cambiar.
+let SKUS_RAW={};       // líneas de OC agrupadas por N° OC, para cruzar por req+código
 let REQCOD_OC={};      // req+'|'+cod -> {ocs:[...], foc, fent, compras} — cruce con SKUS_RAW
-let RESV_BY_REQCOD={}; // req+'|'+cod -> cantidad reservada de stock (desde RESV de almacenTransito)
-let SINOC=[];           // D.sinoc — pedidos "Sin OC — Cotización" de Compras
+let RESV_BY_REQCOD={}; // req+'|'+cod -> cantidad reservada de stock (desde RESV de almacenTransito, data.json)
+let SINOC=[];           // pedidos "Sin OC — Cotización" propios de Almacén
 let SINOC_BY_REQCOD={}; // req+'|'+cod -> fila de SINOC (para saber si está en cotización/archivado)
-let OC_RAW=[];          // D.oc — para sacar el N° de Pedido de un ítem que YA tiene OC (sinoc deja de
-                        // traerlo apenas se genera la OC, ahí solo queda en el registro de la OC)
-let OC_BY_NUM={};       // N° OC -> fila de D.oc (trae .ped/.peds)
+let OC_RAW=[];          // OC propias de Almacén — para sacar el N° de Pedido de un ítem que YA tiene
+                        // OC (SINOC deja de traerlo apenas se genera la OC, solo queda en la OC)
+let OC_BY_NUM={};       // N° OC -> fila de OC_RAW (trae .ped/.peds)
 let COTMETA={};         // D.cotMeta (clave ped+'_'+cod) — check "En cotización" de Compras
 let ARCHIVOMETA={};     // D.archivoMeta (clave ped+'_'+cod) — pedidos archivados en Sin OC
 let CONFIRMED_OBRA={}; // "En obra"/"N° guía" ya guardados en data.json (D.obraMeta)
@@ -1023,42 +1137,23 @@ async function cargarLive(){
     const r=await fetch('data.json?t='+Date.now());
     if(!r.ok)throw new Error('HTTP '+r.status);
     const s=await r.json();
-    if(!s||!s.D||!Array.isArray(s.D.p5reqs))throw new Error('formato inesperado');
-    P5=s.D.p5reqs.map(r=>({...r,estado:fixEnc(r.estado)}));
-    P5_LIVE=true;
+    if(!s||!s.D)throw new Error('formato inesperado');
     CONFIRMED=s.D.almacenPicking||{};
     CONFIRMED_VAL=s.D.almacenValidado||{};
     SUPERVISORES=s.D.supervisores||[];
     CONFIRMED_COD=s.D.almacenCodigos||[];
     PROJ=s.D.proj||[];
-    SKUS_RAW=s.SKUS||{};
     CONFIRMED_OBRA=s.D.obraMeta||{};
-    SINOC=s.D.sinoc||[];
     COTMETA=s.D.cotMeta||{};
     ARCHIVOMETA=s.D.archivoMeta||{};
-    OC_RAW=s.D.oc||[];
-    OC_BY_NUM={};
-    OC_RAW.forEach(function(o){if(o.oc)OC_BY_NUM[o.oc]=o;});
-    buildReqCodOC();
-    buildSinocLookup();
     if(!TRANS_DIRTY&&s.D.almacenTransito&&Array.isArray(s.D.almacenTransito.t)){
       setTransito(s.D.almacenTransito.t,s.D.almacenTransito.r||[],false,s.D.almacenTransito.ts);
     }
     applyTransitoADatos();
-    document.getElementById('reqLiveNote').innerHTML='☁️ <b>Datos en vivo</b> desde data.json — '+P5.length.toLocaleString('es-PE')+' requerimientos (mismos que ve Compras).';
     setLastSync('☁ '+(s.ts?new Date(s.ts).toLocaleString('es-PE'):'—'));
-    // Existencias se carga aparte, sin esperarla — no bloquea Requerimientos/Picking (ver GH_FILE_EXIST)
-    cargarExistenciasLive();
   }catch(e){
-    P5=P5_DEMO;
-    P5_LIVE=false;
-    CONFIRMED={};
-    CONFIRMED_VAL={};
-    SUPERVISORES=[];
-    CONFIRMED_COD=[];
-    PROJ=[];SKUS_RAW={};REQCOD_OC={};CONFIRMED_OBRA={};SINOC=[];SINOC_BY_REQCOD={};COTMETA={};ARCHIVOMETA={};OC_RAW=[];OC_BY_NUM={};
-    document.getElementById('reqLiveNote').className='note';
-    document.getElementById('reqLiveNote').innerHTML='⚠️ No se pudo leer data.json (modo local sin servidor) — mostrando '+P5.length+' filas de ejemplo. En la web publicada esto carga automáticamente los '+'requerimientos reales.';
+    CONFIRMED={};CONFIRMED_VAL={};SUPERVISORES=[];CONFIRMED_COD=[];PROJ=[];CONFIRMED_OBRA={};COTMETA={};ARCHIVOMETA={};
+    console.warn('[Almacén] No se pudo leer data.json:',e);
   }
   try{PENDING=JSON.parse(localStorage.getItem('fp_almacen_picking_pending')||'{}');}catch(e2){PENDING={};}
   try{PENDING_OBRA=JSON.parse(localStorage.getItem('fp_almacen_obra_pending')||'{}');}catch(e5){PENDING_OBRA={};}
@@ -1069,12 +1164,36 @@ async function cargarLive(){
   AUTO_MAP={};
   fillFilters();
   render();
-  fillReqFilters();
-  renderReq();
-  renderPick();
   renderAlertBox();
   renderCod();
   updateHomeCounters();
+  // Requerimientos/OC/Sin OC ya no vienen de data.json — Almacén tiene su propio import
+  // independiente (Reporte Almacen.xlsx → almacen_requerimientos.json), sin depender de que
+  // Compras importe MAESTRO.xlsx. Se carga en paralelo, sin bloquear lo de arriba.
+  cargarRequerimientosLive();
+  // Existencias en su propio archivo también, ~7 MB — en paralelo, sin bloquear lo anterior.
+  cargarExistenciasLive();
+}
+async function cargarRequerimientosLive(){
+  try{
+    const r=await fetch(GH_FILE_REQALM+'?t='+Date.now());
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const s=await r.json();
+    if(!s||!Array.isArray(s.p5))throw new Error('formato inesperado');
+    setRequerimientosAlm(s.p5,s.oc||[],s.skus||{},s.sinoc||[],false);
+    document.getElementById('reqLiveNote').className='note live';
+    document.getElementById('reqLiveNote').innerHTML='☁️ <b>Datos en vivo</b> — '+P5.length.toLocaleString('es-PE')+' requerimientos (import propio de Almacén, independiente de Compras).';
+  }catch(e){
+    console.warn('[Almacén] No se pudo cargar Requerimientos propios:',e);
+    if(!P5.length){
+      P5=P5_DEMO;P5_LIVE=false;
+      document.getElementById('reqLiveNote').className='note';
+      document.getElementById('reqLiveNote').innerHTML='⚠️ Todavía no se ha importado ningún <b>Reporte Almacén.xlsx</b> en este dashboard — mostrando filas de ejemplo. Usa 📂 IMPORTAR arriba y luego 💾 GUARDAR.';
+    }
+  }
+  fillReqFilters();
+  renderReq();
+  renderPick();
 }
 // Existencias (Kardex) en su propio archivo, ~7 MB — se carga en paralelo y se aplica cuando
 // llegue, sin retrasar Requerimientos/Picking (que ya terminaron de renderizar arriba).
@@ -2495,11 +2614,12 @@ async function guardarTodo(){
   const hayPicking=Object.keys(PENDING).length>0;
   const hayCodigos=PENDING_COD.length>0;
   const hayTransito=TRANS_DIRTY;
+  const hayRequerimientos=REQ_ALM_DIRTY;
   // Recalcular Tránsito/Reservas toca las columnas En Tránsito/Reservas de Existencias —
   // si eso pasó y hay Existencias reales cargadas, hay que volver a subirlas aunque no se
   // haya importado un Kardex nuevo en este navegador.
   const hayExistenciasEfectivo=hayExistencias||(hayTransito&&EXISTENCIAS_LIVE&&Array.isArray(DATA)&&DATA.length>0);
-  if(!hayExistenciasEfectivo&&!hayPicking&&!hayCodigos&&!hayTransito){alert('No hay cambios nuevos para guardar.');return;}
+  if(!hayExistenciasEfectivo&&!hayPicking&&!hayCodigos&&!hayTransito&&!hayRequerimientos){alert('No hay cambios nuevos para guardar.');return;}
   const token=localStorage.getItem(GH_TOKEN_KEY);
   if(!token){
     if(confirm('Para guardar (compartido con todos) necesitas un Token de GitHub de Almacén.\n¿Configurarlo ahora?'))setupGHToken();
@@ -2519,6 +2639,17 @@ async function guardarTodo(){
       const resE=await fetch(GH_API_EXIST,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(bodyE)});
       if(!resE.ok)throw new Error('GitHub rechazó la subida de Existencias (HTTP '+resE.status+')');
       partes.push('Existencias ('+DATA.length+' SKUs)');
+    }
+    if(hayRequerimientos){
+      const checkR=await fetch(GH_API_REQALM,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+      const shaR=checkR.ok?(await checkR.json()).sha:undefined;
+      const contentR=btoa(unescape(encodeURIComponent(JSON.stringify({p5:P5,oc:OC_RAW,skus:SKUS_RAW,sinoc:SINOC,ts:Date.now()}))));
+      const bodyR={message:'almacen: guardar Requerimientos propios ('+P5.length+' líneas) — '+new Date().toISOString(),content:contentR};
+      if(shaR)bodyR.sha=shaR;
+      const resR=await fetch(GH_API_REQALM,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(bodyR)});
+      if(!resR.ok)throw new Error('GitHub rechazó la subida de Requerimientos (HTTP '+resR.status+')');
+      partes.push('Requerimientos ('+P5.length.toLocaleString('es-PE')+' líneas)');
+      REQ_ALM_DIRTY=false;
     }
 
     let colisionesCod=[];
