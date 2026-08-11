@@ -1572,6 +1572,11 @@ function renderReqItemTable(){
       const tip='Inferido desde la OC (no pasó por el reparto de Almacén en este dashboard)';
       pickCell='<span title="'+tip+'" style="color:#64748b">~'+pickingInf.toLocaleString('es-PE')+'</span>';
       pedCell='<span title="'+tip+'" style="color:#64748b">~'+pedidoInf.toLocaleString('es-PE')+'</span>';
+    }else if((r.estado||'').toLowerCase().includes('pedido')){
+      // Ya no está "en revisión" y todavía no tiene OC, pero el propio estado (del Excel/NISIRA)
+      // ya dice "Enviado a pedido" — no es una inferencia nuestra, es el dato real: 100% a Pedido.
+      pickCell='0';
+      pedCell=(r.cant||0).toLocaleString('es-PE');
     }
     return `<tr>
       <td style="color:#64748b">${r.fecha||'—'}</td>
@@ -1666,6 +1671,17 @@ function renderReqTable(){
         const picking=getDecision(key,auto);
         pickTotal+=picking;
         pedTotal+=(i.cant-picking);
+      }else if(!enRevision){
+        const oc=REQCOD_OC[key]||{};
+        if(oc.cantOrd>0){
+          // Ya tiene OC real — lo que cubrió la OC fue a Pedido, el resto a Picking/stock.
+          const pedidoInf=Math.min(i.cant||0,oc.cantOrd);
+          pickTotal+=Math.max(0,(i.cant||0)-pedidoInf);
+          pedTotal+=pedidoInf;
+        }else if(i.estado.toLowerCase().includes('pedido')){
+          // Sin OC todavía, pero el estado ya dice "Enviado a pedido" — 100% a Pedido, dato real.
+          pedTotal+=(i.cant||0);
+        }
       }
     });
     if(isValidadoReq(rk)&&(pickTotal>0||pedTotal>0)){
@@ -1857,8 +1873,20 @@ function verReqItems(rk){
             if(yaValidado){const vl=validatedLabel(picking,pedido);s={c:vl.c,bg:vl.bg};estadoLbl=vl.t;}
             else{const sr=semReq(r.estado);s={c:sr.c,bg:sr.bg};estadoLbl=estadoDisplay(r.estado);}
           }else{
-            pickCell='<span style="color:#cbd5e1">—</span>';
-            pedCell='<span style="color:#cbd5e1">—</span>';
+            const oc=REQCOD_OC[key]||{};
+            if(oc.cantOrd>0){
+              const pedidoInf=Math.min(r.cant||0,oc.cantOrd);
+              const pickingInf=Math.max(0,(r.cant||0)-pedidoInf);
+              const tip='Inferido desde la OC (no pasó por el reparto de Almacén en este dashboard)';
+              pickCell='<span title="'+tip+'" style="color:#64748b">~'+pickingInf.toLocaleString('es-PE')+'</span>';
+              pedCell='<span title="'+tip+'" style="color:#64748b">~'+pedidoInf.toLocaleString('es-PE')+'</span>';
+            }else if(r.estado.toLowerCase().includes('pedido')){
+              pickCell='<span style="color:#cbd5e1">—</span>';
+              pedCell=(r.cant||0).toLocaleString('es-PE')+' <span class="pill p-crit">PEDIDO</span>';
+            }else{
+              pickCell='<span style="color:#cbd5e1">—</span>';
+              pedCell='<span style="color:#cbd5e1">—</span>';
+            }
             const sr=semReq(r.estado);s={c:sr.c,bg:sr.bg};estadoLbl=estadoDisplay(r.estado);
           }
           return `<tr>
