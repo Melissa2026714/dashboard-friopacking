@@ -1569,9 +1569,9 @@ function renderReqItemTable(){
       // (si el requerido es mayor) se asume cubierto por Picking/stock.
       const pedidoInf=Math.min(r.cant||0,oc.cantOrd);
       const pickingInf=Math.max(0,(r.cant||0)-pedidoInf);
-      const tip='Inferido desde la OC (no pasó por el reparto de Almacén en este dashboard)';
-      pickCell='<span title="'+tip+'" style="color:#64748b">~'+pickingInf.toLocaleString('es-PE')+'</span>';
-      pedCell='<span title="'+tip+'" style="color:#64748b">~'+pedidoInf.toLocaleString('es-PE')+'</span>';
+      const tip='Nadie lo repartió en el dashboard — se calculó solo, a partir de lo que ya está ordenado en la OC real de este ítem';
+      pickCell='<span title="'+tip+'" style="color:#64748b">'+pickingInf.toLocaleString('es-PE')+'<br><span style="font-size:9px;font-style:italic">inferido</span></span>';
+      pedCell='<span title="'+tip+'" style="color:#64748b">'+pedidoInf.toLocaleString('es-PE')+'<br><span style="font-size:9px;font-style:italic">inferido</span></span>';
     }else if((r.estado||'').toLowerCase().includes('pedido')){
       // Ya no está "en revisión" y todavía no tiene OC, pero el propio estado (del Excel/NISIRA)
       // ya dice "Enviado a pedido" — no es una inferencia nuestra, es el dato real: 100% a Pedido.
@@ -1877,9 +1877,9 @@ function verReqItems(rk){
             if(oc.cantOrd>0){
               const pedidoInf=Math.min(r.cant||0,oc.cantOrd);
               const pickingInf=Math.max(0,(r.cant||0)-pedidoInf);
-              const tip='Inferido desde la OC (no pasó por el reparto de Almacén en este dashboard)';
-              pickCell='<span title="'+tip+'" style="color:#64748b">~'+pickingInf.toLocaleString('es-PE')+'</span>';
-              pedCell='<span title="'+tip+'" style="color:#64748b">~'+pedidoInf.toLocaleString('es-PE')+'</span>';
+              const tip='Nadie lo repartió en el dashboard — se calculó solo, a partir de lo que ya está ordenado en la OC real de este ítem';
+              pickCell='<span title="'+tip+'" style="color:#64748b">'+pickingInf.toLocaleString('es-PE')+' <span style="font-size:9px;font-style:italic">(inferido)</span></span>';
+              pedCell='<span title="'+tip+'" style="color:#64748b">'+pedidoInf.toLocaleString('es-PE')+' <span style="font-size:9px;font-style:italic">(inferido)</span></span>';
             }else if(r.estado.toLowerCase().includes('pedido')){
               pickCell='<span style="color:#cbd5e1">—</span>';
               pedCell=(r.cant||0).toLocaleString('es-PE')+' <span class="pill p-crit">PEDIDO</span>';
