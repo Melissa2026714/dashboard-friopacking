@@ -262,6 +262,7 @@ tr:hover td{background:#f8fafc}
         <th>N° Req.</th><th>F. Req.</th><th style="text-align:center">Ítems</th>
         <th style="text-align:center">🚦</th><th>Estado</th>
         <th class="num">Cant. Total</th><th class="num">Cant. a Picking</th><th class="num">Cant. a Pedido</th>
+        <th style="background:#f5f3ff;color:#5b21b6" title="Quién de Almacén va a revisar este requerimiento">Asignado a</th>
         <th style="text-align:center;background:#ecfdf5;color:#065f46" title="Marca el check cuando Almacén termine de validar este requerimiento — se abre WhatsApp con el aviso al supervisor: qué pasó a Picking y qué pasó a Pedido">✔ Valid. Almacén</th>
       </tr></thead>
       <tbody id="tbreq"></tbody>
@@ -1135,6 +1136,9 @@ let PENDING={};    // decisiones editadas en este navegador y aún no guardadas
 let AUTO_MAP={};   // sugerencia automática de cant. a Picking por req+código (repartida, sin duplicar stock)
 let CONFIRMED_VAL={}; // validaciones de almacén ya guardadas en data.json (D.almacenValidado)
 let PENDING_VAL={};   // validaciones marcadas en este navegador y aún no guardadas
+const OPERARIOS=['Jasiel','Fernando','Jhon','Ricardo']; // personal operativo asignable a revisión
+let CONFIRMED_ASIG={}; // asignación de revisión ya guardada en data.json (D.almacenAsignado), clave N° Req.
+let PENDING_ASIG={};   // asignaciones marcadas en este navegador y aún no guardadas
 let SUPERVISORES=[];  // directorio D.supervisores (nombre/correo/celular) para el aviso WhatsApp
 let PROJ=[];           // D.proj (data.json, sigue compartido) — para derivar Zona por nombre de proyecto
 // SKUS_RAW/OC_RAW/SINOC se llenan con el import PROPIO de Almacén (Reporte Almacén.xlsx →
@@ -1164,6 +1168,7 @@ async function cargarLive(){
     if(!s||!s.D)throw new Error('formato inesperado');
     CONFIRMED=s.D.almacenPicking||{};
     CONFIRMED_VAL=s.D.almacenValidado||{};
+    CONFIRMED_ASIG=s.D.almacenAsignado||{};
     SUPERVISORES=s.D.supervisores||[];
     CONFIRMED_COD=s.D.almacenCodigos||[];
     PROJ=s.D.proj||[];
@@ -1176,12 +1181,13 @@ async function cargarLive(){
     applyTransitoADatos();
     setLastSync('☁ '+(s.ts?new Date(s.ts).toLocaleString('es-PE'):'—'));
   }catch(e){
-    CONFIRMED={};CONFIRMED_VAL={};SUPERVISORES=[];CONFIRMED_COD=[];PROJ=[];CONFIRMED_OBRA={};COTMETA={};ARCHIVOMETA={};
+    CONFIRMED={};CONFIRMED_VAL={};CONFIRMED_ASIG={};SUPERVISORES=[];CONFIRMED_COD=[];PROJ=[];CONFIRMED_OBRA={};COTMETA={};ARCHIVOMETA={};
     console.warn('[Almacén] No se pudo leer data.json:',e);
   }
   try{PENDING=JSON.parse(localStorage.getItem('fp_almacen_picking_pending')||'{}');}catch(e2){PENDING={};}
   try{PENDING_OBRA=JSON.parse(localStorage.getItem('fp_almacen_obra_pending')||'{}');}catch(e5){PENDING_OBRA={};}
   try{PENDING_VAL=JSON.parse(localStorage.getItem('fp_almacen_validado_pending')||'{}');}catch(e3){PENDING_VAL={};}
+  try{PENDING_ASIG=JSON.parse(localStorage.getItem('fp_almacen_asignado_pending')||'{}');}catch(e6){PENDING_ASIG={};}
   PENDING_COD=loadPendingCodigos();
   // El picking nace LIMPIO: sin sugerencias automáticas. Las cantidades se asignan
   // manualmente en la revisión (pestaña Requerimientos) y recién ahí aparecen en Picking.
@@ -1674,12 +1680,18 @@ function renderReqTable(){
     <td class="num" style="font-weight:700">${cantTotal.toLocaleString('es-PE')}</td>
     <td class="num">${pickTotal.toLocaleString('es-PE')}</td>
     <td class="num">${pedTotal.toLocaleString('es-PE')}</td>
+    <td style="background:#f5f3ff">
+      <select onchange="setAsignado('${rk}',this.value)" style="width:100%;padding:4px 6px;border:1px solid #ddd6fe;border-radius:6px;font-size:11.5px;background:#fff;cursor:pointer">
+        <option value=""${getAsignado(rk)?'':' selected'}>— Sin asignar —</option>
+        ${OPERARIOS.map(function(nombre){return '<option value="'+nombre+'"'+(getAsignado(rk)===nombre?' selected':'')+'>'+nombre+'</option>';}).join('')}
+      </select>
+    </td>
     <td style="text-align:center;white-space:nowrap;background:#f0fdfa">
       <input type="checkbox" ${isValidadoReq(rk)?'checked':''} onchange="toggleValidadoReq('${rk}',this.checked)" style="width:16px;height:16px;cursor:pointer;accent-color:#0d9488;vertical-align:middle" title="Validado por Almacén — al marcar se abre WhatsApp con el aviso al supervisor">
       ${isValidadoReq(rk)?`<button class="btn br" style="padding:3px 8px;font-size:10.5px;margin-left:5px;vertical-align:middle" onclick="enviarWhatsAppReq('${rk}')" title="Reenviar el aviso por WhatsApp al supervisor">💬</button>`:''}
     </td>
   </tr>`;
-  }).join('') || `<tr><td colspan="13" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
+  }).join('') || `<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
   const tot=order.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqInfo').textContent=tot?`Mostrando ${reqPage*sz+1}–${Math.min((reqPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} requerimientos`:'Sin resultados';
   const pagEl=document.getElementById('reqPag');
@@ -1702,6 +1714,17 @@ function toggleValidadoReq(rk,checked){
   localStorage.setItem('fp_almacen_validado_pending',JSON.stringify(PENDING_VAL));
   renderReqTable();
   if(checked)enviarWhatsAppReq(rk);
+}
+/* ── Asignación de revisión por requerimiento — quién del equipo lo va a trabajar ── */
+function getAsignado(rk){
+  if(Object.prototype.hasOwnProperty.call(PENDING_ASIG,rk))return PENDING_ASIG[rk];
+  return CONFIRMED_ASIG[rk]||'';
+}
+function setAsignado(rk,nombre){
+  PENDING_ASIG[rk]=nombre||'';
+  localStorage.setItem('fp_almacen_asignado_pending',JSON.stringify(PENDING_ASIG));
+  renderReqTable();
+  updateDirtyLabels();
 }
 // Busca al supervisor en D.supervisores por coincidencia de nombre (≥2 palabras y ≥50%)
 function _normNombreAl(s){
@@ -1783,9 +1806,18 @@ function verReqItems(rk){
   if(!items.length)return;
   const g0=items[0];
   document.getElementById('fichaBody').innerHTML=`
-    <div style="background:#0d9488;color:#fff;padding:16px 20px">
-      <div style="font-size:15px;font-weight:800">Requerimiento ${rk} — ${items.length} ítem(s)</div>
-      <div style="font-size:11.5px;color:#ccfbf1;margin-top:2px">${g0.proy||'—'} · ${g0.resp||'—'} · ${g0.fecha||'—'}</div>
+    <div style="background:#0d9488;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:15px;font-weight:800">Requerimiento ${rk} — ${items.length} ítem(s)</div>
+        <div style="font-size:11.5px;color:#ccfbf1;margin-top:2px">${g0.proy||'—'} · ${g0.resp||'—'} · ${g0.fecha||'—'}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <label style="font-size:10px;color:#ccfbf1;font-weight:600">Asignado a</label>
+        <select onchange="setAsignado('${rk}',this.value)" style="padding:5px 8px;border-radius:6px;border:none;font-size:12px;background:#fff;color:#0f172a;cursor:pointer">
+          <option value=""${getAsignado(rk)?'':' selected'}>— Sin asignar —</option>
+          ${OPERARIOS.map(function(nombre){return '<option value="'+nombre+'"'+(getAsignado(rk)===nombre?' selected':'')+'>'+nombre+'</option>';}).join('')}
+        </select>
+      </div>
     </div>
     <div style="overflow-x:auto">
     <table style="width:100%;font-size:12px">
@@ -1887,7 +1919,7 @@ function computeAutoAlloc(pendientes){
   return auto;
 }
 function updateDirtyLabels(){
-  const dirty=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length;
+  const dirty=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length;
   document.querySelectorAll('.dirtyLbl').forEach(el=>{
     el.innerHTML=dirty?`<span class="dirty-badge">${dirty} cambio(s) sin guardar</span>`:'';
   });
@@ -2228,13 +2260,14 @@ async function confirmarCompletado(){
 // decisiones" — útil para descartar pruebas/pilotos que nunca se llegaron a compartir.
 // No toca nada de lo que ya está guardado en data.json (eso hay que resetearlo aparte).
 function descartarCambiosLocales(){
-  const n=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length;
+  const n=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length;
   if(!n){alert('No hay cambios locales sin guardar en este navegador.');return;}
-  if(!confirm('Se van a descartar '+n+' cambio(s) sin guardar en ESTE navegador (Picking / Validación / En obra).\nEsto NO afecta lo que ya está guardado y ven los demás.\n\n¿Continuar?'))return;
-  PENDING={};PENDING_VAL={};PENDING_OBRA={};
+  if(!confirm('Se van a descartar '+n+' cambio(s) sin guardar en ESTE navegador (Picking / Validación / En obra / Asignación).\nEsto NO afecta lo que ya está guardado y ven los demás.\n\n¿Continuar?'))return;
+  PENDING={};PENDING_VAL={};PENDING_OBRA={};PENDING_ASIG={};
   localStorage.removeItem('fp_almacen_picking_pending');
   localStorage.removeItem('fp_almacen_validado_pending');
   localStorage.removeItem('fp_almacen_obra_pending');
+  localStorage.removeItem('fp_almacen_asignado_pending');
   if(document.getElementById('tbreq'))renderReqTable();
   if(document.getElementById('tbreqitem'))renderReqItemTable();
   if(document.getElementById('pickGroups'))renderPick();
@@ -2245,7 +2278,8 @@ async function guardarDecisiones(){
   const keys=Object.keys(PENDING);
   const vkeys=Object.keys(PENDING_VAL);
   const okeys=Object.keys(PENDING_OBRA);
-  if(!keys.length&&!vkeys.length&&!okeys.length){alert('No hay cambios nuevos para guardar.');return;}
+  const akeys=Object.keys(PENDING_ASIG);
+  if(!keys.length&&!vkeys.length&&!okeys.length&&!akeys.length){alert('No hay cambios nuevos para guardar.');return;}
   const token=localStorage.getItem(GH_TOKEN_KEY);
   if(!token){
     if(confirm('Para guardar decisiones de Picking (compartidas con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
@@ -2271,6 +2305,9 @@ async function guardarDecisiones(){
     remote.D.almacenValidado=mergedVal;
     const mergedObra={...(remote.D.obraMeta||{}),...PENDING_OBRA};
     remote.D.obraMeta=mergedObra;
+    // Asignación de revisión: "" (Sin asignar) también se guarda como valor válido, no se retira.
+    const mergedAsig={...(remote.D.almacenAsignado||{}),...PENDING_ASIG};
+    remote.D.almacenAsignado=mergedAsig;
     const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
     const body={message:'almacen: actualizar decisiones de picking y validaciones '+new Date().toISOString(),content,sha};
     const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -2284,6 +2321,9 @@ async function guardarDecisiones(){
     CONFIRMED_OBRA=mergedObra;
     PENDING_OBRA={};
     localStorage.removeItem('fp_almacen_obra_pending');
+    CONFIRMED_ASIG=mergedAsig;
+    PENDING_ASIG={};
+    localStorage.removeItem('fp_almacen_asignado_pending');
     const savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE');
     document.querySelectorAll('.saveLblEl').forEach(l=>l.textContent=savedTxt);
     setLastSync('✔ '+new Date().toLocaleString('es-PE'));
