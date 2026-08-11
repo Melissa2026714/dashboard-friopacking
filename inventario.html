@@ -148,6 +148,7 @@ tr:hover td{background:#f8fafc}
   <div class="nbr">
     <button class="btn bi" onclick="document.getElementById('fileAlmacen').click()" title="Importar Existencias/Kardex (.xlsx) — acepta más de un archivo a la vez">📂 IMPORTAR</button>
     <button class="btn" id="saveBtnAlm" onclick="guardarTodo()" title="Guardar y sincronizar Existencias, Picking y Códigos con todos" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
+    <span id="lastSyncLbl" style="font-size:10px;font-weight:600;white-space:nowrap;color:#0ea5e9"></span>
     <button class="btn br" onclick="setupGHToken()" title="Configurar el token de GitHub de Almacén (propio, distinto al de Compras)">🔑</button>
     <button class="btn br" onclick="location.reload()">↻</button>
   </div>
@@ -1045,6 +1046,7 @@ async function cargarLive(){
     }
     applyTransitoADatos();
     document.getElementById('reqLiveNote').innerHTML='☁️ <b>Datos en vivo</b> desde data.json — '+P5.length.toLocaleString('es-PE')+' requerimientos (mismos que ve Compras).';
+    setLastSync('☁ '+(s.ts?new Date(s.ts).toLocaleString('es-PE'):'—'));
     // Existencias se carga aparte, sin esperarla — no bloquea Requerimientos/Picking (ver GH_FILE_EXIST)
     cargarExistenciasLive();
   }catch(e){
@@ -1916,6 +1918,10 @@ function reqPickingCompleto(req){
   });
   return todosListos?asignados:null;
 }
+function setLastSync(text){
+  const el=document.getElementById('lastSyncLbl');
+  if(el)el.textContent=text;
+}
 function showToastAlm(msg){
   let t=document.getElementById('_toastAlm');
   if(!t){
@@ -2113,6 +2119,7 @@ async function guardarDecisiones(){
     localStorage.removeItem('fp_almacen_obra_pending');
     const savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE');
     document.querySelectorAll('.saveLblEl').forEach(l=>l.textContent=savedTxt);
+    setLastSync('✔ '+new Date().toLocaleString('es-PE'));
     if(document.getElementById('tbreq'))renderReqTable();
     if(document.getElementById('tbreqitem'))renderReqItemTable();
     if(document.getElementById('pickGroups'))renderPick();
@@ -2470,6 +2477,7 @@ async function guardarCodigos(){
     let savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE');
     if(colisiones.length)savedTxt+=` — ⚠ ${colisiones.length} código(s) ya existían y no se subieron, regenéralos`;
     document.querySelectorAll('.codSaveLblEl').forEach(l=>l.textContent=savedTxt);
+    setLastSync('✔ '+new Date().toLocaleString('es-PE'));
     renderCod();
     updateHomeCounters();
   }catch(e){
@@ -2550,6 +2558,7 @@ async function guardarTodo(){
     if(hayExistenciasEfectivo){EXISTENCIAS_DIRTY=false;}
 
     let savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE')+' — '+partes.join(' + ');
+    setLastSync('✔ '+new Date().toLocaleString('es-PE'));
     if(colisionesCod.length)savedTxt+=` — ⚠ ${colisionesCod.length} código(s) ya existían y no se subieron, regenéralos`;
     document.querySelectorAll('.saveLblEl,.codSaveLblEl').forEach(l=>l.textContent=savedTxt);
     if(btn){btn.textContent='💾 GUARDAR';btn.disabled=false;}
