@@ -649,6 +649,9 @@ function toNum(v){
   const n=Number(s.replace(/,/g,''));
   return isNaN(n)?0:n;
 }
+// Redondea a 2 decimales (evita ruido de punto flotante) SIN truncar a entero — hay materiales
+// que se requieren en fracciones (ej. 0.44 MTS de cable/tubo), Math.round() los dejaba en 0.
+function round2(n){return Math.round((n||0)*100)/100;}
 function parseExistenciasWorkbook(wb){
   // Prioriza la hoja "Análisis Inventario" (el reporte real de ICA/Lima/Trujillo);
   // si no existe, cae a Existencias/Kardex/Stock; si tampoco, usa la primera hoja.
@@ -889,7 +892,7 @@ function parseRequerimientosWorkbook(wb){
     if(!estado)return;
     const req=xcodigo(r['CodRequerimiento']),cod=xtexto(r['IdProducto']);
     if(!req||!cod)return;
-    const cant=Math.round(toNum(r['CantidadRequerimiento']));
+    const cant=round2(toNum(r['CantidadRequerimiento']));
     const key3=req+'|'+cod+'|'+cant;
     if(p5Seen.has(key3))return;
     p5Seen.add(key3);
@@ -924,7 +927,7 @@ function parseRequerimientosWorkbook(wb){
     if(!skus[ocNum])skus[ocNum]=[];
     skus[ocNum].push({
       cod:cod,prod:xtexto(r['Producto']),
-      cantOrd:Math.round(co),cantRec:Math.round(cr),cantPend:Math.max(0,Math.round(co-cr)),
+      cantOrd:round2(co),cantRec:round2(cr),cantPend:Math.max(0,round2(co-cr)),
       foc:xfecha(r['FechaOrden']),fent:xfecha(r['ParaFechaOrden']),
       estado:xtexto(r['EstadoOrden']),req:req,freq:xfecha(r['FechaRequerimiento']),
       unid:xtexto(r['UnidadMedida'])||xtexto(r['Medida'])||''
@@ -945,7 +948,7 @@ function parseRequerimientosWorkbook(wb){
     sinocSeen.add(key);
     sinoc.push({
       ped:ped,req:req,cod:cod,prod:xtexto(r['Producto']),
-      cant:Math.round(toNum(r['CantidadRequerimiento'])),
+      cant:round2(toNum(r['CantidadRequerimiento'])),
       resp:xtexto(r['NombreResponsable']),proy:xtexto(r['NombreProyecto']),idproy:xtexto(r['IdProyecto']),
       estado:xtexto(r['EstadoPedido']),respPed:xtexto(r['ResponsablePedido'])
     });
@@ -1562,21 +1565,22 @@ function renderReqItemTable(){
       const pedido=Math.max(0,(r.cant||0)-picking);
       pickCell=picking.toLocaleString('es-PE');
       pedCell=pedido.toLocaleString('es-PE');
-    }else if(oc.cantOrd>0){
-      // Ya no está "en revisión" — se resolvió sin pasar por el reparto de Almacén en este
-      // dashboard (venía de antes, o de flujo directo). Se infiere el reparto a partir de lo
-      // realmente ordenado por OC para este código: lo que cubrió la OC fue a Pedido, el resto
-      // (si el requerido es mayor) se asume cubierto por Picking/stock.
-      const pedidoInf=Math.min(r.cant||0,oc.cantOrd);
-      const pickingInf=Math.max(0,(r.cant||0)-pedidoInf);
-      const tip='Nadie lo repartió en el dashboard — se calculó solo, a partir de lo que ya está ordenado en la OC real de este ítem';
-      pickCell='<span title="'+tip+'" style="color:#64748b">'+pickingInf.toLocaleString('es-PE')+'<br><span style="font-size:9px;font-style:italic">inferido</span></span>';
-      pedCell='<span title="'+tip+'" style="color:#64748b">'+pedidoInf.toLocaleString('es-PE')+'<br><span style="font-size:9px;font-style:italic">inferido</span></span>';
-    }else if((r.estado||'').toLowerCase().includes('pedido')){
-      // Ya no está "en revisión" y todavía no tiene OC, pero el propio estado (del Excel/NISIRA)
-      // ya dice "Enviado a pedido" — no es una inferencia nuestra, es el dato real: 100% a Pedido.
-      pickCell='0';
-      pedCell=(r.cant||0).toLocaleString('es-PE');
+    }else{
+      // Ya no está "en revisión" — el reparto no se calcula/inferido, se cruza directo con lo
+      // que el Maestro ya trae por su cuenta: "En Obra" (CantidadSalida) es lo que Almacén
+      // realmente despachó desde stock (Picking real), y "Cantidad de orden" de la OC es lo
+      // que realmente se compró (Pedido real). Si no hay ninguno de los dos, queda en "—".
+      const pickReal=salidaExcel?salidaExcel.obra:null;
+      const pedReal=(oc.cantOrd>0)?oc.cantOrd:null;
+      if(pickReal!=null||pedReal!=null){
+        pickCell=pickReal!=null?pickReal.toLocaleString('es-PE'):'—';
+        pedCell=pedReal!=null?pedReal.toLocaleString('es-PE'):'—';
+      }else if((r.estado||'').toLowerCase().includes('pedido')){
+        // Sin OC ni salida todavía, pero el propio estado del Excel/NISIRA ya dice
+        // "Enviado a pedido" — dato real, no inferencia: 100% a Pedido.
+        pickCell='0';
+        pedCell=(r.cant||0).toLocaleString('es-PE');
+      }
     }
     return `<tr>
       <td style="color:#64748b">${r.fecha||'—'}</td>
@@ -1673,13 +1677,14 @@ function renderReqTable(){
         pedTotal+=(i.cant-picking);
       }else if(!enRevision){
         const oc=REQCOD_OC[key]||{};
-        if(oc.cantOrd>0){
-          // Ya tiene OC real — lo que cubrió la OC fue a Pedido, el resto a Picking/stock.
-          const pedidoInf=Math.min(i.cant||0,oc.cantOrd);
-          pickTotal+=Math.max(0,(i.cant||0)-pedidoInf);
-          pedTotal+=pedidoInf;
+        const salida=SALIDAS_ALM[key];
+        if(salida||oc.cantOrd>0){
+          // Cruce real, no inferencia: "En Obra" (CantidadSalida) es Picking real; lo ordenado
+          // en la OC es Pedido real.
+          if(salida)pickTotal+=(salida.obra||0);
+          if(oc.cantOrd>0)pedTotal+=oc.cantOrd;
         }else if(i.estado.toLowerCase().includes('pedido')){
-          // Sin OC todavía, pero el estado ya dice "Enviado a pedido" — 100% a Pedido, dato real.
+          // Sin OC ni salida todavía, pero el estado ya dice "Enviado a pedido" — dato real.
           pedTotal+=(i.cant||0);
         }
       }
@@ -1874,12 +1879,12 @@ function verReqItems(rk){
             else{const sr=semReq(r.estado);s={c:sr.c,bg:sr.bg};estadoLbl=estadoDisplay(r.estado);}
           }else{
             const oc=REQCOD_OC[key]||{};
-            if(oc.cantOrd>0){
-              const pedidoInf=Math.min(r.cant||0,oc.cantOrd);
-              const pickingInf=Math.max(0,(r.cant||0)-pedidoInf);
-              const tip='Nadie lo repartió en el dashboard — se calculó solo, a partir de lo que ya está ordenado en la OC real de este ítem';
-              pickCell='<span title="'+tip+'" style="color:#64748b">'+pickingInf.toLocaleString('es-PE')+' <span style="font-size:9px;font-style:italic">(inferido)</span></span>';
-              pedCell='<span title="'+tip+'" style="color:#64748b">'+pedidoInf.toLocaleString('es-PE')+' <span style="font-size:9px;font-style:italic">(inferido)</span></span>';
+            const salida=SALIDAS_ALM[key];
+            const pickReal=salida?salida.obra:null;
+            const pedReal=(oc.cantOrd>0)?oc.cantOrd:null;
+            if(pickReal!=null||pedReal!=null){
+              pickCell=pickReal!=null?pickReal.toLocaleString('es-PE'):'<span style="color:#cbd5e1">—</span>';
+              pedCell=pedReal!=null?pedReal.toLocaleString('es-PE'):'<span style="color:#cbd5e1">—</span>';
             }else if(r.estado.toLowerCase().includes('pedido')){
               pickCell='<span style="color:#cbd5e1">—</span>';
               pedCell=(r.cant||0).toLocaleString('es-PE')+' <span class="pill p-crit">PEDIDO</span>';
