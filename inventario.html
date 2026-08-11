@@ -889,6 +889,14 @@ function parseRequerimientosWorkbook(wb){
   // Requerimientos: mismo fix que en Compras — una fila con el mismo req+código+cantidad EXACTA
   // ya vista es el Maestro repitiendo la línea por cada recepción/salida (se ignora); una fila
   // con el mismo req+código pero OTRA cantidad es una línea real aparte (se suma, no se pierde).
+  // OJO: ese dedup por cantidad exacta solo es seguro si la fila tiene evidencia de una OC o de
+  // una recepción/salida real (solo entonces el Maestro puede repetir la MISMA línea) — tener
+  // apenas un N° de Pedido asignado NO basta, porque eso no implica que ya se haya recepcionado
+  // o despachado nada. Si el requerimiento sigue "Pendiente" sin OC ni movimiento todavía, no hay
+  // repetición posible por recepción, así que dos filas con el mismo req+código+cantidad son dos
+  // ítems reales distintos
+  // (caso real: req 0001-0022016, 2 líneas de 2 CIL cada una = 4, no 2 — NISIRA las trae como
+  // ítems 001 y 002 separados, y el Maestro no exporta ese N° de ítem para poder diferenciarlas).
   const p5Seen=new Set(),p5IdxByReqCod={},p5=[];
   rows.forEach(function(r){
     const estado=xtexto(r['EstadoRequerimiento']);
@@ -896,9 +904,12 @@ function parseRequerimientosWorkbook(wb){
     const req=xcodigo(r['CodRequerimiento']),cod=xtexto(r['IdProducto']);
     if(!req||!cod)return;
     const cant=round2(toNum(r['CantidadRequerimiento']));
-    const key3=req+'|'+cod+'|'+cant;
-    if(p5Seen.has(key3))return;
-    p5Seen.add(key3);
+    const hayActividad=!!xcodigo(r['CodOrden'])||toNum(r['CantRecepcion'])>0||toNum(r['CantidadSalida'])>0;
+    if(hayActividad){
+      const key3=req+'|'+cod+'|'+cant;
+      if(p5Seen.has(key3))return;
+      p5Seen.add(key3);
+    }
     const key2=req+'|'+cod;
     if(p5IdxByReqCod[key2]!=null){p5[p5IdxByReqCod[key2]].cant+=cant;return;}
     p5IdxByReqCod[key2]=p5.length;
