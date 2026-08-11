@@ -780,7 +780,6 @@ let TRANS=[],RESV=[];                 // líneas detalle — persisten compartid
 let TRANS_META=null;
 let TRANSITO_LIVE=false,TRANS_DIRTY=false;
 let TRANS_BY_COD={},RESV_BY_COD={};   // suma por SKU
-let TRANS_BY_REQCOD={};               // suma por req+'|'+cod — tránsito propio de ESE requerimiento
 
 function xfecha(v){ // Date | serial Excel | texto → "dd/mm/yyyy"
   if(v==null||v==='')return '';
@@ -1024,9 +1023,6 @@ function setTransito(t,r,marcarDirty,ts){
   TRANS_BY_COD={};TRANS.forEach(x=>{if(x.cod)TRANS_BY_COD[x.cod]=(TRANS_BY_COD[x.cod]||0)+(x.cantPend!=null?x.cantPend:(x.cant||0));});
   RESV_BY_COD={};RESV.forEach(x=>{if(x.cod)RESV_BY_COD[x.cod]=(RESV_BY_COD[x.cod]||0)+(+x.cant||0);});
   RESV_BY_REQCOD={};RESV.forEach(x=>{if(x.req&&x.cod){const k=x.req+'|'+x.cod;RESV_BY_REQCOD[k]=(RESV_BY_REQCOD[k]||0)+(+x.cant||0);}});
-  // TRANS trae "ref" = CodRequerimiento del propio Reporte Maestro (líneas de PedSinReq no
-  // tienen requerimiento de origen, así que no aportan a este cruce por req+código).
-  TRANS_BY_REQCOD={};TRANS.forEach(x=>{if(x.ref&&x.cod){const k=x.ref+'|'+x.cod;TRANS_BY_REQCOD[k]=(TRANS_BY_REQCOD[k]||0)+(x.cantPend!=null?x.cantPend:(x.cant||0));}});
 }
 
 // Aplica los totales calculados a cada ítem de Existencias (columnas "En Tránsito" y "Reservas" de la hoja General).
@@ -2005,7 +2001,7 @@ function verReqItems(rk){
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;white-space:normal;max-width:260px;font-weight:500">${r.prod||'—'}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700">${(r.cant||0).toLocaleString('es-PE')}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#64748b">${r.unid||'—'}</td>
-            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#b45309;font-weight:600">${(TRANS_BY_REQCOD[key]||0)>0?fmtq(TRANS_BY_REQCOD[key]):'—'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#b45309;font-weight:600">${(TRANS_BY_COD[r.cod]||0)>0?fmtq(TRANS_BY_COD[r.cod]):'—'}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9"><span class="pill" style="background:${s.bg};color:${s.c};white-space:nowrap">${estadoLbl}</span></td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${pickCell}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${pedCell}</td>
