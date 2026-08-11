@@ -247,6 +247,7 @@ tr:hover td{background:#f8fafc}
     <select id="rfproy" onchange="renderReq()"><option value="">Proyecto: Todos</option></select>
     <select id="rfest" onchange="renderReq()"><option value="">Estado: Todos</option></select>
     <select id="rfzona" onchange="renderReq()" title="Zona derivada del proyecto (Proyectos PMO) — si un proyecto no aparece bajo su zona, búscalo por nombre en el buscador"><option value="">Zona: Todas</option><option>NORTE</option><option>CENTRO</option><option>SUR</option></select>
+    <button class="btn br" onclick="limpiarFiltrosReq()" title="Quita todos los filtros de esta pantalla">✕ Limpiar filtros</button>
     <span class="fx" id="rcnt"></span>
   </div>
 
@@ -1391,14 +1392,25 @@ function verFichaExistencia(cod){
 
 /* ═══════════════ PÁGINA REQUERIMIENTOS ═══════════════ */
 let reqPage=0;
+function limpiarFiltrosReq(){
+  document.getElementById('rq').value='';
+  document.getElementById('rfresp').value='';
+  document.getElementById('rfproy').value='';
+  document.getElementById('rfest').value='';
+  const rz=document.getElementById('rfzona');if(rz)rz.value='';
+  renderReq();
+}
 function fillReqFilters(){
   const resps=[...new Set(P5.map(r=>r.resp))].filter(Boolean).sort();
   const proys=[...new Set(P5.map(r=>r.proy))].filter(Boolean).sort();
-  const ests=[...new Set(P5.map(r=>r.estado))].filter(Boolean).sort();
+  // El filtro de Estado debe ofrecer y comparar contra la MISMA etiqueta que se ve en la
+  // columna Estado de la tabla (estadoItem, ya cruzada con OC/Cotización/Validado) — no el
+  // estado crudo del Excel, que no distingue "Pedido pendiente" de "Pedido en cotización".
+  const ests=[...new Set(P5.map(r=>estadoItem(r).t))].filter(Boolean).sort();
   const fr=document.getElementById('rfresp'),fp=document.getElementById('rfproy'),fe=document.getElementById('rfest');
-  fr.innerHTML='<option value="">Responsable: Todos</option>'+resps.map(r=>`<option>${r}</option>`).join('');
-  fp.innerHTML='<option value="">Proyecto: Todos</option>'+proys.map(p=>`<option>${p}</option>`).join('');
-  fe.innerHTML='<option value="">Estado: Todos</option>'+ests.map(e=>`<option value="${e}">${estadoDisplay(e)}</option>`).join('');
+  fr.innerHTML='<option value="">Responsable: Todos</option>'+resps.map(r=>`<option>${esc(r)}</option>`).join('');
+  fp.innerHTML='<option value="">Proyecto: Todos</option>'+proys.map(p=>`<option>${esc(p)}</option>`).join('');
+  fe.innerHTML='<option value="">Estado: Todos</option>'+ests.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
 }
 function semReq(e){
   const l=(e||'').toLowerCase();
@@ -1628,7 +1640,7 @@ function renderReq(){
   window._reqFil=P5.filter(r=>{
     if(fr && r.resp!==fr)return false;
     if(fp && r.proy!==fp)return false;
-    if(fe && r.estado!==fe)return false;
+    if(fe && estadoItem(r).t!==fe)return false;
     if(fz && zonaForProy(r.proy)!==fz)return false;
     if(q && ![r.req,r.cod,r.prod,r.proy,r.resp].join(' ').toLowerCase().includes(q))return false;
     return true;
