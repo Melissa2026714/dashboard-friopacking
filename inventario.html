@@ -263,6 +263,7 @@ tr:hover td{background:#f8fafc}
         <th>N° Req.</th><th>F. Req.</th><th style="text-align:center">Ítems</th>
         <th style="text-align:center">🚦</th><th>Estado</th>
         <th class="num">Cant. Total</th><th class="num">Cant. a Picking</th><th class="num">Cant. a Pedido</th>
+        <th style="background:#ecfdf5;color:#065f46" title="N° de pedido generado para los ítems de este requerimiento que ya pasaron a Pedido">N° Pedido</th>
         <th style="background:#f5f3ff;color:#5b21b6" title="Quién de Almacén va a revisar este requerimiento">Asignado a</th>
         <th style="text-align:center;background:#ecfdf5;color:#065f46" title="Marca el check cuando Almacén termine de validar este requerimiento — se abre WhatsApp con el aviso al supervisor: qué pasó a Picking y qué pasó a Pedido">✔ Valid. Almacén</th>
       </tr></thead>
@@ -769,6 +770,7 @@ let TRANS=[],RESV=[];                 // líneas detalle — persisten compartid
 let TRANS_META=null;
 let TRANSITO_LIVE=false,TRANS_DIRTY=false;
 let TRANS_BY_COD={},RESV_BY_COD={};   // suma por SKU
+let TRANS_BY_REQCOD={};               // suma por req+'|'+cod — tránsito propio de ESE requerimiento
 
 function xfecha(v){ // Date | serial Excel | texto → "dd/mm/yyyy"
   if(v==null||v==='')return '';
@@ -1001,6 +1003,9 @@ function setTransito(t,r,marcarDirty,ts){
   TRANS_BY_COD={};TRANS.forEach(x=>{if(x.cod)TRANS_BY_COD[x.cod]=(TRANS_BY_COD[x.cod]||0)+(x.cantPend!=null?x.cantPend:(x.cant||0));});
   RESV_BY_COD={};RESV.forEach(x=>{if(x.cod)RESV_BY_COD[x.cod]=(RESV_BY_COD[x.cod]||0)+(+x.cant||0);});
   RESV_BY_REQCOD={};RESV.forEach(x=>{if(x.req&&x.cod){const k=x.req+'|'+x.cod;RESV_BY_REQCOD[k]=(RESV_BY_REQCOD[k]||0)+(+x.cant||0);}});
+  // TRANS trae "ref" = CodRequerimiento del propio Reporte Maestro (líneas de PedSinReq no
+  // tienen requerimiento de origen, así que no aportan a este cruce por req+código).
+  TRANS_BY_REQCOD={};TRANS.forEach(x=>{if(x.ref&&x.cod){const k=x.ref+'|'+x.cod;TRANS_BY_REQCOD[k]=(TRANS_BY_REQCOD[k]||0)+(x.cantPend!=null?x.cantPend:(x.cant||0));}});
 }
 
 // Aplica los totales calculados a cada ítem de Existencias (columnas "En Tránsito" y "Reservas" de la hoja General).
@@ -1677,9 +1682,12 @@ function renderReqTable(){
     let estadoLbl=estados.length===1?estadoDisplay(estados[0]):`Mixto (${estados.length} estados)`;
     const cantTotal=items.reduce((a,i)=>a+(i.cant||0),0);
     let pickTotal=0,pedTotal=0;
+    const pedsSet=new Set();
     items.forEach(i=>{
       const enRevision=i.estado.toLowerCase().includes('revisi');
       const key=i.req+'|'+i.cod;
+      const pedNum=pedidoForItem(key);
+      if(pedNum)pedsSet.add(pedNum);
       // Solo suma lo que ya tiene un reparto explícito (PENDING/CONFIRMED) — un ítem sin
       // decidir no debe aportar "todo a Pedido" por defecto al total del grupo.
       if(enRevision&&getRecord(key)!=null){
@@ -1718,6 +1726,7 @@ function renderReqTable(){
     <td class="num" style="font-weight:700">${cantTotal.toLocaleString('es-PE')}</td>
     <td class="num">${pickTotal.toLocaleString('es-PE')}</td>
     <td class="num">${pedTotal.toLocaleString('es-PE')}</td>
+    <td style="background:#ecfdf5;color:#065f46;font-size:11px">${[...pedsSet].join(', ')||'—'}</td>
     <td style="background:#f5f3ff">
       <select onchange="setAsignado('${rk}',this.value)" style="width:100%;padding:4px 6px;border:1px solid #ddd6fe;border-radius:6px;font-size:11.5px;background:#fff;cursor:pointer">
         <option value=""${getAsignado(rk)?'':' selected'}>— Sin asignar —</option>
@@ -1729,7 +1738,7 @@ function renderReqTable(){
       ${isValidadoReq(rk)?`<button class="btn br" style="padding:3px 8px;font-size:10.5px;margin-left:5px;vertical-align:middle" onclick="enviarWhatsAppReq('${rk}')" title="Reenviar el aviso por WhatsApp al supervisor">💬</button>`:''}
     </td>
   </tr>`;
-  }).join('') || `<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
+  }).join('') || `<tr><td colspan="15" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
   const tot=order.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqInfo').textContent=tot?`Mostrando ${reqPage*sz+1}–${Math.min((reqPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} requerimientos`:'Sin resultados';
   const pagEl=document.getElementById('reqPag');
@@ -1865,6 +1874,7 @@ function verReqItems(rk){
         <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Descripción</th>
         <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0">Cant.</th>
         <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Unidad</th>
+        <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0;color:#b45309" title="OC ya aprobada, pendiente de recepción — mismo cálculo que la columna En Tránsito de la hoja General">En Tránsito</th>
         <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Estado</th>
         <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0">Cant. a Picking</th>
         <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0">Cant. a Pedido</th>
@@ -1912,6 +1922,7 @@ function verReqItems(rk){
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;white-space:normal;max-width:260px;font-weight:500">${r.prod||'—'}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700">${(r.cant||0).toLocaleString('es-PE')}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#64748b">${r.unid||'—'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#b45309;font-weight:600">${(TRANS_BY_REQCOD[key]||0)>0?fmtq(TRANS_BY_REQCOD[key]):'—'}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9"><span class="pill" style="background:${s.bg};color:${s.c};white-space:nowrap">${estadoLbl}</span></td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${pickCell}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">${pedCell}</td>
