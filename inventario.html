@@ -293,9 +293,9 @@ tr:hover td{background:#f8fafc}
         <th style="background:#ecfdf5;color:#065f46" title="Fecha en la que se generó el pedido">F. Pedido</th>
         <th style="background:#ecfdf5;color:#065f46" title="Quién está a cargo de gestionar la compra de este pedido">Resp. Pedido</th>
         <th style="background:#fef3c7;color:#92400e">N° OC</th><th style="background:#fef3c7;color:#92400e">F. Emisión</th><th style="background:#fef3c7;color:#92400e">F. Aprobación</th><th style="background:#fef3c7;color:#92400e" title="Fecha de entrega pactada con el proveedor">F. Entrega</th>
-        <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad realmente recepcionada en almacén (columna CantRecepcion del Maestro) — se suma si hubo más de una recepción parcial">Cant. Recepcionada</th>
-        <th style="background:#fef3c7;color:#92400e" title="Fecha real en la que se recepcionó el material (columna FechaRecepcion del Maestro) — la más reciente si hubo varias recepciones">F. Recepción</th>
-        <th style="background:#fef3c7;color:#92400e" title="N° de guía del proveedor con el que llegó el material (columna CodRecepcion del Maestro)">Guía Proveedor</th>
+        <th class="num" style="background:#e0f2fe;color:#075985" title="Cantidad realmente recepcionada en almacén (columna CantRecepcion del Maestro) — se suma si hubo más de una recepción parcial">Cant. Recepcionada</th>
+        <th style="background:#e0f2fe;color:#075985" title="Fecha real en la que se recepcionó el material (columna FechaRecepcion del Maestro) — la más reciente si hubo varias recepciones">F. Recepción</th>
+        <th style="background:#e0f2fe;color:#075985" title="N° de guía del proveedor con el que llegó el material (columna CodRecepcion del Maestro)">Guía Proveedor</th>
         <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad ya despachada al proyecto — sale sola del Excel (CantidadSalida) cuando ya hay despacho registrado; si no, se digita a mano">En Obra</th>
         <th style="background:#fef3c7;color:#92400e">N° Guía</th>
         <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad requerida menos lo ya despachado a obra">Falta</th>
@@ -1724,9 +1724,9 @@ function renderReqItemTable(){
       <td style="background:#fffbeb;color:#64748b">${oc.foc||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.fapro||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.fent||'—'}</td>
-      <td class="num" style="background:#fffbeb">${(oc.cantRec||0)>0?oc.cantRec.toLocaleString('es-PE'):'—'}</td>
-      <td style="background:#fffbeb;color:#64748b">${oc.frecep||'—'}</td>
-      <td style="background:#fffbeb;color:#64748b">${(oc.guiasProv||[]).join(', ')||'—'}</td>
+      <td class="num" style="background:#e0f2fe;color:#075985">${(oc.cantRec||0)>0?oc.cantRec.toLocaleString('es-PE'):'—'}</td>
+      <td style="background:#e0f2fe;color:#075985">${oc.frecep||'—'}</td>
+      <td style="background:#e0f2fe;color:#075985">${(oc.guiasProv||[]).join(', ')||'—'}</td>
       <td class="num" style="background:#fffbeb">${salidaExcel
         ?'<span title="Cantidad de salida real, del Excel — no editable" style="color:#0f766e;font-weight:700">'+salidaExcel.obra.toLocaleString('es-PE')+'</span>'
         :'<input type="number" min="0" max="'+(r.cant||0)+'" value="'+(ob.obra||0)+'" style="width:56px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setObraQty(\''+key+'\',this.value,'+(r.cant||0)+')">'}</td>
