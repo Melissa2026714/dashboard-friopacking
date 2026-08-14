@@ -14,6 +14,10 @@
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- xlsx.full.min.js (SheetJS CE) no escribe estilos/colores en el .xlsx que genera — solo los lee.
+     ExcelJS sí soporta escribir relleno de celdas, fuentes y anchos, así que se usa solo para
+     el botón "Exportar" de Requerimientos, que necesita salir con formato. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -56,10 +60,25 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:1
   .tabs{order:10;flex:1 1 100%;width:100%;margin-left:0}
   .pg{margin-top:0}
   #ph{margin-top:0}
+  /* Filtros, barra de guardado y botones de vista en columna, a todo el ancho — más fácil de
+     tocar y sin elementos apretados unos contra otros. */
+  .filters{flex-direction:column;align-items:stretch}
+  .filters input,.filters select,.filters .ms-wrap,.filters>button{width:100%;min-width:0}
+  .filters .fx{margin-left:0;text-align:center}
+  .savebar{flex-direction:column;align-items:stretch}
+  .savebar>button{width:100%;justify-content:center}
+  .viewToggle{flex-direction:column}
+  .viewToggle>button{width:100%;justify-content:center}
+  /* Modal de detalle del requerimiento: menos margen alrededor para ganar ancho útil */
+  #fichaBg{padding:8px!important}
+  #fichaBox{border-radius:10px}
 }
 /* PAGE */
 .pg{display:none;margin-top:52px;padding:16px;max-width:1500px;margin-left:auto;margin-right:auto}
 .pg.act{display:block}
+/* Requerimientos trae hasta 22 columnas en la vista Por ítem — el tope de 1500px de .pg lo
+   obligaba a hacer scroll horizontal aun en monitores anchos. Se le da más aire propio. */
+#p-req{max-width:min(1900px,98vw)}
 .hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px}
 .hd h2{font-size:18px;font-weight:800;color:#0f172a}
 .hd .sub{color:#64748b;font-size:12px;margin-top:2px}
@@ -86,6 +105,11 @@ table{width:100%;border-collapse:collapse;font-size:12px}
 th{background:#0f172a;color:#e2e8f0;text-align:left;padding:10px 12px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;white-space:nowrap}
 td{padding:9px 12px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
 tr:hover td{background:#f8fafc}
+/* Primera columna fija al hacer scroll horizontal en tablas anchas (Requerimientos llega a 22
+   columnas) — así no se pierde de vista a qué fila corresponde el resto de los datos. */
+.tblwrap table th:first-child,#fichaBody table th:first-child{position:sticky;left:0;z-index:4}
+.tblwrap table td:first-child,#fichaBody table td:first-child{position:sticky;left:0;z-index:2;background:#fff}
+.tblwrap table tr:hover td:first-child{background:#f8fafc}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:11px;white-space:nowrap}
 .p-ok{background:#dcfce7;color:#15803d}
@@ -253,15 +277,16 @@ tr:hover td{background:#f8fafc}
 
   <div class="filters">
     <input id="rq" type="text" placeholder="🔍 Buscar por requerimiento / código / descripción / proyecto…" oninput="renderReq()">
-    <select id="rfresp" onchange="renderReq()"><option value="">Responsable: Todos</option></select>
     <select id="rfproy" onchange="renderReq()"><option value="">Proyecto: Todos</option></select>
+    <select id="rffam" onchange="renderReq()"><option value="">Familia: Todas</option></select>
+    <select id="rfsup" onchange="renderReq()" title="Filtra por el responsable del requerimiento (supervisor de campo que lo generó)"><option value="">Supervisor: Todos</option></select>
     <div class="ms-wrap"><div class="ms-btn" id="rfest-btn" data-label="Estado" onclick="toggleMS('rfest')"><span id="rfest-lbl">Estado: Todos</span><span class="ms-arr">▼</span></div><div class="ms-dd" id="rfest-dd"></div></div>
-    <select id="rfzona" onchange="renderReq()" title="Zona derivada del proyecto (Proyectos PMO) — si un proyecto no aparece bajo su zona, búscalo por nombre en el buscador"><option value="">Zona: Todas</option><option>NORTE</option><option>CENTRO</option><option>SUR</option></select>
     <button class="btn br" onclick="limpiarFiltrosReq()" title="Quita todos los filtros de esta pantalla">✕ Limpiar filtros</button>
+    <button class="btn bi" onclick="exportarReq()" title="Exporta a Excel lo que se ve con los filtros actuales (todas las páginas, no solo la visible)">⬇ Exportar</button>
     <span class="fx" id="rcnt"></span>
   </div>
 
-  <div style="display:flex;gap:8px;margin-bottom:10px">
+  <div class="viewToggle" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
     <button class="btn bi" id="reqViewGrupo" onclick="setReqView('grupo')">📋 Agrupado por requerimiento</button>
     <button class="btn br" id="reqViewItem" onclick="setReqView('item')">📦 Por ítem (con OC, stock, en obra, guía)</button>
   </div>
@@ -269,8 +294,8 @@ tr:hover td{background:#f8fafc}
   <div class="tblwrap" id="reqTblGrupo">
     <table>
       <thead><tr>
-        <th>Fecha</th><th>Responsable</th><th>Id Proyecto</th><th>Proyecto</th>
-        <th>N° Req.</th><th>F. Req.</th><th style="text-align:center">Ítems</th>
+        <th>F. Req.</th><th>N° Req.</th><th>Responsable</th><th>Id Proyecto</th><th>Proyecto</th>
+        <th style="text-align:center">Ítems</th>
         <th style="text-align:center">🚦</th><th>Estado</th>
         <th class="num">Cant. Total</th><th class="num">Cant. a Picking</th><th class="num">Cant. a Pedido</th>
         <th style="background:#ecfdf5;color:#065f46" title="N° de pedido generado para los ítems de este requerimiento que ya pasaron a Pedido">N° Pedido</th>
@@ -285,8 +310,8 @@ tr:hover td{background:#f8fafc}
   <div class="tblwrap" id="reqTblItem" style="display:none">
     <table>
       <thead><tr>
-        <th>Fecha</th><th>Responsable</th><th>Proyecto</th><th>Estado</th>
-        <th>Código</th><th>Descripción</th><th class="num">Cant.</th><th>Unidad</th><th>N° Req.</th>
+        <th>Fecha</th><th>N° Req.</th><th>Responsable</th><th>Id Proyecto</th><th>Proyecto</th><th>Estado</th>
+        <th>Código</th><th>Descripción</th><th class="num">Cant.</th><th>Unidad</th>
         <th class="num" style="background:#ecfdf5;color:#065f46" title="Cantidad que Almacén repartió a Picking (stock) en el modal del requerimiento">Cant. a Picking</th>
         <th class="num" style="background:#ecfdf5;color:#065f46" title="Cantidad que Almacén repartió a Pedido (compra) en el modal del requerimiento">Cant. a Pedido</th>
         <th style="background:#ecfdf5;color:#065f46" title="N° de pedido generado para este código">N° Pedido</th>
@@ -941,7 +966,7 @@ function parseRequerimientosWorkbook(wb){
       prod:xtexto(r['Producto']),cant:cant,
       unid:xtexto(r['UnidadMedida'])||xtexto(r['Medida'])||'',
       freq:xfecha(r['ParaFechaRequerimiento'])||xfecha(r['FechaRequerimiento']),
-      estado:estado
+      estado:estado,fam:xtexto(r['NombreFamilia'])
     });
   });
 
@@ -1465,22 +1490,40 @@ function toggleMS(id){
 document.addEventListener('click',function(e){if(!e.target.closest('.ms-wrap'))document.querySelectorAll('.ms-dd').forEach(d=>d.style.display='none');});
 function limpiarFiltrosReq(){
   document.getElementById('rq').value='';
-  document.getElementById('rfresp').value='';
   document.getElementById('rfproy').value='';
+  document.getElementById('rffam').value='';
+  document.getElementById('rfsup').value='';
   clearMS('rfest');
-  const rz=document.getElementById('rfzona');if(rz)rz.value='';
   renderReq();
 }
 function fillReqFilters(){
-  const resps=[...new Set(P5.map(r=>r.resp))].filter(Boolean).sort();
   const proys=[...new Set(P5.map(r=>r.proy))].filter(Boolean).sort();
-  // El filtro de Estado debe ofrecer y comparar contra la MISMA etiqueta que se ve en la
-  // columna Estado de la tabla (estadoItem, ya cruzada con OC/Cotización/Validado) — no el
-  // estado crudo del Excel, que no distingue "Pedido pendiente" de "Pedido en cotización".
-  const ests=[...new Set(P5.map(r=>estadoItem(r).t))].filter(Boolean).sort();
-  const fr=document.getElementById('rfresp'),fp=document.getElementById('rfproy');
-  fr.innerHTML='<option value="">Responsable: Todos</option>'+resps.map(r=>`<option>${esc(r)}</option>`).join('');
+  const fams=[...new Set(P5.map(r=>r.fam))].filter(Boolean).sort();
+  const sups=[...new Set(P5.map(r=>r.resp))].filter(Boolean).sort();
+  const fp=document.getElementById('rfproy'),ff=document.getElementById('rffam'),fs=document.getElementById('rfsup');
+  // Reconstruir las opciones re-crea el <select> entero — se guarda la selección vigente
+  // para no perderla (esto se llama de nuevo cada vez que llegan datos o se cambia de vista).
+  const prevProy=fp.value,prevFam=ff.value,prevSup=fs.value;
   fp.innerHTML='<option value="">Proyecto: Todos</option>'+proys.map(p=>`<option>${esc(p)}</option>`).join('');
+  ff.innerHTML='<option value="">Familia: Todas</option>'+fams.map(f=>`<option>${esc(f)}</option>`).join('');
+  fs.innerHTML='<option value="">Supervisor: Todos</option>'+sups.map(s=>`<option>${esc(s)}</option>`).join('');
+  if(proys.includes(prevProy))fp.value=prevProy;
+  if(fams.includes(prevFam))ff.value=prevFam;
+  if(sups.includes(prevSup))fs.value=prevSup;
+  // El filtro de Estado debe ofrecer y comparar contra la MISMA etiqueta que se ve en la
+  // columna Estado de esta vista. En "Por ítem" es estadoItem (ya cruzada con OC/Cotización/
+  // Validado) por cada línea. En "Agrupado por requerimiento" un mismo requerimiento puede
+  // traer ítems con distinto estadoItem, y ahí se muestra "Mixto (N estados)" — por eso ese
+  // valor también debe poder elegirse en el filtro cuando se está en esa vista.
+  let ests;
+  if(reqViewMode==='grupo'){
+    const groups={};
+    P5.forEach(function(r){(groups[r.req]=groups[r.req]||[]).push(r);});
+    ests=[...new Set(Object.keys(groups).map(function(rk){return groupEstadoLabel(groups[rk],rk).t;}))];
+  }else{
+    ests=[...new Set(P5.map(r=>estadoItem(r).t))];
+  }
+  ests=ests.filter(Boolean).sort();
   buildMS('rfest',ests,'Estado','renderReq');
 }
 function semReq(e){
@@ -1558,6 +1601,43 @@ function validatedLabel(picking,pedido){
   if(pedido>0)return{t:'Validado — Enviado a Pedido',c:'#d97706',bg:'#fffbeb'};
   return{t:'Validado',c:'#0d9488',bg:'#f0fdfa'};
 }
+// Estado "de grupo" para Agrupado por Requerimiento — usa el MISMO vocabulario que el filtro
+// de Estado (estadoItem por ítem, "Mixto (N estados)" si el requerimiento trae ítems en
+// distinto estado). Antes la tabla mostraba el estado CRUDO del Excel mientras el filtro
+// comparaba contra la etiqueta cruzada de estadoItem — dos vocabularios distintos que hacían
+// que filtrar por un estado no coincidiera con lo que realmente se veía en pantalla.
+// También calcula pickTotal/pedTotal para que el filtro y la tabla usen exactamente los mismos
+// números (antes se recalculaban por separado en cada lugar que los necesitaba).
+function groupEstadoLabel(items,rk){
+  const ests=[...new Set(items.map(function(i){return estadoItem(i).t;}))];
+  let s=ests.length===1?estadoItem(items[0]):{c:'#64748b',bg:'#f1f5f9'};
+  let t=ests.length===1?ests[0]:`Mixto (${ests.length} estados)`;
+  let pickTotal=0,pedTotal=0;
+  items.forEach(function(i){
+    const enRevision=(i.estado||'').toLowerCase().includes('revisi');
+    const key=i.req+'|'+i.cod;
+    if(enRevision&&getRecord(key)!=null){
+      const auto=AUTO_MAP[key]||0;
+      const picking=getDecision(key,auto);
+      pickTotal+=picking;
+      pedTotal+=(i.cant-picking);
+    }else if(!enRevision){
+      const oc=REQCOD_OC[key]||{};
+      const salida=SALIDAS_ALM[key];
+      if(salida||oc.cantOrd>0){
+        if(oc.cantOrd>0)pedTotal+=oc.cantOrd;
+        else if(salida)pickTotal+=(salida.obra||0);
+      }else if((i.estado||'').toLowerCase().includes('pedido')){
+        pedTotal+=(i.cant||0);
+      }
+    }
+  });
+  if(isValidadoReq(rk)&&(pickTotal>0||pedTotal>0)){
+    const vl=validatedLabel(pickTotal,pedTotal);
+    s={c:vl.c,bg:vl.bg};t=vl.t;
+  }
+  return{t:t,c:s.c,bg:s.bg,pickTotal:pickTotal,pedTotal:pedTotal};
+}
 // N° de Pedido de un ítem: si todavía está en Sin OC — Cotización, sale de ahí directo. Una vez
 // que se genera la OC, Compras ya no lo lista en Sin OC (por definición: "sin OC"), así que hay
 // que sacarlo del propio registro de la OC (D.oc trae .ped/.peds del pedido que la originó).
@@ -1603,7 +1683,16 @@ function respPedidoForItem(key){
 }
 function estadoItem(r){
   const key=r.req+'|'+r.cod;
-  if(REQCOD_OC[key]&&REQCOD_OC[key].ocs.length){
+  const tieneOC=REQCOD_OC[key]&&REQCOD_OC[key].ocs.length;
+  // Si ya hay una salida real de almacén (guía), el ítem YA llegó al proyecto — no basta con
+  // decir "cuenta con OC" (que suena a pendiente de entrega). Se distingue el camino: si hubo
+  // OC de por medio fue compra (Pedido); si no, salió directo de stock (Picking directo).
+  if(SALIDAS_ALM[key]){
+    return tieneOC
+      ?{t:'Enviado a Obra — Pedido',c:'#0f766e',bg:'#f0fdfa'}
+      :{t:'Enviado a Obra — Picking directo',c:'#16a34a',bg:'#f0fdf4'};
+  }
+  if(tieneOC){
     return{t:'Enviado a pedido — cuenta con OC',c:'#0f766e',bg:'#f0fdfa'};
   }
   if((r.estado||'').toLowerCase().includes('revisi')&&isValidadoReq(r.req)){
@@ -1622,16 +1711,6 @@ function estadoItem(r){
   }
   const s=semReq(r.estado);
   return{t:estadoDisplay(r.estado),c:s.c,bg:s.bg};
-}
-// Deriva la Zona (NORTE/CENTRO/SUR) de un requerimiento a partir del nombre del proyecto —
-// D.proj no trae un ID en común con los requerimientos, así que se cruza por coincidencia de
-// nombre (el nombre corto del proyecto en Proyectos PMO suele ser parte de la razón social
-// completa que usa Requerimientos). Si no hay coincidencia, devuelve '' (zona desconocida).
-function zonaForProy(proy){
-  if(!proy)return '';
-  const norm=proy.toUpperCase();
-  const hit=(PROJ||[]).find(function(p){return p.nombre&&norm.indexOf(p.nombre.toUpperCase())>=0;});
-  return hit?(hit.zona||''):'';
 }
 // "En obra" (cantidad ya despachada al proyecto) y "N° de guía" no existen en ningún origen de
 // datos — es información que Almacén digita a mano al momento del despacho. Se guarda con el
@@ -1664,7 +1743,13 @@ function setReqView(mode){
   if(bi)bi.className='btn'+(mode==='item'?' bi':' br');
   document.getElementById('reqTblGrupo').style.display=mode==='grupo'?'':'none';
   document.getElementById('reqTblItem').style.display=mode==='item'?'':'none';
-  if(mode==='item'){reqItemPage=0;renderReqItemTable();}
+  // El filtro de Supervisor solo aplica a Agrupado (es el Responsable del requerimiento); en
+  // Por ítem esa misma columna ya se ve tal cual, sin necesitar filtro aparte. El de Estado
+  // cambia de vocabulario según la vista (ver fillReqFilters), así que se reconstruye acá.
+  const fsupWrap=document.getElementById('rfsup');
+  if(fsupWrap)fsupWrap.style.display=mode==='grupo'?'':'none';
+  fillReqFilters();
+  renderReq(); // ya recalcula y pinta ambas tablas según reqViewMode
 }
 function renderReqItemTable(){
   const f=window._reqFil||[];
@@ -1690,10 +1775,11 @@ function renderReqItemTable(){
       pedCell=pedido.toLocaleString('es-PE');
     }else{
       // Ya no está "en revisión" — el reparto no se calcula/inferido, se cruza directo con lo
-      // que el Maestro ya trae por su cuenta: "En Obra" (CantidadSalida) es lo que Almacén
-      // realmente despachó desde stock (Picking real), y "Cantidad de orden" de la OC es lo
-      // que realmente se compró (Pedido real). Si no hay ninguno de los dos, queda en "—".
-      const pickReal=salidaExcel?salidaExcel.obra:null;
+      // que el Maestro ya trae por su cuenta: "Cantidad de orden" de la OC es lo que realmente
+      // se compró (Pedido real). Si el ítem tiene OC, la salida de almacén (CantidadSalida) es
+      // la ENTREGA de esa misma compra, no un despacho aparte desde stock — por eso solo cuenta
+      // como Picking real cuando NO hay OC (ahí sí es stock propio). Si no hay ninguno, "—".
+      const pickReal=(oc.cantOrd>0)?null:(salidaExcel?salidaExcel.obra:null);
       const pedReal=(oc.cantOrd>0)?oc.cantOrd:null;
       if(pickReal!=null||pedReal!=null){
         pickCell=pickReal!=null?pickReal.toLocaleString('es-PE'):'—';
@@ -1707,14 +1793,15 @@ function renderReqItemTable(){
     }
     return `<tr>
       <td style="color:#64748b">${r.fecha||'—'}</td>
+      <td><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${r.req||'—'}</span></td>
       <td>${r.resp||'—'}</td>
+      <td><span style="font-size:10px;font-weight:700;color:#0891b2;background:#e0f2fe;padding:2px 7px;border-radius:5px">${r.idproy||'—'}</span></td>
       <td style="white-space:normal;max-width:180px;font-size:11px" title="${esc(r.proy)}">${r.proy||'—'}</td>
       <td><span class="pill" style="background:${ei.bg};color:${ei.c};white-space:nowrap">${ei.t}</span></td>
       <td class="mono">${r.cod||'—'}</td>
       <td style="white-space:normal;max-width:240px">${r.prod||'—'}</td>
       <td class="num" style="font-weight:700">${(r.cant||0).toLocaleString('es-PE')}</td>
       <td>${r.unid||'—'}</td>
-      <td><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${r.req||'—'}</span></td>
       <td class="num" style="background:#ecfdf5">${pickCell}</td>
       <td class="num" style="background:#ecfdf5">${pedCell}</td>
       <td style="background:#ecfdf5">${pedidoForItem(key)||'—'}</td>
@@ -1735,7 +1822,7 @@ function renderReqItemTable(){
         :'<input type="text" value="'+esc(ob.guia)+'" placeholder="—" style="width:78px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="setGuia(\''+key+'\',this.value)">'}</td>
       <td class="num" style="background:#fffbeb;font-weight:700;color:${falta>0?'#dc2626':'#16a34a'}">${falta}</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="24" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
+  }).join('')||'<tr><td colspan="25" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
   const tot=f.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqItemInfo').textContent=tot?`Mostrando ${reqItemPage*sz+1}–${Math.min((reqItemPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} ítems`:'Sin resultados';
   const pagEl=document.getElementById('reqItemPag');
@@ -1747,18 +1834,30 @@ function renderReqItemTable(){
 function renderReq(){
   reqPage=0;
   const q=document.getElementById('rq').value.toLowerCase().trim();
-  const fr=document.getElementById('rfresp').value;
   const fp=document.getElementById('rfproy').value;
+  const ffam=document.getElementById('rffam').value;
+  const fsup=document.getElementById('rfsup').value;
   const fe=getMS('rfest');
-  const fz=(document.getElementById('rfzona')||{}).value||'';
-  window._reqFil=P5.filter(r=>{
-    if(fr && r.resp!==fr)return false;
+  const base=P5.filter(r=>{
     if(fp && r.proy!==fp)return false;
-    if(fe.length && !fe.includes(estadoItem(r).t))return false;
-    if(fz && zonaForProy(r.proy)!==fz)return false;
+    if(ffam && r.fam!==ffam)return false;
+    if(fsup && r.resp!==fsup)return false;
     if(q && ![r.req,r.cod,r.prod,r.proy,r.resp].join(' ').toLowerCase().includes(q))return false;
     return true;
   });
+  if(reqViewMode==='grupo'){
+    // El Estado se filtra a nivel de REQUERIMIENTO (grupo), no de ítem — así un requerimiento
+    // con ítems en distinto estado nunca se "parte": o entra completo (si su etiqueta de grupo,
+    // incluido "Mixto (N estados)", calza con lo elegido) o no entra.
+    const groups={};
+    base.forEach(function(r){(groups[r.req]=groups[r.req]||[]).push(r);});
+    const keepReqs=new Set(Object.keys(groups).filter(function(rk){
+      return !fe.length||fe.includes(groupEstadoLabel(groups[rk],rk).t);
+    }));
+    window._reqFil=base.filter(r=>keepReqs.has(r.req));
+  }else{
+    window._reqFil=fe.length?base.filter(r=>fe.includes(estadoItem(r).t)):base;
+  }
   // Más reciente primero — N° Req. es correlativo (mismo prefijo, mismo largo), así que
   // ordenar el texto de mayor a menor equivale a ordenar por número de requerimiento.
   window._reqFil.sort((a,b)=>String(b.req||'').localeCompare(String(a.req||'')));
@@ -1768,9 +1867,118 @@ function renderReq(){
    <div class="kpi"><div class="kl">Responsables</div><div class="kv">${new Set(f.map(r=>r.resp)).size}</div><div class="kd">compradores</div></div>
    <div class="kpi"><div class="kl">Proyectos</div><div class="kv">${new Set(f.map(r=>r.proy)).size}</div><div class="kd">involucrados</div></div>
    <div class="kpi good"><div class="kl">Cant. total</div><div class="kv">${f.reduce((s,r)=>s+(r.cant||0),0).toLocaleString('es-PE')}</div><div class="kd">unidades req.</div></div>`;
-  document.getElementById('rcnt').textContent=`${f.length.toLocaleString('es-PE')} requerimientos${fz?' (ítems) en zona '+fz:''}`;
+  document.getElementById('rcnt').textContent=`${f.length.toLocaleString('es-PE')} requerimientos${ffam?' — familia '+ffam:''}`;
   renderReqTable();
   if(reqViewMode==='item'){reqItemPage=0;renderReqItemTable();}
+}
+// Exporta a Excel TODO lo filtrado (no solo la página visible), con las mismas columnas y
+// cálculos que ya muestra la tabla en pantalla — agrupado o por ítem, según la vista activa.
+async function exportarReq(){
+  const f=window._reqFil||[];
+  if(!f.length){alert('No hay requerimientos que exportar con los filtros actuales.');return;}
+  const fecha=new Date().toISOString().slice(0,10);
+  let data,nombre;
+  if(reqViewMode==='item'){
+    data=f.map(function(r){
+      const key=r.req+'|'+r.cod;
+      const oc=REQCOD_OC[key]||{};
+      const salidaExcel=SALIDAS_ALM[key];
+      const ob=getObra(key);
+      const obraEfectiva=salidaExcel?salidaExcel.obra:(ob.obra||0);
+      const falta=Math.max(0,(r.cant||0)-obraEfectiva);
+      const ei=estadoItem(r);
+      const enRevision=(r.estado||'').toLowerCase().includes('revisi');
+      let pick='—',ped='—';
+      if(enRevision&&getRecord(key)!=null){
+        const auto=AUTO_MAP[key]||0;
+        pick=getDecision(key,auto);
+        ped=Math.max(0,(r.cant||0)-pick);
+      }else{
+        const pickReal=(oc.cantOrd>0)?null:(salidaExcel?salidaExcel.obra:null);
+        const pedReal=(oc.cantOrd>0)?oc.cantOrd:null;
+        if(pickReal!=null||pedReal!=null){
+          pick=pickReal!=null?pickReal:'—';
+          ped=pedReal!=null?pedReal:'—';
+        }else if((r.estado||'').toLowerCase().includes('pedido')){
+          pick=0;ped=r.cant||0;
+        }
+      }
+      return{
+        'Fecha':r.fecha||'','N° Req.':r.req||'','Responsable':r.resp||'','Id Proyecto':r.idproy||'','Proyecto':r.proy||'','Familia':r.fam||'',
+        'Estado':ei.t,'Código':r.cod||'','Descripción':r.prod||'','Cant.':r.cant||0,'Unidad':r.unid||'',
+        'Cant. a Picking':pick,'Cant. a Pedido':ped,
+        'N° Pedido':pedidoForItem(key)||'','F. Pedido':fpedidoForItem(key)||'','Resp. Pedido':respPedidoForItem(key)||'',
+        'N° OC':(oc.ocs||[]).join(', '),'F. Emisión':oc.foc||'','F. Aprobación':oc.fapro||'','F. Entrega':oc.fent||'',
+        'Cant. Recepcionada':oc.cantRec||0,'F. Recepción':oc.frecep||'','Guía Proveedor':(oc.guiasProv||[]).join(', '),
+        'En Obra':obraEfectiva,'N° Guía':salidaExcel?(salidaExcel.guias.join(', ')||''):(ob.guia||''),'Falta':falta
+      };
+    });
+    nombre='requerimientos_por_item';
+  }else{
+    const g={},ord=[];
+    f.forEach(function(r){if(!g[r.req]){g[r.req]=[];ord.push(r.req);}g[r.req].push(r);});
+    data=ord.map(function(rk){
+      const items=g[rk],g0=items[0];
+      const gl=groupEstadoLabel(items,rk);
+      const estadoLbl=gl.t,pickTotal=gl.pickTotal,pedTotal=gl.pedTotal;
+      const cantTotal=items.reduce(function(a,i){return a+(i.cant||0);},0);
+      const pedsSet=new Set();
+      items.forEach(function(i){
+        const pedNum=pedidoForItem(i.req+'|'+i.cod);
+        if(pedNum)pedsSet.add(pedNum);
+      });
+      const familias=[...new Set(items.map(function(i){return i.fam;}).filter(Boolean))].join(', ');
+      return{
+        'F. Req.':g0.fecha||'','N° Req.':rk||'','Responsable':g0.resp||'','Id Proyecto':g0.idproy||'','Proyecto':g0.proy||'',
+        'Familia':familias,'Ítems':items.length,'Estado':estadoLbl,
+        'Cant. Total':cantTotal,'Cant. a Picking':pickTotal,'Cant. a Pedido':pedTotal,
+        'N° Pedido':[...pedsSet].join(', '),'Asignado a':getAsignado(rk)||'','Valid. Almacén':isValidadoReq(rk)?'Sí':'No'
+      };
+    });
+    nombre='requerimientos_agrupado';
+  }
+  await escribirExcelReq(data,`${nombre}_${fecha}.xlsx`);
+}
+// Arma el .xlsx con ExcelJS (a diferencia de xlsx.full.min.js, sí escribe relleno/fuente/bordes) —
+// paleta "Suave y limpio": encabezado azul claro, filas en banda blanco/celeste muy pálido y
+// bordes gris suave, para que se vea prolijo al abrir en Excel.
+async function escribirExcelReq(data,nombreArchivo){
+  const headers=Object.keys(data[0]);
+  const PAL={headerBg:'FFBFDDF2',headerText:'FF1E293B',bandA:'FFFFFFFF',bandB:'FFF7FAFC',border:'FFD4DADF',texto:'FF1E293B'};
+  const NUMCOLS=new Set(['Cant.','Cant. Total','Cant. a Picking','Cant. a Pedido','Ítems','Falta','En Obra','Cant. Recepcionada']);
+  const anchos={'Proyecto':32,'Descripción':38,'Responsable':22,'Asignado a':18,'Id Proyecto':16,'Familia':20,'N° Req.':15};
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet('Requerimientos',{views:[{state:'frozen',ySplit:1}]});
+  ws.columns=headers.map(function(h){
+    return{header:h,key:h,width:anchos[h]||Math.min(30,Math.max(11,h.length+6)),
+      style:NUMCOLS.has(h)?{alignment:{horizontal:'right'}}:{}};
+  });
+  data.forEach(function(row){ws.addRow(row);});
+  const headerRow=ws.getRow(1);
+  headerRow.height=20;
+  headerRow.eachCell(function(cell){
+    cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:PAL.headerBg}};
+    cell.font={bold:true,color:{argb:PAL.headerText}};
+    cell.alignment={vertical:'middle',horizontal:'center'};
+    cell.border={bottom:{style:'thin',color:{argb:PAL.border}}};
+  });
+  for(let i=2;i<=ws.rowCount;i++){
+    const bg=(i%2===0)?PAL.bandB:PAL.bandA;
+    ws.getRow(i).eachCell(function(cell,colNumber){
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
+      cell.border={bottom:{style:'thin',color:{argb:PAL.border}}};
+      cell.font={color:{argb:PAL.texto}};
+      if(NUMCOLS.has(headers[colNumber-1])&&typeof cell.value==='number')cell.numFmt='#,##0.##';
+    });
+  }
+  ws.autoFilter={from:{row:1,column:1},to:{row:1,column:headers.length}};
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=nombreArchivo;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 function renderReqTable(){
   const f=window._reqFil||[];
@@ -1786,49 +1994,20 @@ function renderReqTable(){
   document.getElementById('tbreq').innerHTML=pageReqs.map(rk=>{
     const items=groups[rk];
     const g0=items[0];
-    const estados=[...new Set(items.map(i=>i.estado))];
-    let s=estados.length===1?semReq(estados[0]):{c:'#64748b',bg:'#f1f5f9',t:'Mixto'};
-    let estadoLbl=estados.length===1?estadoDisplay(estados[0]):`Mixto (${estados.length} estados)`;
+    const gl=groupEstadoLabel(items,rk);
+    const s={c:gl.c,bg:gl.bg},estadoLbl=gl.t,pickTotal=gl.pickTotal,pedTotal=gl.pedTotal;
     const cantTotal=items.reduce((a,i)=>a+(i.cant||0),0);
-    let pickTotal=0,pedTotal=0;
     const pedsSet=new Set();
     items.forEach(i=>{
-      const enRevision=i.estado.toLowerCase().includes('revisi');
-      const key=i.req+'|'+i.cod;
-      const pedNum=pedidoForItem(key);
+      const pedNum=pedidoForItem(i.req+'|'+i.cod);
       if(pedNum)pedsSet.add(pedNum);
-      // Solo suma lo que ya tiene un reparto explícito (PENDING/CONFIRMED) — un ítem sin
-      // decidir no debe aportar "todo a Pedido" por defecto al total del grupo.
-      if(enRevision&&getRecord(key)!=null){
-        const auto=AUTO_MAP[key]||0;
-        const picking=getDecision(key,auto);
-        pickTotal+=picking;
-        pedTotal+=(i.cant-picking);
-      }else if(!enRevision){
-        const oc=REQCOD_OC[key]||{};
-        const salida=SALIDAS_ALM[key];
-        if(salida||oc.cantOrd>0){
-          // Cruce real, no inferencia: "En Obra" (CantidadSalida) es Picking real; lo ordenado
-          // en la OC es Pedido real.
-          if(salida)pickTotal+=(salida.obra||0);
-          if(oc.cantOrd>0)pedTotal+=oc.cantOrd;
-        }else if(i.estado.toLowerCase().includes('pedido')){
-          // Sin OC ni salida todavía, pero el estado ya dice "Enviado a pedido" — dato real.
-          pedTotal+=(i.cant||0);
-        }
-      }
     });
-    if(isValidadoReq(rk)&&(pickTotal>0||pedTotal>0)){
-      const vl=validatedLabel(pickTotal,pedTotal);
-      s={c:vl.c,bg:vl.bg};estadoLbl=vl.t;
-    }
     return `<tr>
     <td style="color:#64748b">${g0.fecha||'—'}</td>
+    <td><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${rk||'—'}</span></td>
     <td>${g0.resp||'—'}</td>
     <td><span style="font-size:10px;font-weight:700;color:#0891b2;background:#e0f2fe;padding:2px 7px;border-radius:5px">${g0.idproy||'—'}</span></td>
     <td style="white-space:normal;font-size:11px;max-width:220px" title="${g0.proy||''}">${g0.proy||'—'}</td>
-    <td><span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:5px">${rk||'—'}</span></td>
-    <td style="color:#64748b">${g0.freq||'—'}</td>
     <td style="text-align:center"><button class="btn br" style="padding:4px 10px;font-size:10.5px" onclick="verReqItems('${rk}')">📄 ${items.length} SKU</button></td>
     <td style="text-align:center"><span class="dot" style="background:${s.c};box-shadow:0 0 0 3px ${s.bg}" title="${estadoLbl}"></span></td>
     <td><span class="pill" style="background:${s.bg};color:${s.c}">${estadoLbl}</span></td>
@@ -1851,7 +2030,7 @@ function renderReqTable(){
       ${isValidadoReq(rk)?`<button class="btn br" style="padding:3px 8px;font-size:10.5px;margin-left:5px;vertical-align:middle" onclick="enviarWhatsAppReq('${rk}')" title="Reenviar el aviso por WhatsApp al supervisor">💬</button>`:''}
     </td>
   </tr>`;
-  }).join('') || `<tr><td colspan="15" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
+  }).join('') || `<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>`;
   const tot=order.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqInfo').textContent=tot?`Mostrando ${reqPage*sz+1}–${Math.min((reqPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} requerimientos`:'Sin resultados';
   const pagEl=document.getElementById('reqPag');
@@ -2018,7 +2197,7 @@ function verReqItems(rk){
           }else{
             const oc=REQCOD_OC[key]||{};
             const salida=SALIDAS_ALM[key];
-            const pickReal=salida?salida.obra:null;
+            const pickReal=(oc.cantOrd>0)?null:(salida?salida.obra:null);
             const pedReal=(oc.cantOrd>0)?oc.cantOrd:null;
             if(pickReal!=null||pedReal!=null){
               pickCell=pickReal!=null?pickReal.toLocaleString('es-PE'):'<span style="color:#cbd5e1">—</span>';
@@ -2030,7 +2209,7 @@ function verReqItems(rk){
               pickCell='<span style="color:#cbd5e1">—</span>';
               pedCell='<span style="color:#cbd5e1">—</span>';
             }
-            const sr=semReq(r.estado);s={c:sr.c,bg:sr.bg};estadoLbl=estadoDisplay(r.estado);
+            const ei=estadoItem(r);s={c:ei.c,bg:ei.bg};estadoLbl=ei.t;
           }
           return `<tr>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8">${i+1}</td>
