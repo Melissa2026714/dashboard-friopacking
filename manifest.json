@@ -15,7 +15,7 @@
     { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Compras", "url": "index.html", "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Compras", "url": "compras.html", "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }] },
     { "name": "Inventario / Almacén", "url": "inventario.html", "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }] }
   ]
 }
