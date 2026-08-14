@@ -292,7 +292,10 @@ tr:hover td{background:#f8fafc}
         <th style="background:#ecfdf5;color:#065f46" title="N° de pedido generado para este código">N° Pedido</th>
         <th style="background:#ecfdf5;color:#065f46" title="Fecha en la que se generó el pedido">F. Pedido</th>
         <th style="background:#ecfdf5;color:#065f46" title="Quién está a cargo de gestionar la compra de este pedido">Resp. Pedido</th>
-        <th style="background:#fef3c7;color:#92400e">N° OC</th><th style="background:#fef3c7;color:#92400e">F. Emisión</th><th style="background:#fef3c7;color:#92400e">F. Aprobación</th><th style="background:#fef3c7;color:#92400e">F. Entrega</th>
+        <th style="background:#fef3c7;color:#92400e">N° OC</th><th style="background:#fef3c7;color:#92400e">F. Emisión</th><th style="background:#fef3c7;color:#92400e">F. Aprobación</th><th style="background:#fef3c7;color:#92400e" title="Fecha de entrega pactada con el proveedor">F. Entrega</th>
+        <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad realmente recepcionada en almacén (columna CantRecepcion del Maestro) — se suma si hubo más de una recepción parcial">Cant. Recepcionada</th>
+        <th style="background:#fef3c7;color:#92400e" title="Fecha real en la que se recepcionó el material (columna FechaRecepcion del Maestro) — la más reciente si hubo varias recepciones">F. Recepción</th>
+        <th style="background:#fef3c7;color:#92400e" title="N° de guía del proveedor con el que llegó el material (columna CodRecepcion del Maestro)">Guía Proveedor</th>
         <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad ya despachada al proyecto — sale sola del Excel (CantidadSalida) cuando ya hay despacho registrado; si no, se digita a mano">En Obra</th>
         <th style="background:#fef3c7;color:#92400e">N° Guía</th>
         <th class="num" style="background:#fef3c7;color:#92400e" title="Cantidad requerida menos lo ya despachado a obra">Falta</th>
@@ -962,6 +965,7 @@ function parseRequerimientosWorkbook(wb){
       cod:cod,prod:xtexto(r['Producto']),
       cantOrd:round2(co),cantRec:round2(cr),cantPend:Math.max(0,round2(co-cr)),
       foc:xfecha(r['FechaOrden']),fapro:fapro,fent:xfecha(r['ParaFechaOrden']),
+      fechaRecep:xfecha(r['FechaRecepcion']),guiaProv:xcodigo(r['CodRecepcion']),
       estado:xtexto(r['EstadoOrden']),req:req,freq:xfecha(r['FechaRequerimiento']),
       unid:xtexto(r['UnidadMedida'])||xtexto(r['Medida'])||''
     });
@@ -1520,10 +1524,16 @@ function buildReqCodOC(){
     (SKUS_RAW[oc]||[]).forEach(function(line){
       if(!line.req||!line.cod)return;
       const k=line.req+'|'+line.cod;
-      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fapro:line.fapro||'',fent:line.fent||'',compras:0,cantOrd:0};
+      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fapro:line.fapro||'',fent:line.fent||'',compras:0,cantOrd:0,cantRec:0,guiasProv:[],frecep:''};
       else if(REQCOD_OC[k].ocs.indexOf(oc)<0)REQCOD_OC[k].ocs.push(oc);
       REQCOD_OC[k].compras+=(line.cantPend||0);
       REQCOD_OC[k].cantOrd+=(line.cantOrd||0);
+      // Recepción real (hoja Reporte Maestro, columnas resaltadas): CantRecepcion (se suma, una
+      // fila por cada recepción parcial), FechaRecepcion (se toma la más reciente) y CodRecepcion
+      // (N° de guía del proveedor, se listan todos si hubo más de una recepción).
+      REQCOD_OC[k].cantRec+=(line.cantRec||0);
+      if(line.guiaProv&&REQCOD_OC[k].guiasProv.indexOf(line.guiaProv)<0)REQCOD_OC[k].guiasProv.push(line.guiaProv);
+      if(line.fechaRecep&&(!REQCOD_OC[k].frecep||dmyOrd(line.fechaRecep)>dmyOrd(REQCOD_OC[k].frecep)))REQCOD_OC[k].frecep=line.fechaRecep;
     });
   });
 }
@@ -1714,6 +1724,9 @@ function renderReqItemTable(){
       <td style="background:#fffbeb;color:#64748b">${oc.foc||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.fapro||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.fent||'—'}</td>
+      <td class="num" style="background:#fffbeb">${(oc.cantRec||0)>0?oc.cantRec.toLocaleString('es-PE'):'—'}</td>
+      <td style="background:#fffbeb;color:#64748b">${oc.frecep||'—'}</td>
+      <td style="background:#fffbeb;color:#64748b">${(oc.guiasProv||[]).join(', ')||'—'}</td>
       <td class="num" style="background:#fffbeb">${salidaExcel
         ?'<span title="Cantidad de salida real, del Excel — no editable" style="color:#0f766e;font-weight:700">'+salidaExcel.obra.toLocaleString('es-PE')+'</span>'
         :'<input type="number" min="0" max="'+(r.cant||0)+'" value="'+(ob.obra||0)+'" style="width:56px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setObraQty(\''+key+'\',this.value,'+(r.cant||0)+')">'}</td>
@@ -1722,7 +1735,7 @@ function renderReqItemTable(){
         :'<input type="text" value="'+esc(ob.guia)+'" placeholder="—" style="width:78px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="setGuia(\''+key+'\',this.value)">'}</td>
       <td class="num" style="background:#fffbeb;font-weight:700;color:${falta>0?'#dc2626':'#16a34a'}">${falta}</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="21" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
+  }).join('')||'<tr><td colspan="24" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
   const tot=f.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqItemInfo').textContent=tot?`Mostrando ${reqItemPage*sz+1}–${Math.min((reqItemPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} ítems`:'Sin resultados';
   const pagEl=document.getElementById('reqItemPag');
