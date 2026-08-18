@@ -2478,6 +2478,7 @@ function renderPickDone(){
         ${fotosGrupo.length===1?`<a href="${fotosGrupo[0]}" target="_blank" style="font-size:11px;font-weight:600">📷 Ver foto de evidencia</a>`
           :fotosGrupo.length>1?`<span style="font-size:11px;color:#b45309">📷 ${fotosGrupo.length} fotos distintas — revisar</span>`:''}
         ${faltaFoto?`<button class="btn br" style="padding:6px 12px;font-size:11px;color:#2563eb" onclick="abrirAdjuntarFotoGrupo('${rc}')">📎 Adjuntar foto (todo el requerimiento)</button>`:''}
+        <button class="btn br" style="padding:6px 12px;font-size:11px;color:#0d9488" onclick="reenviarCorreoGrupo('${rc}')">📧 Reenviar correo de constancia</button>
       </div>
       <table>
         <thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant. req.</th><th class="num">Cant. picking</th><th>Cierre de ciclo</th></tr></thead>
@@ -2538,6 +2539,27 @@ function reqPickingCompleto(req){
     return !!(rec&&rec.completado);
   });
   return todosListos?asignados:null;
+}
+// Reenvía a mano el correo de constancia de un requerimiento ya cerrado — para cuando el envío
+// automático (que depende de tener una sesión de Microsoft 365 ya guardada en ESE navegador) no
+// se completó y nadie hizo el paso manual de pegar y enviar. A diferencia de reqPickingCompleto,
+// no exige que el requerimiento siga "en revisión" en P5 — reconstruye desde lo ya guardado.
+function reenviarCorreoGrupo(rc){
+  const byKey={};
+  P5.forEach(function(r){byKey[r.req+'|'+r.cod]=r;});
+  const recs={...CONFIRMED,...PENDING};
+  const items=Object.keys(recs).filter(function(k){return k.startsWith(rc+'|');}).map(function(k){
+    const raw=recs[k];
+    const rec=(raw&&typeof raw==='object')?raw:{picking:raw};
+    if(!rec.completado)return null;
+    const partes=k.split('|');
+    const p5=byKey[k]||{};
+    return {key:k,req:p5.req||partes[0],cod:p5.cod||partes[1]||'',prod:p5.prod||'(el requerimiento ya no está en revisión)',
+      proy:p5.proy||'',resp:p5.resp||'—',fecha:p5.fecha||'',cant:p5.cant!=null?p5.cant:'—',unid:p5.unid||''};
+  }).filter(Boolean);
+  if(!items.length){alert('No hay ítems completados en este requerimiento para incluir en el correo.');return;}
+  if(!confirm('¿Reenviar el correo de constancia de picking para '+rc+' ('+items.length+' ítem(s))?'))return;
+  enviarCorreoPickingCompletado(rc,items);
 }
 function setLastSync(text){
   const el=document.getElementById('lastSyncLbl');
