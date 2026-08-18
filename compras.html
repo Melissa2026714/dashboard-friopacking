@@ -1073,7 +1073,7 @@ function instNav(id){
       <th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">📋 REG.</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">ALMACÉN</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. ALMACÉN</th>
       <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th>ESTADO</th><th>USUARIO COMP.</th>
       <th>PROVEEDOR</th><th>RESPONSABLE</th><th>ID PROYECTO</th><th>PROYECTO</th><th>N° PEDIDO</th><th>F. PEDIDO</th><th>N° REQ.</th><th>F. REQ.</th>
-      <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">MONEDA</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">P. UNIT. SIN IGV</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">TIPO CAMBIO</th>
+      <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">MONEDA</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">P. UNIT. SIN IGV</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">TIPO CAMBIO</th><th>OBSERVACIÓN</th>
     </tr></thead><tbody id="tb2"></tbody></table>
     <div class="pag"><span id="p2info">—</span><div class="pbts" id="p2pag"></div></div>
   </div>
@@ -1380,7 +1380,7 @@ function filterP2(){
     if(f.proj&&r.proy!==f.proj)return false;
     if(f.q){
       const its=SKUS[r.oc]||SKUS_P4[r.oc]||[];
-      const hay=[r.oc,...(r.reqs||[r.req]),r.prov,r.prod,r.cod,r.proy,r.idproy].concat(its.map(s=>(s.cod||'')+' '+(s.prod||''))).join(' ').toLowerCase();
+      const hay=[r.oc,...(r.reqs||[r.req]),r.prov,r.prod,r.cod,r.proy,r.idproy,r.obs].concat(its.map(s=>(s.cod||'')+' '+(s.prod||''))).join(' ').toLowerCase();
       if(!hay.includes(f.q))return false;
     }
     if(_f2RegOnly&&!(D.ocMeta[r.oc]&&D.ocMeta[r.oc].reg))return false;
@@ -1481,6 +1481,7 @@ function renderP2Table(){
       <td style="text-align:center;background:#fffbeb;font-size:11px;color:#92400e;font-weight:700;white-space:nowrap">${r.moneda||'—'}</td>
       <td style="text-align:right;background:#fffbeb;font-weight:700;color:#92400e;white-space:nowrap">${r.punit===null?'<span style="font-size:10px;color:#b45309" title="Los ítems de esta OC tienen precios distintos — ábrela para ver el detalle">varios</span>':(r.punit>0?r.punit.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}):'—')}</td>
       <td style="text-align:center;background:#fffbeb;font-size:11px;color:#92400e;font-weight:600">${r.tc>0?r.tc.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:3}):'—'}</td>
+      <td style="max-width:220px;cursor:help" data-obs="${esc(r.obs)}" onmouseenter="showObsTip(this)" onmouseleave="hideObsTip()" onclick="showObsTip(this)">${r.obs?'<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-size:11px;color:#475569">'+esc(r.obs)+'</span>':'<span style="color:#94a3b8;font-size:11px">—</span>'}</td>
     </tr>`;
   }).join('');
   const tot=p2fil.length, pages=Math.ceil(tot/p2pgsz);
@@ -1910,7 +1911,8 @@ function verCorreoFormateadoOC(oc){
     '  • provision@friopacking.pe\n'+
     '  • agalindo@friopacking.pe\n'+
     '  • dochante@grupofriopacking.pe\n'+
-    '  • jcenteno@friopacking.pe\n\n'+
+    '  • jcenteno@friopacking.pe\n'+
+    '  • mcondori@grupofriopacking.pe\n\n'+
     'Quedo atento a su confirmación.\nSaludos cordiales,\nÁrea de Compras — FRIOPACKING S.A.'
   )+';';
   h+='var _cuerpoRecojo='+JSON.stringify(
@@ -1934,7 +1936,7 @@ function verCorreoFormateadoOC(oc){
     '<ul><li>Factura correspondiente a los productos entregados.</li><li>Guía de remisión correspondiente.</li></ul>'+
     '<p>Estos documentos son indispensables para realizar la recepción de la mercancía.</p>'+
     '<p>Asimismo, para el registro de sus facturas, enviar a los siguientes correos:</p>'+
-    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li></ul>'+
+    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li><li>mcondori@grupofriopacking.pe</li></ul>'+
     '<p>Quedo atento a su confirmación.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>';
   var _hRecojo='<p>Estimados, buen día:</p>'+
     '<p>Adjunto la Orden de Compra <strong>'+oc+'</strong> correspondiente a la adquisición de '+descRecojo+'.</p>'+
@@ -1951,7 +1953,7 @@ function verCorreoFormateadoOC(oc){
     '<p>Agradeceremos confirmar la recepción de la presente Orden de Compra y enviarnos los siguientes documentos para completar la regularización:</p>'+
     '<ul><li>Factura por el monto total de la OC.</li><li>Guía de remisión correspondiente.</li></ul>'+
     '<p>Asimismo, para el registro de sus facturas, enviar a los siguientes correos:</p>'+
-    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li></ul>'+
+    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li><li>mcondori@grupofriopacking.pe</li></ul>'+
     '<p>Quedamos atentos a cualquier consulta.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.</span></p>';
   h+='var _htmlPlanta='+JSON.stringify(_hPlanta)+';';
   h+='var _htmlRecojo='+JSON.stringify(_hRecojo)+';';
@@ -1970,7 +1972,7 @@ function verCorreoFormateadoOC(oc){
   h+='    "<ul>"+(dest||"<li>(completar destinatario)</li>")+"</ul>"+';
   h+='    "<p>Adjuntar por este medio <strong>voucher, clave y guía</strong>.</p>"+';
   h+='    "<p>Asimismo, para el registro de sus facturas, enviar a los siguientes correos:</p>"+';
-  h+='    "<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li></ul>"+';
+  h+='    "<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li><li>mcondori@grupofriopacking.pe</li></ul>"+';
   h+='    "<p>Quedamos atentos a su confirmación.<br>Saludos cordiales,<br><span class=\\"footer-firma\\">Área de Compras — FRIOPACKING S.A.</span></p>";';
   h+='}';
   h+='function autocompletarDNI(nId,dId){';
@@ -5405,7 +5407,11 @@ function importMaestro(wb){
   const g=(row,name)=>{const i=ci[name];return(i!==undefined)?xs(row[i]):'';};
   const gd=(row,name)=>{const i=ci[name];return(i!==undefined)?xd(row[i]):'';};
   const gn=(row,name)=>{const i=ci[name];return(i!==undefined)?xn(row[i]):0;};
-  
+  // Columna de Observación: el header exacto varía entre exportes ("Observación REQ",
+  // "Observacion Req", etc.) — se busca por prefijo, sin distinguir mayúsculas/espacios.
+  const _obsHdr=Object.keys(ci).find(h=>h.toLowerCase().replace(/\s+/g,'').indexOf('observaci')===0);
+  const gObs=(row)=>_obsHdr?g(row,_obsHdr):'';
+
   const allRows=raw.slice(hdr+1).filter(r=>r&&r.some(c=>c!=null&&c!==''));
   
   // Filter 2026
@@ -5458,7 +5464,7 @@ function importMaestro(wb){
         frec:gd(r,'FechaRecepcion'),fsal:gd(r,'FechaSalida')||gd(r,'FechaSali'),ucomp:g(r,'UsuarioCompras'),
         ingreso:0,fingreso:'',
         moneda:'',tc:0,_pus:[],montoSoles:0,
-        reqs:[],
+        reqs:[],_obss:[],
         ped:g(r,'CodPedido'),peds:[],fpedido:gd(r,'FechaPedido')||gd(r,'Fecha Pedido')||gd(r,'FechaPed')
       };
     }
@@ -5489,7 +5495,9 @@ function importMaestro(wb){
     if(req&&!o.reqs.includes(req))o.reqs.push(req);
     const ped=g(r,'CodPedido');
     if(ped&&!o.peds.includes(ped))o.peds.push(ped);
-    
+    const obsRow=gObs(r);
+    if(obsRow&&!o._obss.includes(obsRow))o._obss.push(obsRow);
+
     // Build SKUS
     if(!skusMap[cod])skusMap[cod]=[];
     skusMap[cod].push({
@@ -5524,6 +5532,8 @@ function importMaestro(wb){
     const pus=(o._pus||[]).filter(v=>v>0);
     o.punit=pus.length&&pus.every(v=>v===pus[0])?pus[0]:(pus.length?null:0);
     delete o._pus;
+    o.obs=(o._obss||[]).join(' | ');
+    delete o._obss;
     o.montoSoles=Math.round(o.montoSoles*100)/100;
     return o;
   });
@@ -5563,7 +5573,7 @@ function importMaestro(wb){
       freq:gd(r,'FechaRequerimiento'),
       estado:g(r,'EstadoPedido'),
       parcial:hasCod,  // tiene OC pero cubre solo una parte
-      obs:g(r,'Observación Req')||g(r,'Observacion Req')||g(r,'ObservacionReq')||g(r,'Observación')||g(r,'Observacion')||''
+      obs:gObs(r)
     };
   }).filter(Boolean);
   sinOcData.sort((a,b)=>{
