@@ -693,6 +693,17 @@ function getGHTokenAlmacen(){
   if(clean!==raw)localStorage.setItem(GH_TOKEN_KEY,clean);
   return clean;
 }
+// GUARDAR sube archivos de varios MB (Requerimientos propios, Existencias) y fetch() nunca
+// tiene timeout propio: con la wifi lenta/inestable del almacén, un PUT que se cuelga deja el
+// botón en "Guardando..." para siempre, sin error visible — parecía que "no guardaba nada"
+// cuando en realidad nunca terminó de intentarlo. Con esto, a los 60s se corta y se avisa.
+function fetchTO(url,opts,ms){
+  const ms_=ms||60000;
+  return Promise.race([
+    fetch(url,opts),
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('tiempo de espera agotado ('+Math.round(ms_/1000)+' s) — revisa tu conexión e intenta de nuevo')),ms_))
+  ]);
+}
 function setupGHToken(){
   const cur=localStorage.getItem(GH_TOKEN_KEY)||'';
   const t=prompt('Ingresa el Token de GitHub de Almacén\n(propio de este módulo, no el de Compras — se guarda solo en este navegador):',cur);
@@ -3188,22 +3199,23 @@ async function guardarTodo(){
   try{
     const partes=[];
     if(hayExistenciasEfectivo){
-      const checkE=await fetch(GH_API_EXIST,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+      const checkE=await fetchTO(GH_API_EXIST,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
       const shaE=checkE.ok?(await checkE.json()).sha:undefined;
       const contentE=btoa(unescape(encodeURIComponent(JSON.stringify({existencias:DATA,ts:Date.now()}))));
       const bodyE={message:'almacen: guardar Existencias ('+DATA.length+' SKUs) — '+new Date().toISOString(),content:contentE};
       if(shaE)bodyE.sha=shaE;
-      const resE=await fetch(GH_API_EXIST,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(bodyE)});
+      const resE=await fetchTO(GH_API_EXIST,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(bodyE)},90000);
       if(!resE.ok)throw new Error('GitHub rechazó la subida de Existencias (HTTP '+resE.status+')');
       partes.push('Existencias ('+DATA.length+' SKUs)');
     }
     if(hayRequerimientos){
-      const checkR=await fetch(GH_API_REQALM,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+      const checkR=await fetchTO(GH_API_REQALM,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
       const shaR=checkR.ok?(await checkR.json()).sha:undefined;
       const contentR=btoa(unescape(encodeURIComponent(JSON.stringify({p5:P5,oc:OC_RAW,skus:SKUS_RAW,sinoc:SINOC,salidas:SALIDAS_ALM,ts:Date.now()}))));
       const bodyR={message:'almacen: guardar Requerimientos propios ('+P5.length+' líneas) — '+new Date().toISOString(),content:contentR};
       if(shaR)bodyR.sha=shaR;
-      const resR=await fetch(GH_API_REQALM,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(bodyR)});
+      // Payload grande (varios MB con miles de requerimientos) — 90s de margen antes de cortar.
+      const resR=await fetchTO(GH_API_REQALM,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(bodyR)},90000);
       if(!resR.ok)throw new Error('GitHub rechazó la subida de Requerimientos (HTTP '+resR.status+')');
       partes.push('Requerimientos ('+P5.length.toLocaleString('es-PE')+' líneas)');
       REQ_ALM_DIRTY=false;
@@ -3211,11 +3223,11 @@ async function guardarTodo(){
 
     let colisionesCod=[];
     if(hayPicking||hayCodigos||hayTransito){
-      const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+      const check=await fetchTO(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
       if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
       const meta=await check.json();
       const sha=meta.sha;
-      const remoteRaw=await fetch(GH_RAW+'?t='+Date.now());
+      const remoteRaw=await fetchTO(GH_RAW+'?t='+Date.now(),{},60000);
       if(!remoteRaw.ok)throw new Error('No se pudo leer el contenido actual de data.json');
       const remote=await remoteRaw.json();
       if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
@@ -3236,7 +3248,7 @@ async function guardarTodo(){
       if(hayCodigos)partes.push('Códigos ('+PENDING_COD.length+' nuevos)');
       if(hayTransito)partes.push('Tránsito/Reservas ('+TRANS.length+' + '+RESV.length+' líneas)');
       const body={message:'almacen: guardar '+partes.join(' + ')+' — '+new Date().toISOString(),content,sha};
-      const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+      const res=await fetchTO(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)},90000);
       if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
 
       if(hayPicking){CONFIRMED=remote.D.almacenPicking;PENDING={};localStorage.removeItem('fp_almacen_picking_pending');}
@@ -3259,6 +3271,9 @@ async function guardarTodo(){
     console.error(e);
     document.querySelectorAll('.saveLblEl,.codSaveLblEl').forEach(l=>l.textContent='⚠ Error al guardar: '+e.message);
     if(btn){btn.textContent='💾 GUARDAR';btn.disabled=false;}
+    // El texto de error queda chiquito junto al botón y es fácil no verlo — con la wifi
+    // inestable del almacén, esto pasó antes sin que nadie notara que GUARDAR había fallado.
+    alert('⚠ No se pudo guardar: '+e.message+'\n\nTus cambios siguen aquí en este navegador — vuelve a intentar "GUARDAR" (revisa tu conexión primero).');
   }
 }
 
