@@ -1739,6 +1739,17 @@ function estadoItem(r){
       :{t:'Enviado a Obra — Picking directo',c:'#16a34a',bg:'#f0fdf4'};
   }
   if(tieneOC){
+    // La OC ya puede haber llegado físicamente al almacén (guía de proveedor / cantidad
+    // recepcionada, ver buildReqCodOC) aunque todavía no se haya despachado a la obra — sin esto,
+    // se seguía mostrando "cuenta con OC" como si estuviera en camino aunque ya estuviera aquí.
+    const ro=REQCOD_OC[key]||{};
+    const recibido=(ro.cantRec>0)||(ro.guiasProv&&ro.guiasProv.length>0);
+    if(recibido){
+      const completo=ro.cantOrd>0&&ro.cantRec>=ro.cantOrd;
+      return completo
+        ?{t:'Recibido en Almacén — Pedido',c:'#075985',bg:'#e0f2fe'}
+        :{t:'Recibido Parcial en Almacén — Pedido',c:'#075985',bg:'#e0f2fe'};
+    }
     return{t:'Enviado a pedido — cuenta con OC',c:'#0f766e',bg:'#f0fdfa'};
   }
   if((r.estado||'').toLowerCase().includes('revisi')&&isValidadoReq(r.req)){
