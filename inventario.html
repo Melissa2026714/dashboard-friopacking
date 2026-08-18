@@ -528,6 +528,25 @@ tr:hover td{background:#f8fafc}
   </div>
 </div>
 
+<!-- MODAL ADJUNTAR FOTO A UN PICKING QUE YA QUEDÓ COMPLETADO (sin foto) -->
+<div id="adjFotoBg" onclick="if(event.target===this)cerrarAdjuntarFoto()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;width:100%;max-width:420px;border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="background:#0d9488;color:#fff;padding:16px 20px">
+      <div style="font-size:15px;font-weight:800">📎 Adjuntar foto de evidencia</div>
+      <div style="font-size:11px;color:#ccfbf1;margin-top:2px">Este ítem ya está completado — solo se agrega la foto</div>
+    </div>
+    <div style="padding:18px 20px">
+      <div id="adj-info" style="font-size:11.5px;color:#0d9488;font-weight:700;background:#f0fdfa;border-radius:8px;padding:8px 10px;margin-bottom:14px"></div>
+      <input id="adj-foto" type="file" accept=".jpg,.jpeg,.png" style="width:100%;padding:7px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;margin-bottom:16px">
+      <div style="display:flex;gap:8px">
+        <button class="btn bi" id="adj-confirmar" onclick="confirmarAdjuntarFoto()" style="flex:1;justify-content:center;padding:10px">✅ Subir foto</button>
+        <button class="btn br" onclick="cerrarAdjuntarFoto()" style="padding:10px 16px">Cancelar</button>
+      </div>
+      <div id="adj-status" style="font-size:11px;color:#0d9488;margin-top:8px;min-height:14px"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ═══════════════ NAVEGACIÓN ═══════════════ */
 const PAGES=['home','p-general','p-req','p-pick','p-pickdone','p-cod'];
@@ -663,12 +682,24 @@ const GH_RAW_REQALM='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FIL
 const GH_API_REQALM='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE_REQALM;
 let REQ_ALM_LIVE=false,REQ_ALM_DIRTY=false;
 let SALIDAS_ALM={}; // req+'|'+cod -> {obra, guias:[...], fsal} — despachos reales desde el Excel
+// Un token de GitHub es una sola cadena alfanumérica: cualquier espacio/salto de línea colado por
+// un copy-paste (p.ej. desde el bloc de notas o el celular) rompe el header Authorization con
+// "Failed to execute 'fetch': Invalid value". trim() solo limpia los extremos, así que aquí se
+// quita TODO espacio en blanco (incluido uno oculto en medio) al guardar y también al leer, para
+// corregir solo un token que ya haya quedado corrupto en localStorage sin pedir que lo reingresen.
+function getGHTokenAlmacen(){
+  const raw=localStorage.getItem(GH_TOKEN_KEY)||'';
+  const clean=raw.replace(/\s+/g,'');
+  if(clean!==raw)localStorage.setItem(GH_TOKEN_KEY,clean);
+  return clean;
+}
 function setupGHToken(){
   const cur=localStorage.getItem(GH_TOKEN_KEY)||'';
   const t=prompt('Ingresa el Token de GitHub de Almacén\n(propio de este módulo, no el de Compras — se guarda solo en este navegador):',cur);
   if(t!==null){
-    localStorage.setItem(GH_TOKEN_KEY,t.trim());
-    alert(t.trim()?'✅ Token guardado. Ya puedes usar GUARDAR.':'⚠ Token eliminado.');
+    const clean=t.replace(/\s+/g,'');
+    localStorage.setItem(GH_TOKEN_KEY,clean);
+    alert(clean?'✅ Token guardado. Ya puedes usar GUARDAR.':'⚠ Token eliminado.');
   }
 }
 
@@ -2358,7 +2389,7 @@ function renderPick(){
           <td class="num" style="font-weight:700">${r.cant}</td>
           <td class="num"><input type="number" min="0" max="${r.cant}" value="${r.picking}" style="width:64px;padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setDecision('${r.key}',this.value,${r.cant})"></td>
           <td>${r.completado
-            ? `<span class="pill p-ok">✅ COMPLETADO</span> <span style="font-size:10.5px;color:#64748b">${r.responsable} · ${r.fechaHora}</span>${r.fotoPath?` · <a href="${r.fotoPath}" target="_blank" style="font-size:10.5px;font-weight:600">📷 ver foto</a>`:''}`
+            ? `<span class="pill p-ok">✅ COMPLETADO</span> <span style="font-size:10.5px;color:#64748b">${r.responsable} · ${r.fechaHora}</span>${r.fotoPath?` · <a href="${r.fotoPath}" target="_blank" style="font-size:10.5px;font-weight:600">📷 ver foto</a>`:` · <a href="#" onclick="abrirAdjuntarFoto('${r.key}');return false;" style="font-size:10.5px;font-weight:600;color:#2563eb">📎 adjuntar foto</a>`}`
             : '<span style="color:#cbd5e1;font-size:11px">pendiente — usa "Marcar todo completado" arriba</span>'}
           </td>
         </tr>`).join('')}
@@ -2435,7 +2466,7 @@ function renderPickDone(){
           <td style="white-space:normal;max-width:300px;font-weight:500">${r.prod||'—'}</td>
           <td class="num">${r.cant}</td>
           <td class="num" style="font-weight:700">${r.picking}</td>
-          <td><span class="pill p-ok">✅ COMPLETADO</span> <span style="font-size:10.5px;color:#64748b">${r.responsable} · ${r.fechaHora}</span>${r.fotoPath?` · <a href="${r.fotoPath}" target="_blank" style="font-size:10.5px;font-weight:600">📷 ver foto</a>`:''}</td>
+          <td><span class="pill p-ok">✅ COMPLETADO</span> <span style="font-size:10.5px;color:#64748b">${r.responsable} · ${r.fechaHora}</span>${r.fotoPath?` · <a href="${r.fotoPath}" target="_blank" style="font-size:10.5px;font-weight:600">📷 ver foto</a>`:` · <a href="#" onclick="abrirAdjuntarFoto('${r.key}');return false;" style="font-size:10.5px;font-weight:600;color:#2563eb">📎 adjuntar foto</a>`}</td>
         </tr>`).join('')}
         </tbody>
       </table>
@@ -2582,7 +2613,7 @@ async function confirmarCompletado(){
     const ahora=new Date().toLocaleString('es-PE');
     let fotoPath='';
     if(file){
-      const token=localStorage.getItem(GH_TOKEN_KEY);
+      const token=getGHTokenAlmacen();
       if(!token){
         if(confirm('Para adjuntar la foto de evidencia necesitas el Token de GitHub de Almacén.\n¿Configurarlo ahora? (se guardará igual, sin la foto)'))setupGHToken();
       }else if(file.size>8*1024*1024){
@@ -2623,6 +2654,58 @@ async function confirmarCompletado(){
   }
 }
 
+// Adjuntar foto a un ítem que ya quedó COMPLETADO sin ella (p.ej. porque la subida falló la
+// primera vez) — no reabre ni toca responsable/fecha, solo agrega fotoPath al registro existente.
+let _adjFotoKey=null;
+function abrirAdjuntarFoto(key){
+  _adjFotoKey=key;
+  document.getElementById('adj-foto').value='';
+  document.getElementById('adj-status').textContent='';
+  const partes=key.split('|');
+  document.getElementById('adj-info').textContent='Requerimiento '+partes[0]+' — código '+(partes[1]||'');
+  document.getElementById('adjFotoBg').style.display='flex';
+}
+function cerrarAdjuntarFoto(){
+  document.getElementById('adjFotoBg').style.display='none';
+  _adjFotoKey=null;
+}
+async function confirmarAdjuntarFoto(){
+  const key=_adjFotoKey;
+  if(!key)return;
+  const file=document.getElementById('adj-foto').files[0];
+  if(!file){alert('Selecciona una foto primero.');return;}
+  const token=getGHTokenAlmacen();
+  if(!token){
+    if(confirm('Para adjuntar la foto necesitas el Token de GitHub de Almacén.\n¿Configurarlo ahora?'))setupGHToken();
+    return;
+  }
+  if(file.size>8*1024*1024){alert('La foto pesa más de 8 MB — usa una imagen más liviana.');return;}
+  const btn=document.getElementById('adj-confirmar');
+  const status=document.getElementById('adj-status');
+  try{
+    btn.disabled=true;btn.textContent='⏳ Subiendo…';
+    status.textContent='⏳ Subiendo foto de evidencia…';
+    const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+    const path='assets/picking/'+key.replace(/[|/\\]/g,'_')+'_'+Date.now()+'.'+ext;
+    const base64=await leerArchivoBase64(file);
+    const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('tiempo de espera agotado (30 s)')),30000));
+    await Promise.race([subirArchivoGitHub(path,base64,'almacen: foto agregada a picking ya completado '+key),timeout]);
+    const prev=getRecord(key)||{};
+    PENDING[key]={...prev,fotoPath:path};
+    localStorage.setItem('fp_almacen_picking_pending',JSON.stringify(PENDING));
+    cerrarAdjuntarFoto();
+    renderPickDone();
+    if(document.getElementById('pickGroups'))renderPick();
+    updateDirtyLabels();
+  }catch(e){
+    console.error(e);
+    alert('No se pudo subir la foto ('+e.message+'). Intenta de nuevo.');
+  }finally{
+    btn.disabled=false;btn.textContent='✅ Subir foto';
+    status.textContent='';
+  }
+}
+
 /* Guardar decisiones en data.json compartido (mismo repo que Compras).
    Solo toca D.almacenPicking — nunca reescribe oc/p4/p5reqs/etc, para no
    arriesgar los datos de Compras (ver memoria del bug de "última escritura gana"). */
@@ -2650,7 +2733,7 @@ async function guardarDecisiones(){
   const okeys=Object.keys(PENDING_OBRA);
   const akeys=Object.keys(PENDING_ASIG);
   if(!keys.length&&!vkeys.length&&!okeys.length&&!akeys.length){alert('No hay cambios nuevos para guardar.');return;}
-  const token=localStorage.getItem(GH_TOKEN_KEY);
+  const token=getGHTokenAlmacen();
   if(!token){
     if(confirm('Para guardar decisiones de Picking (compartidas con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
     return;
@@ -2861,7 +2944,7 @@ async function autoDetectCotizacion(input){
 }
 // Sube un archivo binario al repositorio (no a data.json) vía GitHub Contents API.
 async function subirArchivoGitHub(path,base64Content,commitMsg){
-  const token=localStorage.getItem(GH_TOKEN_KEY);
+  const token=getGHTokenAlmacen();
   const api='https://api.github.com/repos/'+GH_REPO+'/contents/'+path;
   let sha='';
   const check=await fetch(api,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
@@ -2937,7 +3020,7 @@ async function generarCodigo(){
 
   let avisoArchivo='';
   if(file){
-    const token=localStorage.getItem(GH_TOKEN_KEY);
+    const token=getGHTokenAlmacen();
     if(!token){
       avisoArchivo='\n⚠ No se adjuntó la cotización: falta configurar el Token de GitHub (🔑). El código sí se generó.';
       if(confirm('Para adjuntar la cotización necesitas un Token de GitHub.\n¿Configurarlo ahora? (el código se generará igual, sin el adjunto)'))setupGHToken();
@@ -3022,7 +3105,7 @@ function fichaSize(w){const b=document.getElementById('fichaBox');if(b)b.style.m
 /* Guardar códigos generados en data.json compartido — solo toca D.almacenCodigos */
 async function guardarCodigos(){
   if(!PENDING_COD.length){alert('No hay códigos nuevos para guardar.');return;}
-  const token=localStorage.getItem(GH_TOKEN_KEY);
+  const token=getGHTokenAlmacen();
   if(!token){
     if(confirm('Para guardar códigos (compartidos con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
     return;
@@ -3078,7 +3161,7 @@ async function guardarTodo(){
   // haya importado un Kardex nuevo en este navegador.
   const hayExistenciasEfectivo=hayExistencias||(hayTransito&&EXISTENCIAS_LIVE&&Array.isArray(DATA)&&DATA.length>0);
   if(!hayExistenciasEfectivo&&!hayPicking&&!hayCodigos&&!hayTransito&&!hayRequerimientos){alert('No hay cambios nuevos para guardar.');return;}
-  const token=localStorage.getItem(GH_TOKEN_KEY);
+  const token=getGHTokenAlmacen();
   if(!token){
     if(confirm('Para guardar (compartido con todos) necesitas un Token de GitHub de Almacén.\n¿Configurarlo ahora?'))setupGHToken();
     return;
