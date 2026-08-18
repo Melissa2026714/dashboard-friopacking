@@ -1040,6 +1040,10 @@ function parseRequerimientosWorkbook(wb){
   const oc=Object.values(ocMap);
 
   // Sin OC — Cotización (equivalente a D.sinoc): pedidos con N° de pedido pero sin OC todavía.
+  // Se mantiene el registro aunque NISIRA lo haya marcado "Archivado" (para no perder N° de
+  // Pedido/Fecha/Responsable en la tabla) — el campo "estado" ya guarda ese valor y estadoItem()
+  // lo usa para mostrar la etiqueta correcta automáticamente, sin depender de que alguien lo
+  // archive a mano en el dashboard.
   const sinocSeen=new Set(),sinoc=[];
   rows.forEach(function(r){
     if(xcodigo(r['CodOrden']))return;
@@ -1747,7 +1751,10 @@ function estadoItem(r){
   if(sr){
     const ck=(sr.ped||'')+'_'+(sr.cod||'');
     const am=ARCHIVOMETA[ck];
-    if(am&&am.archivado)return{t:'Archivado en Sin OC',c:'#6d28d9',bg:'#f5f3ff'};
+    // Archivado a mano en Compras (Sin OC) O ya archivado directamente en NISIRA (columna
+    // EstadoPedido del Excel) — este segundo caso no depende de que nadie haga clic en Archivar.
+    const archivadoEnOrigen=(sr.estado||'').toLowerCase()==='archivado';
+    if((am&&am.archivado)||archivadoEnOrigen)return{t:'Archivado en Sin OC',c:'#6d28d9',bg:'#f5f3ff'};
     if(COTMETA[ck])return{t:'Pedido en cotización',c:'#1d4ed8',bg:'#eff6ff'};
     return{t:'Pedido pendiente',c:'#dc2626',bg:'#fef2f2'};
   }
