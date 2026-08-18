@@ -2212,7 +2212,7 @@ function verReqItems(rk){
         <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Estado</th>
         <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0">Cant. a Picking</th>
         <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0">Cant. a Pedido</th>
-        <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0;color:#0d9488" title="Cuánto de ese stock En Tránsito queda comprometido/reservado para este requerimiento puntual — no resta de Picking ni Pedido, solo evita ofrecer el mismo tránsito dos veces">Comprometido de Tránsito</th>
+        <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0;color:#0d9488" title="Cuánto de ese stock En Tránsito queda comprometido/reservado para este requerimiento puntual — no resta de Picking ni Pedido, solo evita ofrecer el mismo tránsito dos veces">Reserva de Tránsito</th>
       </tr></thead>
       <tbody>
         ${items.map((r,i)=>{
@@ -2261,10 +2261,10 @@ function verReqItems(rk){
           const detalleOtros=comprometidoOtros>0?transitoComprometidoDetalle(r.cod,key).map(function(x){return x.cant+' en '+x.req;}).join(', '):'';
           const transCell=totalTrans<=0?'<span style="color:#cbd5e1">—</span>'
             :(comprometidoOtros>0
-              ?`<span title="Comprometido por otro(s) requerimiento(s): ${detalleOtros}">${fmtq(totalTrans)} <span style="color:#94a3b8;font-size:10px">(${fmtq(disponibleTrans)} disp. 🔒)</span></span>`
+              ?`<span title="Reservado por otro(s) requerimiento(s): ${detalleOtros}">${fmtq(totalTrans)} <span style="color:#94a3b8;font-size:10px">(${fmtq(disponibleTrans)} disp. 🔒)</span></span>`
               :fmtq(totalTrans));
           const comprCell=totalTrans<=0?'<span style="color:#cbd5e1">—</span>'
-            :`<input type="number" min="0" max="${disponibleTrans+misComprometido}" value="${misComprometido||''}" placeholder="0" style="width:64px;padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setTransitoComprometido('${key}',this.value,${disponibleTrans+misComprometido});verReqItems('${rk}')" title="Máx. disponible sin duplicar lo ya comprometido en otros requerimientos: ${disponibleTrans+misComprometido}">`;
+            :`<input type="number" min="0" max="${disponibleTrans+misComprometido}" value="${misComprometido||''}" placeholder="0" style="width:64px;padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setTransitoComprometido('${key}',this.value,${disponibleTrans+misComprometido});verReqItems('${rk}')" title="Máx. disponible sin duplicar lo ya reservado en otros requerimientos: ${disponibleTrans+misComprometido}">`;
           return `<tr>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8">${i+1}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9" class="mono">${r.cod||'—'}</td>
