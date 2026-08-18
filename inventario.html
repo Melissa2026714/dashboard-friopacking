@@ -1034,7 +1034,11 @@ function parseRequerimientosWorkbook(wb){
       foc:xfecha(r['FechaOrden']),fapro:fapro,fent:xfecha(r['ParaFechaOrden']),
       fechaRecep:xfecha(r['FechaRecepcion']),guiaProv:xcodigo(r['CodRecepcion']),
       estado:xtexto(r['EstadoOrden']),req:req,freq:xfecha(r['FechaRequerimiento']),
-      unid:xtexto(r['UnidadMedida'])||xtexto(r['Medida'])||''
+      unid:xtexto(r['UnidadMedida'])||xtexto(r['Medida'])||'',
+      // Pedido EXACTO de esta línea — una OC puede consolidar varios pedidos distintos
+      // (ver ocMap[ocNum].peds), así que el N° de Pedido "genérico" de la OC no siempre
+      // corresponde al pedido real de este req+código puntual.
+      ped:ped,fped:xfecha(r['FechaPedido']),respPed:xtexto(r['ResponsablePedido'])
     });
   });
   const oc=Object.values(ocMap);
@@ -1613,7 +1617,7 @@ function buildReqCodOC(){
     (SKUS_RAW[oc]||[]).forEach(function(line){
       if(!line.req||!line.cod)return;
       const k=line.req+'|'+line.cod;
-      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fapro:line.fapro||'',fent:line.fent||'',compras:0,cantOrd:0,cantRec:0,guiasProv:[],frecep:''};
+      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fapro:line.fapro||'',fent:line.fent||'',compras:0,cantOrd:0,cantRec:0,guiasProv:[],frecep:'',ped:'',fped:'',respPed:''};
       else if(REQCOD_OC[k].ocs.indexOf(oc)<0)REQCOD_OC[k].ocs.push(oc);
       REQCOD_OC[k].compras+=(line.cantPend||0);
       REQCOD_OC[k].cantOrd+=(line.cantOrd||0);
@@ -1623,6 +1627,11 @@ function buildReqCodOC(){
       REQCOD_OC[k].cantRec+=(line.cantRec||0);
       if(line.guiaProv&&REQCOD_OC[k].guiasProv.indexOf(line.guiaProv)<0)REQCOD_OC[k].guiasProv.push(line.guiaProv);
       if(line.fechaRecep&&(!REQCOD_OC[k].frecep||dmyOrd(line.fechaRecep)>dmyOrd(REQCOD_OC[k].frecep)))REQCOD_OC[k].frecep=line.fechaRecep;
+      // Pedido exacto de ESTA línea (una OC puede consolidar varios pedidos distintos) — se
+      // guarda el primero no vacío que aparezca para este req+código puntual.
+      if(!REQCOD_OC[k].ped&&line.ped)REQCOD_OC[k].ped=line.ped;
+      if(!REQCOD_OC[k].fped&&line.fped)REQCOD_OC[k].fped=line.fped;
+      if(!REQCOD_OC[k].respPed&&line.respPed)REQCOD_OC[k].respPed=line.respPed;
     });
   });
 }
@@ -1688,12 +1697,16 @@ function groupEstadoLabel(items,rk){
 // que se genera la OC, Compras ya no lo lista en Sin OC (por definición: "sin OC"), así que hay
 // que sacarlo del propio registro de la OC (D.oc trae .ped/.peds del pedido que la originó).
 function pedidoForItem(key){
+  // Pedido EXACTO de esta línea primero — una OC puede consolidar varios pedidos distintos
+  // (ocRow.peds), así que el "ped" genérico de toda la OC no siempre es el correcto para este
+  // req+código puntual (ver REQCOD_OC[key].ped, capturado por línea en buildReqCodOC).
+  const ro=REQCOD_OC[key];
+  if(ro&&ro.ped)return ro.ped;
   const sr=SINOC_BY_REQCOD[key];
   if(sr&&sr.ped)return sr.ped;
-  const oc=REQCOD_OC[key];
-  if(oc&&oc.ocs&&oc.ocs.length){
-    for(let i=0;i<oc.ocs.length;i++){
-      const ocRow=OC_BY_NUM[oc.ocs[i]];
+  if(ro&&ro.ocs&&ro.ocs.length){
+    for(let i=0;i<ro.ocs.length;i++){
+      const ocRow=OC_BY_NUM[ro.ocs[i]];
       if(ocRow&&ocRow.ped)return ocRow.ped;
     }
   }
@@ -1702,12 +1715,13 @@ function pedidoForItem(key){
 // Fecha en la que se generó el pedido (columna "FechaPedido" del Excel) — mismo cruce que
 // pedidoForItem: sale de Sin OC — Cotización o, si ya tiene OC, del registro de esa OC.
 function fpedidoForItem(key){
+  const ro=REQCOD_OC[key];
+  if(ro&&ro.fped)return ro.fped;
   const sr=SINOC_BY_REQCOD[key];
   if(sr&&sr.fped)return sr.fped;
-  const oc=REQCOD_OC[key];
-  if(oc&&oc.ocs&&oc.ocs.length){
-    for(let i=0;i<oc.ocs.length;i++){
-      const ocRow=OC_BY_NUM[oc.ocs[i]];
+  if(ro&&ro.ocs&&ro.ocs.length){
+    for(let i=0;i<ro.ocs.length;i++){
+      const ocRow=OC_BY_NUM[ro.ocs[i]];
       if(ocRow&&ocRow.fped)return ocRow.fped;
     }
   }
@@ -1716,12 +1730,13 @@ function fpedidoForItem(key){
 // Responsable del pedido (columna "ResponsablePedido" del Excel) — quién está a cargo de
 // gestionar esa compra, distinto del responsable del requerimiento (quien lo solicitó).
 function respPedidoForItem(key){
+  const ro=REQCOD_OC[key];
+  if(ro&&ro.respPed)return ro.respPed;
   const sr=SINOC_BY_REQCOD[key];
   if(sr&&sr.respPed)return sr.respPed;
-  const oc=REQCOD_OC[key];
-  if(oc&&oc.ocs&&oc.ocs.length){
-    for(let i=0;i<oc.ocs.length;i++){
-      const ocRow=OC_BY_NUM[oc.ocs[i]];
+  if(ro&&ro.ocs&&ro.ocs.length){
+    for(let i=0;i<ro.ocs.length;i++){
+      const ocRow=OC_BY_NUM[ro.ocs[i]];
       if(ocRow&&ocRow.respPed)return ocRow.respPed;
     }
   }
