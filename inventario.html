@@ -1765,7 +1765,7 @@ function estadoItem(r){
     // Archivado a mano en Compras (Sin OC) O ya archivado directamente en NISIRA (columna
     // EstadoPedido del Excel) — este segundo caso no depende de que nadie haga clic en Archivar.
     const archivadoEnOrigen=(sr.estado||'').toLowerCase()==='archivado';
-    if((am&&am.archivado)||archivadoEnOrigen)return{t:'Archivado en Sin OC',c:'#6d28d9',bg:'#f5f3ff'};
+    if((am&&am.archivado)||archivadoEnOrigen)return{t:'Archivado',c:'#6d28d9',bg:'#f5f3ff'};
     if(COTMETA[ck])return{t:'Pedido en cotización',c:'#1d4ed8',bg:'#eff6ff'};
     return{t:'Pedido pendiente',c:'#dc2626',bg:'#fef2f2'};
   }
