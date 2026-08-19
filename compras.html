@@ -360,10 +360,9 @@ body.dark .g-rank-card{background:#111b2b!important}
     <button class="tab" onclick="nav('p7')">🔍 Consultas</button>
   </div>
   <div class="nbr">
-    <!-- El botón IMPORTAR (MAESTRO/PedidoSinReq/Supervisores/Proveedores) se movió a la
-         Plataforma LOGÍSTICA (plataforma.html), que alimenta a Compras + Almacén + Facturas
-         a la vez — ver assets/js/compras-shared.js. CONSULTAS.xlsx sigue aparte (más abajo,
-         pestaña Consultas) porque no forma parte de ese importador centralizado. -->
+    <!-- El botón IMPORTAR (MAESTRO/PedidoSinReq/Supervisores/Proveedores/CONSULTAS) se movió
+         a la Plataforma LOGÍSTICA (plataforma.html), que alimenta a Compras + Almacén +
+         Facturas a la vez — ver assets/js/compras-shared.js. -->
     <button class="btn" id="saveBtn" onclick="manualSave()" title="Guardar y sincronizar con todos los usuarios" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
     <button id="spLoginBtn" onclick="spLogin()" title="Iniciar sesión para subir a SharePoint" style="display:none;background:#0078d4;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">☁ SP</button>
     <button class="btn" onclick="setupGHToken()" title="Configurar token GitHub (solo admin)" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer">🔑</button>
@@ -451,12 +450,12 @@ body.dark .g-rank-card{background:#111b2b!important}
       <ul>
         <li><strong>MAESTRO.xlsx</strong> — Contiene todas las órdenes de compra y requerimientos del sistema NISIRA</li>
         <li><strong>PedidoSinReq.xlsx</strong> — Requerimientos sin pedido asignado (sección de Javier)</li>
+        <li><strong>CONSULTAS.xlsx</strong> — Historial de precios/consultas (pestaña Consultas de este dashboard)</li>
         <li><strong>DB Supervisores.xlsx / DB Proveedores.xlsx</strong> — opcional, directorio para autocompletar</li>
       </ul>
       <div class="istep"><div class="istep-n">1</div><p>Ve a la Plataforma LOGÍSTICA y haz clic en <strong>📂 Importar</strong>, arriba a la derecha</p></div>
-      <div class="istep"><div class="istep-n">2</div><p>Arrastra o elige los archivos que tengas — el sistema detecta cuál es cuál</p></div>
-      <div class="istep"><div class="istep-n">3</div><p>Haz clic en <strong>Procesar y guardar</strong> — sube directo a Compras, Almacén y Facturas</p></div>
-      <div class="itip"><span class="itip-icon">💡</span><p><strong>CONSULTAS.xlsx</strong> es la excepción: por su tamaño sigue importándose aparte, desde la pestaña Consultas de este dashboard (botón "📂 Importar CONSULTAS.xlsx").</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Arrastra o elige los archivos que tengas — el sistema los lee y detecta cuál es cuál automáticamente</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>Revisa la vista previa y haz clic en <strong>💾 Guardar</strong> — sube directo a Compras, Almacén y Facturas (incluyendo CONSULTAS.xlsx)</p></div>
       <h4>💾 Botón GUARDAR</h4>
       <p>Guarda el estado actual del dashboard y sincroniza los cambios con los demás usuarios del equipo.</p>
       <div class="iwarn"><p>⚠️ <strong>Primera vez:</strong> Al guardar por primera vez, el sistema solicitará un <strong>token de acceso</strong>. Ingrésalo y haz clic en Aceptar — a partir de ese momento no volverá a pedirlo en ese equipo.</p></div>
@@ -3759,6 +3758,15 @@ const GH_CONSULTAS_FILE='consultas.json';
 const GH_CONSULTAS_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_CONSULTAS_FILE;
 const GH_CONSULTAS_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_CONSULTAS_FILE;
 const GH_INDEX_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/compras.html';
+// fetch() no tiene timeout propio: con wifi lenta un GET/PUT colgado deja GUARDAR en
+// "Guardando..." para siempre sin ningún error visible.
+function fetchTO(url, opts, ms){
+  const ms_ = ms || 45000;
+  return Promise.race([
+    fetch(url, opts),
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('tiempo de espera agotado ('+Math.round(ms_/1000)+'s) al hablar con GitHub — revisa tu conexión e intenta de nuevo')), ms_))
+  ]);
+}
 
 // ── Bandera de "consultas recién importadas" ─────────────────────────────────
 // consultas.json (~19 MB) SOLO cambia al importar CONSULTAS.xlsx. Mientras esté
@@ -3962,7 +3970,7 @@ async function saveGitHub(payload){
     // Protección: no sobrescribir la nube perdiendo información sin avisar
     try{
       const localData=JSON.parse(payload);
-      const rCheck=await fetch(GH_RAW+'?t='+Date.now());
+      const rCheck=await fetchTO(GH_RAW+'?t='+Date.now());
       if(rCheck.ok){
         const remote=await rCheck.json();
         const locOc=(localData.D&&localData.D.oc)?localData.D.oc.length:0;
@@ -4021,12 +4029,12 @@ async function saveGitHub(payload){
       }
     }catch(e2){console.warn('[FP] Chequeo de conflicto antes de guardar falló, se continúa:',e2);}
     let sha='';
-    const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+    const check=await fetchTO(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
     if(check.ok){const meta=await check.json();sha=meta.sha||'';}
     const content=btoa(unescape(encodeURIComponent(payload)));
     const body={message:'update '+new Date().toISOString(),content};
     if(sha)body.sha=sha;
-    const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await fetchTO(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
     return res.ok;
   }catch(e){console.warn('GitHub save failed:',e);return false;}
 }
@@ -4979,7 +4987,7 @@ function renderP7(){
   const tb=document.getElementById('tb7');
   if(!tb)return;
   if(!fil.length){
-    tb.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">${data.length?'Sin resultados para la búsqueda.':'Aún no se ha cargado el archivo CONSULTAS.xlsx.<br><br>Use el botón 📂 Importar CONSULTAS.xlsx'}</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">${data.length?'Sin resultados para la búsqueda.':'Aún no se ha cargado el archivo CONSULTAS.xlsx.<br><br>Impórtalo desde la Plataforma LOGÍSTICA (📂 Importar)'}</td></tr>`;
     const pi=document.getElementById('p7info');if(pi)pi.textContent='';
     return;
   }
@@ -6209,8 +6217,6 @@ setInterval(function(){
   <div class="ib">
     <span class="idot"></span>
     <span>Consulta de Precios Anteriores</span>
-    <span style="flex:1"></span>
-    <button class="btn bi" onclick="document.getElementById('fileCONSULTAS').click()" title="Importar CONSULTAS.xlsx" style="font-size:11px;padding:5px 10px">📂 Importar CONSULTAS.xlsx</button>
   </div>
   <div class="kpis">
     <div class="kpi k0"><div class="klbl">Total Registros</div><div class="kval" id="k7tot">—</div><div class="ksub">Líneas cargadas</div></div>
@@ -6259,7 +6265,6 @@ setInterval(function(){
   </div>
 </div>
 
-<input type="file" id="fileCONSULTAS" accept=".xlsx,.xls" style="display:none" onchange="handleConsultasUpload(this)"/>
 <div id="sticky-hscroll"><div id="sticky-hscroll-inner"></div></div>
 <script>
 (function(){

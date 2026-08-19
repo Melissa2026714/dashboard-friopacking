@@ -184,7 +184,7 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
    ============================================================ */
 let impSelectedFiles = [];
 let impClassified = []; // [{file, tipo, wb}] — ya leídos y clasificados, listos para Guardar
-const TIPO_LABEL = {maestro:'Reporte Maestro', pedido:'Pedido Sin Req', supervisores:'Supervisores', proveedores:'Proveedores', almacen:'Reporte Almacén'};
+const TIPO_LABEL = {maestro:'Reporte Maestro', pedido:'Pedido Sin Req', supervisores:'Supervisores', proveedores:'Proveedores', almacen:'Reporte Almacén', consultas:'Consultas (histórico de precios)'};
 
 function renderLastImportPill(){
   const el = document.getElementById('lastImportPill');
@@ -265,8 +265,14 @@ function impLogLine(html){
 // Detecta qué es cada archivo (por contenido, no por nombre, salvo Supervisores/Proveedores
 // que no tienen una hoja distintiva propia) — así Piero no tiene que nombrarlos de forma exacta.
 async function clasificarArchivo(file){
-  const wb = XLSX.read(await file.arrayBuffer(), {type:'array', cellDates:true});
   const name = file.name.toLowerCase();
+  // Consulta(s).xlsx ya se procesa acá también (antes era una excepción manual desde
+  // compras.html) — se detecta por nombre porque no tiene una hoja distintiva propia.
+  if(name.includes('consulta')){
+    const wb = XLSX.read(await file.arrayBuffer(), {type:'array', cellDates:true});
+    return {tipo:'consultas', wb};
+  }
+  const wb = XLSX.read(await file.arrayBuffer(), {type:'array', cellDates:true});
   const esAlmacen = wb.SheetNames.some(n=>/an[aá]lisis.*inventario|inventario.*an[aá]lisis/i.test(n)) || name.includes('almacen') || name.includes('almacén');
   if(esAlmacen) return {tipo:'almacen', wb};
   if(name.includes('supervisor')) return {tipo:'supervisores', wb};
@@ -286,13 +292,18 @@ async function procesarTodo(){
   btn.disabled = true;
   logEl.innerHTML = '';
   try{
-    let wbMaestro=null, wbPedido=null;
+    let wbMaestro=null, wbPedido=null, hayConsultas=false;
     for(const {file, tipo, wb} of impClassified){
       if(tipo==='error'){ impLogLine('⚠ '+file.name+': no se pudo leer, se omite.'); continue; }
       if(tipo==='maestro'){ wbMaestro = wb; impLogLine('📄 '+file.name+' → Reporte Maestro'); }
       else if(tipo==='pedido'){ wbPedido = wb; impLogLine('📄 '+file.name+' → Pedido Sin Req'); }
       else if(tipo==='supervisores'){ ComprasShared.importSupervisores(wb); impLogLine('✅ Compras: Supervisores procesado ('+file.name+')'); }
       else if(tipo==='proveedores'){ ComprasShared.importProveedores(wb); impLogLine('✅ Compras: Proveedores procesado ('+file.name+')'); }
+      else if(tipo==='consultas'){
+        const r = ComprasShared.importConsultas(wb);
+        hayConsultas = true;
+        impLogLine('✅ Compras: Consultas procesado — '+r.nConsultas.toLocaleString('es-PE')+' registros'+(r.nFin?' · '+r.nFin+' OC con datos financieros (hoja R.EOC)':'')+' ('+file.name+')');
+      }
       else if(tipo==='almacen'){
         try{
           const partes = AlmacenShared.procesarArchivo(wb);
@@ -308,12 +319,17 @@ async function procesarTodo(){
     }
     const tokenC = ComprasShared.getToken();
     if(!tokenC){
-      impLogLine('⚠ Falta el Token de GitHub de Compras — usa el botón "🔑 Token Compras" y vuelve a intentar.');
+      if(wbMaestro || wbPedido || hayConsultas) impLogLine('⚠ Falta el Token de GitHub de Compras — usa el botón "🔑 Token Compras" y vuelve a intentar.');
     } else {
       const payload = ComprasShared.saveLocal();
       if(payload){
         const ok = await ComprasShared.saveGitHub(payload);
         impLogLine(ok ? '☁ Compras subido a <b>data.json</b>' : '❌ Compras: la subida falló o se canceló (revisa la advertencia de conflicto, si salió)');
+      }
+      // consultas.json es un archivo aparte (~19 MB) — solo se re-sube si se importó Consultas.
+      if(hayConsultas){
+        const okc = await ComprasShared.saveConsultasGitHub(tokenC);
+        impLogLine(okc ? '☁ Compras subido a <b>consultas.json</b>' : '❌ Compras: la subida de consultas.json falló');
       }
     }
 

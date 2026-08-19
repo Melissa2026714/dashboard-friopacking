@@ -24,6 +24,15 @@ const GH_FILE='data.json';
 const GH_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE;
 const GH_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE;
 const GH_TOKEN_KEY='fp_gh_token';
+// fetch() no tiene timeout propio: con wifi lenta un GET/PUT colgado deja el Guardar
+// esperando para siempre sin ningún error visible en el log del importador.
+function fetchTO(url, opts, ms){
+  const ms_ = ms || 45000;
+  return Promise.race([
+    fetch(url, opts),
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('tiempo de espera agotado ('+Math.round(ms_/1000)+'s) al hablar con GitHub — revisa tu conexión e intenta de nuevo')), ms_))
+  ]);
+}
 
 /* ==== INICIO: copiado de compras.html (ver cabecera del archivo) ==== */
 
@@ -98,7 +107,7 @@ async function saveGitHub(payload){
     // Protección: no sobrescribir la nube perdiendo información sin avisar
     try{
       const localData=JSON.parse(payload);
-      const rCheck=await fetch(GH_RAW+'?t='+Date.now());
+      const rCheck=await fetchTO(GH_RAW+'?t='+Date.now());
       if(rCheck.ok){
         const remote=await rCheck.json();
         const locOc=(localData.D&&localData.D.oc)?localData.D.oc.length:0;
@@ -157,17 +166,183 @@ async function saveGitHub(payload){
       }
     }catch(e2){console.warn('[FP] Chequeo de conflicto antes de guardar falló, se continúa:',e2);}
     let sha='';
-    const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+    const check=await fetchTO(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
     if(check.ok){const meta=await check.json();sha=meta.sha||'';}
     const content=btoa(unescape(encodeURIComponent(payload)));
     const body={message:'update '+new Date().toISOString(),content};
     if(sha)body.sha=sha;
-    const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await fetchTO(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
     return res.ok;
   }catch(e){console.warn('GitHub save failed:',e);return false;}
 }
 
-// ── Guardar consultas.json en GitHub ─────────────────────────────────────────
+// ── Importar CONSULTAS.xlsx (copiado de compras.html, sin las llamadas al DOM
+// propio de esa página: _st(id,...), renderP7(), alert(), markConsultasDirty()) ──
+function importConsultas(wb){
+  const sh=wb.Sheets[wb.SheetNames[0]];
+  const raw=XLSX.utils.sheet_to_json(sh,{header:1,defval:''});
+  let hdrIdx=0;
+  for(let i=0;i<Math.min(10,raw.length);i++){
+    const row=raw[i].map(c=>String(c||'').toUpperCase());
+    if(row.some(c=>c.includes('OCOMPRA')||c.includes('IDPROD')||c.includes('RAZON_SOC')||c.includes('DESCRIPCION'))){
+      hdrIdx=i; break;
+    }
+  }
+  const hdrs=raw[hdrIdx].map(c=>String(c||'').trim().toUpperCase());
+  const gi=(...cands)=>{for(const c of cands){const i=hdrs.findIndex(h=>h.includes(c.toUpperCase()));if(i>=0)return i;}return -1;};
+  const iOC   =gi('DOCUM','N° OC','OCOMPRA','DOCUMENTO');
+  const iFECH =gi('FECHA');
+  const iRUC  =(()=>{const idx=hdrs.findIndex((h,i)=>h.includes('PROVEEDOR')&&!h.includes('RAZON')&&!h.includes('NOMBRE'));return idx>=0?idx:gi('IDCLIEPROV','IDCLIEROV');})();
+  const iRAZON=(()=>{const idx=hdrs.findIndex(h=>h.includes('PROVEEDOR')&&(h.includes('RAZO')||h.includes('NOMBRE')||h.includes('SOC')));return idx>=0?idx:gi('RAZON_SOCIAL','RAZON_SOC','RAZON');})();
+  const iMONE =gi('MONE','MONEDA','MON_DSC');
+  const iPROD =(()=>{const idx=hdrs.findIndex(h=>h.includes('PRODUCTO')&&(h.includes('COD')||h.match(/PRODUCTO\s*C/)));return idx>=0?idx:gi('IDPROD','CODIGO')})();
+  const iDESC =(()=>{const idx=hdrs.findIndex(h=>h.includes('PRODUCTO')&&(h.includes('DES')||h.includes('NOMBRE')));return idx>=0?idx:gi('DESCRIPCION','DESC')})();
+  const iPRECMN=gi('PRECIO M.N. UNIT','PRECIO M.N UNIT','PRECIO MN UNIT');
+  const iPRECME=gi('PRECIO M.E. UNIT','PRECIO M.E UNIT','PRECIO ME UNIT');
+  const iPREC  =gi('PREC UNIT','PRECIO UNIT','VALOR UNIT','VALOR_UNIT','P.U.','PU ','PREC','VALOR','TOTAL','IMPORTE');
+  const iCANT =gi('CANTIDAD','CANT');
+  const iUM   =gi('U.M.','UM','UNIDAD','MEDIDA');
+  const iCREA =gi('RESPON','RESP_DOC','CREADOO_POR','CREADO_POR','RESPONSABLE');
+  const iEST  =gi('ESTAD','ESTADO','EST_DOC','STATUS');
+  const gv=(r,i)=>i>=0?String(r[i]||'').trim():'';
+  const fmtFecha=(v)=>{
+    if(!v)return'';
+    const s=String(v).trim();
+    if(/^\d{2}\/\d{2}\/\d{4}$/.test(s))return s;
+    const d=new Date(s);
+    if(isNaN(d.getTime()))return s.slice(0,10);
+    return d.getDate().toString().padStart(2,'0')+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getFullYear();
+  };
+  const fmtMon=(v)=>{
+    const s=String(v||'').trim();
+    if(s==='01'||s.toLowerCase().includes('sol'))return'S/';
+    if(s==='02'||s.toLowerCase().includes('dolar')||s.toLowerCase().includes('dollar'))return'US$';
+    if(s==='03'||s.toLowerCase().includes('euro'))return'€';
+    return s;
+  };
+  if(!D.consultas)D.consultas=[];
+  D.consultas=raw.slice(hdrIdx+1)
+    .filter(r=>r&&r.some(c=>c!=null&&c!==''))
+    .map(r=>({
+      oc:       gv(r,iOC),
+      fecha:    fmtFecha(gv(r,iFECH)),
+      fechaRaw: new Date(gv(r,iFECH)).getTime()||0,
+      ruc:      gv(r,iRUC),
+      proveedor:gv(r,iRAZON),
+      moneda:   fmtMon(gv(r,iMONE)),
+      codigo:   gv(r,iPROD),
+      desc:     gv(r,iDESC),
+      cant:     (()=>{const s=gv(r,iCANT);const n=parseFloat(s.replace(',','.'));return isNaN(n)?s:(n%1?n:Math.round(n));})(),
+      um:       gv(r,iUM),
+      valor:    (()=>{
+        const mon=fmtMon(gv(r,iMONE));
+        const esMN=(mon==='S/'||mon.toLowerCase().includes('sol'));
+        const vMN=iPRECMN>=0?String(r[iPRECMN]||'').trim():'';
+        const vME=iPRECME>=0?String(r[iPRECME]||'').trim():'';
+        const vFB=iPREC>=0?String(r[iPREC]||'').trim():'';
+        const noVal=(v)=>!v||v==='0'||v==='0.00'||v==='0,00';
+        if(esMN){return(!noVal(vMN)?vMN:(!noVal(vME)?vME:vFB));}
+        else{return(!noVal(vME)?vME:(!noVal(vMN)?vMN:vFB));}
+      })(),
+      resp:     gv(r,iCREA),
+      estado:   gv(r,iEST),
+    }));
+  D.consultas.sort((a,b)=>b.fechaRaw-a.fechaRaw);
+
+  // Hoja adicional "R.EOC" — monto total, forma de pago y comprador por OC, para Gerencial/KPIs.
+  let nFin=0;
+  const shEOC=wb.SheetNames.find(function(n){
+    const r0=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''}).slice(0,10);
+    return r0.some(function(row){
+      const up=row.map(function(c){return String(c||'').toUpperCase();});
+      return up.some(function(c){return c.indexOf('IDESTADO')>=0;})&&up.some(function(c){return c.indexOf('FORMA_PAGO')>=0;});
+    });
+  });
+  if(shEOC){
+    const rawE=XLSX.utils.sheet_to_json(wb.Sheets[shEOC],{header:1,defval:''});
+    let hdrE=0;
+    for(let i=0;i<Math.min(10,rawE.length);i++){
+      const up=rawE[i].map(function(c){return String(c||'').toUpperCase();});
+      if(up.some(function(c){return c.indexOf('IDESTADO')>=0;})){hdrE=i;break;}
+    }
+    const hdrsE=rawE[hdrE].map(function(c){return String(c||'').trim();});
+    const ciE={};hdrsE.forEach(function(h,i){if(h)ciE[h.toUpperCase()]=i;});
+    const giE=function(){
+      for(let a=0;a<arguments.length;a++){
+        const cand=arguments[a].toUpperCase();
+        const k=Object.keys(ciE).find(function(kk){return kk.indexOf(cand)>=0;});
+        if(k!==undefined)return ciE[k];
+      }
+      return -1;
+    };
+    const iOC2=giE('CONCATENADO');
+    const iTOTAL=giE('TOTAL');
+    const iFECHA2=giE('FECHA');
+    const iFAPRO2=giE('F_APROBADO','FAPROBADO');
+    const iEST2=giE('EST_DSC');
+    const iPROV2=giE('RAZON_SOCIAL');
+    const iMON2=giE('MON_DSC');
+    const iUSR2=giE('IDUSUARIOC');
+    const iTC2=giE('TIPOCAMBIO');
+    const iFPAGO2=giE('FORMA_PAGO');
+    const gv2=function(r,i){return i>=0?r[i]:'';};
+    const fmtFecha2=function(v){
+      if(!v)return'';
+      if(v instanceof Date)return v.getDate().toString().padStart(2,'0')+'/'+(v.getMonth()+1).toString().padStart(2,'0')+'/'+v.getFullYear();
+      const s=String(v).trim();
+      if(/^\d{2}\/\d{2}\/\d{4}$/.test(s))return s;
+      const d=new Date(s);
+      return isNaN(d.getTime())?s:(d.getDate().toString().padStart(2,'0')+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getFullYear());
+    };
+    D.ocFin=D.ocFin||{};
+    rawE.slice(hdrE+1).forEach(function(r){
+      if(!r||!r.some(function(c){return c!=null&&c!=='';}))return;
+      const oc=String(gv2(r,iOC2)||'').trim();
+      if(!oc)return;
+      const fecha=fmtFecha2(gv2(r,iFECHA2));
+      if(!is2026(fecha))return;
+      const total=parseFloat(String(gv2(r,iTOTAL)||'0').replace(',','.'))||0;
+      const tc=parseFloat(String(gv2(r,iTC2)||'0').replace(',','.'))||0;
+      const moneda=String(gv2(r,iMON2)||'').trim();
+      const esDolares=moneda.toLowerCase().indexOf('dolar')>=0;
+      const formaPago=String(gv2(r,iFPAGO2)||'').trim();
+      nFin++;
+      D.ocFin[oc]={
+        total:total,
+        moneda:esDolares?'US$':(moneda.toLowerCase().indexOf('sol')>=0?'S/':moneda),
+        tc:tc,
+        montoSoles:esDolares&&tc?Math.round(total*tc*100)/100:total,
+        formaPago:formaPago,
+        esCredito:formaPago.toUpperCase().indexOf('CREDITO')>=0,
+        usuario:String(gv2(r,iUSR2)||'').trim().toUpperCase(),
+        fecha:fecha,
+        fechaAprob:fmtFecha2(gv2(r,iFAPRO2)),
+        estado:String(gv2(r,iEST2)||'').trim(),
+        proveedor:String(gv2(r,iPROV2)||'').trim(),
+      };
+    });
+  }
+  return {nConsultas:D.consultas.length, nFin};
+}
+
+// ── Guardar consultas.json en GitHub (copiado de compras.html) ───────────────
+async function saveConsultasGitHub(token){
+  if(!D.consultas||!D.consultas.length)return true; // nada que guardar
+  try{
+    const rows=D.consultas.map(function(r){return{oc:r.oc,fecha:r.fecha,ruc:r.ruc,proveedor:r.proveedor,moneda:r.moneda,codigo:r.codigo,desc:r.desc,cant:r.cant,um:r.um,valor:r.valor,resp:r.resp,estado:r.estado};});
+    const cPayload=JSON.stringify({consultas:rows,ts:Date.now()});
+    const GH_CONSULTAS_FILE='consultas.json';
+    const GH_CONSULTAS_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_CONSULTAS_FILE;
+    let sha='';
+    const check=await fetchTO(GH_CONSULTAS_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+    if(check.ok){const meta=await check.json();sha=meta.sha||'';}
+    const content=btoa(unescape(encodeURIComponent(cPayload)));
+    const body={message:'consultas '+new Date().toISOString(),content};
+    if(sha)body.sha=sha;
+    const res=await fetchTO(GH_CONSULTAS_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    return res.ok;
+  }catch(e){console.warn('Consultas GitHub save failed:',e);return false;}
+}
 
 function setupGHToken(){
   const cur=localStorage.getItem(GH_TOKEN_KEY)||'';
@@ -938,6 +1113,8 @@ return {
   importPedidoSinReq,
   importSupervisores,
   importProveedores,
+  importConsultas,
+  saveConsultasGitHub,
   setupGHToken,
   saveGitHub,
   saveLocal,
