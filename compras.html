@@ -360,7 +360,10 @@ body.dark .g-rank-card{background:#111b2b!important}
     <button class="tab" onclick="nav('p7')">🔍 Consultas</button>
   </div>
   <div class="nbr">
-    <button class="btn bi" onclick="document.getElementById('fileMAESTRO').click()" title="Importar MAESTRO.xlsx, PedidoSinReq.xlsx, DB Supervisores.xlsx y/o DB Proveedores.xlsx">📂 IMPORTAR</button>
+    <!-- El botón IMPORTAR (MAESTRO/PedidoSinReq/Supervisores/Proveedores) se movió a la
+         Plataforma LOGÍSTICA (plataforma.html), que alimenta a Compras + Almacén + Facturas
+         a la vez — ver assets/js/compras-shared.js. CONSULTAS.xlsx sigue aparte (más abajo,
+         pestaña Consultas) porque no forma parte de ese importador centralizado. -->
     <button class="btn" id="saveBtn" onclick="manualSave()" title="Guardar y sincronizar con todos los usuarios" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
     <button id="spLoginBtn" onclick="spLogin()" title="Iniciar sesión para subir a SharePoint" style="display:none;background:#0078d4;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">☁ SP</button>
     <button class="btn" onclick="setupGHToken()" title="Configurar token GitHub (solo admin)" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer">🔑</button>
@@ -436,26 +439,24 @@ body.dark .g-rank-card{background:#111b2b!important}
         <li><span class="ibadge ibadge-gray">🏗️ Proyectos PMO</span> — Seguimiento de proyectos activos</li>
         <li><span class="ibadge ibadge-purple">📊 Gerencial / KPIs</span> — Vista ejecutiva para gerencia (Manuel)</li>
       </ul>
-      <div class="itip"><span class="itip-icon">💡</span><p>Al abrir el dashboard por primera vez, los contadores de cada tarjeta aparecen como "cargando…" hasta que importes los archivos Excel con el botón <strong>IMPORTAR</strong>.</p></div>
+      <div class="itip"><span class="itip-icon">💡</span><p>Los archivos Excel (MAESTRO.xlsx, PedidoSinReq.xlsx, etc.) ya no se importan desde aquí — se suben una sola vez desde el botón <strong>📂 Importar</strong> de la <strong>Plataforma LOGÍSTICA</strong> (la pantalla principal con las 3 apps), y de ahí alimentan a Compras, Almacén y Facturas juntos.</p></div>
     </div>
 
     <!-- 1 IMPORTAR & GUARDAR -->
     <div class="isec" id="isec1">
       <h3>📂 Importar datos y Guardar</h3>
-      <p>Estos dos botones en la barra superior controlan la carga y sincronización de todos los datos del dashboard.</p>
-      <h4>📂 Botón IMPORTAR</h4>
-      <p>Carga los datos desde los archivos Excel fuente. Al hacer clic, el sistema pedirá tres archivos:</p>
+      <p>La carga de Excel se centralizó en la Plataforma LOGÍSTICA; este dashboard ya solo tiene el botón GUARDAR.</p>
+      <h4>📂 Importar (ahora en la Plataforma LOGÍSTICA)</h4>
+      <p>Desde la pantalla principal (plataforma.html), botón <strong>📂 Importar</strong> arriba a la derecha, se suben de una vez:</p>
       <ul>
         <li><strong>MAESTRO.xlsx</strong> — Contiene todas las órdenes de compra y requerimientos del sistema NISIRA</li>
         <li><strong>PedidoSinReq.xlsx</strong> — Requerimientos sin pedido asignado (sección de Javier)</li>
-        <li><strong>Consulta.xlsx</strong> — Datos del módulo de Consultas</li>
+        <li><strong>DB Supervisores.xlsx / DB Proveedores.xlsx</strong> — opcional, directorio para autocompletar</li>
       </ul>
-      <div class="istep"><div class="istep-n">1</div><p>Haz clic en <strong>📂 IMPORTAR</strong> en la esquina superior derecha</p></div>
-      <div class="istep"><div class="istep-n">2</div><p>Selecciona el archivo <strong>MAESTRO.xlsx</strong> cuando el navegador lo solicite</p></div>
-      <div class="istep"><div class="istep-n">3</div><p>Selecciona el archivo <strong>PedidoSinReq.xlsx</strong></p></div>
-      <div class="istep"><div class="istep-n">4</div><p>Selecciona el archivo <strong>Consulta.xlsx</strong></p></div>
-      <div class="istep"><div class="istep-n">5</div><p>El dashboard actualizará automáticamente todos los módulos con los datos nuevos</p></div>
-      <div class="itip"><span class="itip-icon">💡</span><p>Importa los archivos cada vez que necesites ver datos actualizados. Los datos se cargan en memoria local — no se envían a ningún servidor.</p></div>
+      <div class="istep"><div class="istep-n">1</div><p>Ve a la Plataforma LOGÍSTICA y haz clic en <strong>📂 Importar</strong>, arriba a la derecha</p></div>
+      <div class="istep"><div class="istep-n">2</div><p>Arrastra o elige los archivos que tengas — el sistema detecta cuál es cuál</p></div>
+      <div class="istep"><div class="istep-n">3</div><p>Haz clic en <strong>Procesar y guardar</strong> — sube directo a Compras, Almacén y Facturas</p></div>
+      <div class="itip"><span class="itip-icon">💡</span><p><strong>CONSULTAS.xlsx</strong> es la excepción: por su tamaño sigue importándose aparte, desde la pestaña Consultas de este dashboard (botón "📂 Importar CONSULTAS.xlsx").</p></div>
       <h4>💾 Botón GUARDAR</h4>
       <p>Guarda el estado actual del dashboard y sincroniza los cambios con los demás usuarios del equipo.</p>
       <div class="iwarn"><p>⚠️ <strong>Primera vez:</strong> Al guardar por primera vez, el sistema solicitará un <strong>token de acceso</strong>. Ingrésalo y haz clic en Aceptar — a partir de ese momento no volverá a pedirlo en ese equipo.</p></div>
@@ -6258,7 +6259,6 @@ setInterval(function(){
   </div>
 </div>
 
-<input type="file" id="fileMAESTRO" accept=".xlsx,.xls" style="display:none" multiple onchange="handleMultiUpload(this)"/>
 <input type="file" id="fileCONSULTAS" accept=".xlsx,.xls" style="display:none" onchange="handleConsultasUpload(this)"/>
 <div id="sticky-hscroll"><div id="sticky-hscroll-inner"></div></div>
 <script>

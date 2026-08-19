@@ -265,19 +265,11 @@ tbody tr:last-child td{border-bottom:none;}
   </div>
   <div class="content">
     <div class="toolbar">
-      <button class="tbtn importar" onclick="toggleImportPopover()"><span class="ic">📥</span>Importar</button>
+      <!-- El botón "Importar" se movió a plataforma.html (importador centralizado que alimenta
+           Compras + Almacén + Facturas a la vez) — ver assets/js/facturas-shared.js. "Guardar
+           Data" se deja tal cual (por ahora sin datos locales que procesar, ver initCompras). -->
       <button class="tbtn guardar" id="btnProcesar" disabled onclick="procesarArchivos()"><span class="ic">💾</span>Guardar Data</button>
       <span class="timestamp-pill" id="lastUpdatePill">🕓 Sin datos cargados</span>
-
-      <div class="import-popover" id="importPopover">
-        <h4>Cargar excels de Nisira</h4>
-        <div class="import-slot" id="importSlot">
-          <div class="is-title">Selecciona los 2 archivos (Reporte Maestro + Pedido Sin Req)</div>
-          <div class="is-file" id="importFilesList">Ningún archivo seleccionado</div>
-          <label class="is-btn">Elegir archivos<input type="file" id="fileMulti" accept=".xlsx,.xls" multiple></label>
-        </div>
-        <button class="close-pop" onclick="toggleImportPopover()">Listo, cerrar</button>
-      </div>
     </div>
     <div id="processLog"></div>
 
@@ -916,28 +908,8 @@ function renderImportFilesList(){
 }
 
 async function initCompras(){
-  document.getElementById('fileMulti').onchange = async e=>{
-    const files = Array.from(e.target.files);
-    document.getElementById('importFilesList').innerHTML = 'Leyendo archivos...';
-    for(const file of files){
-      try{
-        const buf = await readFileAsArrayBuffer(file);
-        const wb = XLSX.read(buf, {type:'array', cellDates:false});
-        const {tipo, sheet} = await classifyWorkbook(wb);
-        if(tipo==='maestro') tempFiles.maestro = {name:file.name, wb, sheet};
-        else if(tipo==='pedido') tempFiles.pedido = {name:file.name, wb, sheet};
-        else if(tipo==='proveedores') tempFiles.proveedores = {name:file.name, wb, sheet};
-        else {
-          // no se pudo clasificar: asigna al primer slot vacío como respaldo
-          if(!tempFiles.maestro) tempFiles.maestro = {name:file.name, wb, sheet};
-          else if(!tempFiles.pedido) tempFiles.pedido = {name:file.name, wb, sheet};
-        }
-      }catch(err){ console.error(err); }
-    }
-    document.getElementById('importSlot').classList.toggle('has-file', !!(tempFiles.maestro||tempFiles.pedido));
-    renderImportFilesList();
-    checkReady();
-  };
+  // El file picker "fileMulti" vivía en el popover de Importar, que se movió a
+  // plataforma.html — ya no hay que engancharle un onchange aquí.
   const saved = await loadOrders();
   if(saved && saved.orders && saved.orders.length){
     ORDERS = saved.orders;

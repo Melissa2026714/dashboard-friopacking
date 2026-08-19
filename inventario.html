@@ -180,14 +180,17 @@ tr:hover td{background:#f8fafc}
     <button class="tab" id="tab-cod" onclick="nav('p-cod')">🔖 Códigos</button>
   </div>
   <div class="nbr">
-    <button class="btn bi" onclick="document.getElementById('fileAlmacen').click()" title="Importar Existencias/Kardex (.xlsx) — acepta más de un archivo a la vez">📂 IMPORTAR</button>
+    <!-- El botón IMPORTAR (Existencias/Kardex + Reporte Maestro/PedSinReq para Tránsito y
+         Requerimientos) se movió a la Plataforma LOGÍSTICA (plataforma.html), que alimenta a
+         Compras + Almacén + Facturas a la vez — ver assets/js/almacen-shared.js. Picking y
+         Códigos generados siguen siendo decisiones manuales de esta pantalla, por eso GUARDAR
+         se queda igual. -->
     <button class="btn" id="saveBtnAlm" onclick="guardarTodo()" title="Guardar y sincronizar Existencias, Picking y Códigos con todos" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
     <span id="lastSyncLbl" style="font-size:10px;font-weight:600;white-space:nowrap;color:#0ea5e9"></span>
     <button class="btn br" onclick="setupGHToken()" title="Configurar el token de GitHub de Almacén (propio, distinto al de Compras)">🔑</button>
     <button class="btn br" onclick="location.reload()">↻</button>
   </div>
 </nav>
-<input type="file" id="fileAlmacen" accept=".xlsx,.xls" style="display:none" multiple onchange="handleImportAlmacen(this)"/>
 
 <div id="ph" class="act">
   <div class="hlogo"><img src="https://cdn.prod.website-files.com/680993da51b017d5afeb2060/680993da51b017d5afeb24b9_LOGO%20FP%20FOOTER.png" style="height:56px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.4))" alt="Friopacking">
@@ -211,7 +214,7 @@ tr:hover td{background:#f8fafc}
     </div>
   </div>
 
-  <div class="note" id="existNote">⚠️ <b>Existencias de ejemplo.</b> Usa <b>📂 IMPORTAR</b> para cargar el reporte real de stock (Kardex). Las alertas de abajo ya cruzan datos <b>reales</b> de Requerimientos.</div>
+  <div class="note" id="existNote">⚠️ <b>Existencias de ejemplo.</b> Importa el reporte real de stock (Kardex) desde <b>📂 Importar</b> en la Plataforma LOGÍSTICA. Las alertas de abajo ya cruzan datos <b>reales</b> de Requerimientos.</div>
 
   <div class="kpis" id="kpis"></div>
   <div id="alertBox"></div>
@@ -1253,6 +1256,12 @@ let PENDING_VAL={};   // validaciones marcadas en este navegador y aún no guard
 const OPERARIOS=['Jasiel','Fernando','Jhon','Ricardo']; // personal operativo asignable a revisión
 let CONFIRMED_ASIG={}; // asignación de revisión ya guardada en data.json (D.almacenAsignado), clave N° Req.
 let PENDING_ASIG={};   // asignaciones marcadas en este navegador y aún no guardadas
+// Historial de quién revisó cada requerimiento — a diferencia de "Asignado a" (un solo operario
+// vigente, se sobreescribe), esto ACUMULA: varias personas (Mary, Javier, Katherine, Jose) pueden
+// ir revisando el mismo req en distintos momentos/días, y se necesita ver a todos, no solo al último.
+const REVISORES=['Mary','Javier','Katherine','Jose'];
+let CONFIRMED_REVISORES={}; // historial ya guardado en data.json (D.almacenRevisores), clave N° Req. -> [{nombre,fecha}]
+let PENDING_REVISORES={};   // entradas nuevas marcadas en este navegador y aún no guardadas, mismo formato
 let SUPERVISORES=[];  // directorio D.supervisores (nombre/correo/celular) para el aviso WhatsApp
 let PROJ=[];           // D.proj (data.json, sigue compartido) — para derivar Zona por nombre de proyecto
 // SKUS_RAW/OC_RAW/SINOC se llenan con el import PROPIO de Almacén (Reporte Almacén.xlsx →
@@ -1282,6 +1291,7 @@ async function cargarLive(){
     CONFIRMED=s.D.almacenPicking||{};
     CONFIRMED_VAL=s.D.almacenValidado||{};
     CONFIRMED_ASIG=s.D.almacenAsignado||{};
+    CONFIRMED_REVISORES=s.D.almacenRevisores||{};
     SUPERVISORES=s.D.supervisores||[];
     CONFIRMED_COD=s.D.almacenCodigos||[];
     PROJ=s.D.proj||[];
@@ -1294,13 +1304,14 @@ async function cargarLive(){
     applyTransitoADatos();
     setLastSync('☁ '+(s.ts?new Date(s.ts).toLocaleString('es-PE'):'—'));
   }catch(e){
-    CONFIRMED={};CONFIRMED_VAL={};CONFIRMED_ASIG={};SUPERVISORES=[];CONFIRMED_COD=[];PROJ=[];CONFIRMED_OBRA={};COTMETA={};ARCHIVOMETA={};
+    CONFIRMED={};CONFIRMED_VAL={};CONFIRMED_ASIG={};CONFIRMED_REVISORES={};SUPERVISORES=[];CONFIRMED_COD=[];PROJ=[];CONFIRMED_OBRA={};COTMETA={};ARCHIVOMETA={};
     console.warn('[Almacén] No se pudo leer data.json:',e);
   }
   try{PENDING=JSON.parse(localStorage.getItem('fp_almacen_picking_pending')||'{}');}catch(e2){PENDING={};}
   try{PENDING_OBRA=JSON.parse(localStorage.getItem('fp_almacen_obra_pending')||'{}');}catch(e5){PENDING_OBRA={};}
   try{PENDING_VAL=JSON.parse(localStorage.getItem('fp_almacen_validado_pending')||'{}');}catch(e3){PENDING_VAL={};}
   try{PENDING_ASIG=JSON.parse(localStorage.getItem('fp_almacen_asignado_pending')||'{}');}catch(e6){PENDING_ASIG={};}
+  try{PENDING_REVISORES=JSON.parse(localStorage.getItem('fp_almacen_revisores_pending')||'{}');}catch(e7){PENDING_REVISORES={};}
   PENDING_COD=loadPendingCodigos();
   // El picking nace LIMPIO: sin sugerencias automáticas. Las cantidades se asignan
   // manualmente en la revisión (pestaña Requerimientos) y recién ahí aparecen en Picking.
@@ -1331,7 +1342,7 @@ async function cargarRequerimientosLive(){
     if(!P5.length){
       P5=P5_DEMO;P5_LIVE=false;
       document.getElementById('reqLiveNote').className='note';
-      document.getElementById('reqLiveNote').innerHTML='⚠️ Todavía no se ha importado ningún <b>Reporte Almacén.xlsx</b> en este dashboard — mostrando filas de ejemplo. Usa 📂 IMPORTAR arriba y luego 💾 GUARDAR.';
+      document.getElementById('reqLiveNote').innerHTML='⚠️ Todavía no se ha importado ningún <b>Reporte Almacén.xlsx</b> en este dashboard — mostrando filas de ejemplo. Impórtalo desde <b>📂 Importar</b> en la Plataforma LOGÍSTICA.';
     }
   }
   fillReqFilters();
@@ -1382,7 +1393,7 @@ function kpis(){
       note.innerHTML='☁️ <b>Existencias reales</b>'+(EXISTENCIAS_DIRTY?' — hay cambios importados sin guardar. Usa <b>💾 GUARDAR</b> para compartirlos.':' importadas desde Análisis Inventario — '+skus.toLocaleString('es-PE')+' SKUs.');
     }else{
       note.className='note';
-      note.innerHTML='⚠️ <b>Existencias de ejemplo.</b> Usa <b>📂 IMPORTAR</b> para cargar el Excel real (hoja "Análisis Inventario"). Las alertas de abajo ya cruzan datos <b>reales</b> de Requerimientos.';
+      note.innerHTML='⚠️ <b>Existencias de ejemplo.</b> Impórtalo (hoja "Análisis Inventario") desde <b>📂 Importar</b> en la Plataforma LOGÍSTICA. Las alertas de abajo ya cruzan datos <b>reales</b> de Requerimientos.';
     }
   }
 }
@@ -2140,6 +2151,18 @@ function setAsignado(rk,nombre){
   renderReqTable();
   updateDirtyLabels();
 }
+// Historial completo de revisores de un req: lo ya guardado en la nube + lo agregado en este
+// navegador y aún no guardado (se combinan, nunca se pisan entre sí).
+function getRevisores(rk){
+  return [...(CONFIRMED_REVISORES[rk]||[]), ...(PENDING_REVISORES[rk]||[])];
+}
+function agregarRevisor(rk,nombre){
+  if(!nombre)return;
+  PENDING_REVISORES[rk]=[...(PENDING_REVISORES[rk]||[]), {nombre, fecha:new Date().toLocaleString('es-PE')}];
+  localStorage.setItem('fp_almacen_revisores_pending',JSON.stringify(PENDING_REVISORES));
+  verReqItems(rk);
+  updateDirtyLabels();
+}
 // Busca al supervisor en D.supervisores por coincidencia de nombre (≥2 palabras y ≥50%)
 function _normNombreAl(s){
   var map={'Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U','Ñ':'N','Ü':'U'};
@@ -2232,7 +2255,15 @@ function verReqItems(rk){
           ${OPERARIOS.map(function(nombre){return '<option value="'+nombre+'"'+(getAsignado(rk)===nombre?' selected':'')+'>'+nombre+'</option>';}).join('')}
         </select>
       </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <label style="font-size:10px;color:#ccfbf1;font-weight:600">Marcar revisión por</label>
+        <select onchange="agregarRevisor('${rk}',this.value);this.value=''" style="padding:5px 8px;border-radius:6px;border:none;font-size:12px;background:#fff;color:#0f172a;cursor:pointer">
+          <option value="" selected>+ Agregar revisor…</option>
+          ${REVISORES.map(function(nombre){return '<option value="'+nombre+'">'+nombre+'</option>';}).join('')}
+        </select>
+      </div>
     </div>
+    ${getRevisores(rk).length?`<div style="padding:8px 20px;background:#f0fdfa;border-bottom:1px solid #ccfbf1;font-size:11px;color:#0f766e"><b>Revisado por:</b> ${getRevisores(rk).map(function(h){return h.nombre+' ('+h.fecha+')';}).join(' · ')}</div>`:''}
     <div style="overflow-x:auto">
     <table style="width:100%;font-size:12px">
       <thead><tr style="background:#f8fafc">
@@ -2274,11 +2305,25 @@ function verReqItems(rk){
           }else{
             const oc=REQCOD_OC[key]||{};
             const salida=SALIDAS_ALM[key];
-            const pickReal=(oc.cantOrd>0)?null:(salida?salida.obra:null);
-            const pedReal=(oc.cantOrd>0)?oc.cantOrd:null;
-            if(pickReal!=null||pedReal!=null){
-              pickCell=pickReal!=null?pickReal.toLocaleString('es-PE'):'<span style="color:#cbd5e1">—</span>';
-              pedCell=pedReal!=null?pedReal.toLocaleString('es-PE'):'<span style="color:#cbd5e1">—</span>';
+            // Caso reportado por Katherine (req 0001-0022954, ítem NHX-90 2.5MM2 VERDE/AMARILLO):
+            // pedían 600, Almacén solo tenía 100 en stock, Compras generó OC por los 500 que
+            // faltaban — y como cualquier OC>0 bloqueaba TODA la fila, los 100 de stock quedaban
+            // sin poder confirmarse nunca. Ahora: si la OC no cubre toda la cantidad requerida,
+            // la diferencia (pendienteStock) sigue editable como Picking — es la parte que depende
+            // de que Almacén confirme, no de que Compras termine su parte.
+            const pendienteStock=Math.max(0,(r.cant||0)-(oc.cantOrd||0));
+            if(oc.cantOrd>0){
+              pedCell=oc.cantOrd.toLocaleString('es-PE');
+              if(pendienteStock>0){
+                const yaDecidido=getRecord(key)!=null;
+                const pickVal=yaDecidido?getDecision(key,0):'';
+                pickCell=`<input type="number" min="0" max="${pendienteStock}" value="${pickVal}" placeholder="0" style="width:64px;padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;text-align:right" onchange="setDecisionPicking('${key}',this.value,${pendienteStock});verReqItems('${rk}')" title="Cantidad pendiente por confirmar desde stock — no incluida en la OC de Compras (${oc.cantOrd.toLocaleString('es-PE')} de ${(r.cant||0).toLocaleString('es-PE')})">`;
+              }else{
+                pickCell=salida?salida.obra.toLocaleString('es-PE'):'<span style="color:#cbd5e1">—</span>';
+              }
+            }else if(salida){
+              pickCell=salida.obra.toLocaleString('es-PE');
+              pedCell='<span style="color:#cbd5e1">—</span>';
             }else if(r.estado.toLowerCase().includes('pedido')){
               pickCell='<span style="color:#cbd5e1">—</span>';
               pedCell=(r.cant||0).toLocaleString('es-PE')+' <span class="pill p-crit">PEDIDO</span>';
@@ -2442,7 +2487,7 @@ function computeAutoAlloc(pendientes){
   return auto;
 }
 function updateDirtyLabels(){
-  const dirty=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length;
+  const dirty=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length+Object.keys(PENDING_REVISORES).length;
   document.querySelectorAll('.dirtyLbl').forEach(el=>{
     el.innerHTML=dirty?`<span class="dirty-badge">${dirty} cambio(s) sin guardar</span>`:'';
   });
@@ -2879,14 +2924,15 @@ async function confirmarAdjuntarFoto(){
 // decisiones" — útil para descartar pruebas/pilotos que nunca se llegaron a compartir.
 // No toca nada de lo que ya está guardado en data.json (eso hay que resetearlo aparte).
 function descartarCambiosLocales(){
-  const n=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length;
+  const n=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length+Object.keys(PENDING_REVISORES).length;
   if(!n){alert('No hay cambios locales sin guardar en este navegador.');return;}
-  if(!confirm('Se van a descartar '+n+' cambio(s) sin guardar en ESTE navegador (Picking / Validación / En obra / Asignación).\nEsto NO afecta lo que ya está guardado y ven los demás.\n\n¿Continuar?'))return;
-  PENDING={};PENDING_VAL={};PENDING_OBRA={};PENDING_ASIG={};
+  if(!confirm('Se van a descartar '+n+' cambio(s) sin guardar en ESTE navegador (Picking / Validación / En obra / Asignación / Revisores).\nEsto NO afecta lo que ya está guardado y ven los demás.\n\n¿Continuar?'))return;
+  PENDING={};PENDING_VAL={};PENDING_OBRA={};PENDING_ASIG={};PENDING_REVISORES={};
   localStorage.removeItem('fp_almacen_picking_pending');
   localStorage.removeItem('fp_almacen_validado_pending');
   localStorage.removeItem('fp_almacen_obra_pending');
   localStorage.removeItem('fp_almacen_asignado_pending');
+  localStorage.removeItem('fp_almacen_revisores_pending');
   if(document.getElementById('tbreq'))renderReqTable();
   if(document.getElementById('tbreqitem'))renderReqItemTable();
   if(document.getElementById('pickGroups'))renderPick();
@@ -2898,7 +2944,8 @@ async function guardarDecisiones(){
   const vkeys=Object.keys(PENDING_VAL);
   const okeys=Object.keys(PENDING_OBRA);
   const akeys=Object.keys(PENDING_ASIG);
-  if(!keys.length&&!vkeys.length&&!okeys.length&&!akeys.length){alert('No hay cambios nuevos para guardar.');return;}
+  const rkeys=Object.keys(PENDING_REVISORES);
+  if(!keys.length&&!vkeys.length&&!okeys.length&&!akeys.length&&!rkeys.length){alert('No hay cambios nuevos para guardar.');return;}
   const token=getGHTokenAlmacen();
   if(!token){
     if(confirm('Para guardar decisiones de Picking (compartidas con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
@@ -2927,6 +2974,12 @@ async function guardarDecisiones(){
     // Asignación de revisión: "" (Sin asignar) también se guarda como valor válido, no se retira.
     const mergedAsig={...(remote.D.almacenAsignado||{}),...PENDING_ASIG};
     remote.D.almacenAsignado=mergedAsig;
+    // Historial de revisores: se ACUMULA (concatena sobre lo que ya había en la nube para ese
+    // req), nunca se reemplaza — para no perder lo que agregó otra persona mientras tanto.
+    const remoteRevisores=remote.D.almacenRevisores||{};
+    const mergedRevisores={...remoteRevisores};
+    rkeys.forEach(rk=>{ mergedRevisores[rk]=[...(remoteRevisores[rk]||[]), ...PENDING_REVISORES[rk]]; });
+    remote.D.almacenRevisores=mergedRevisores;
     const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
     const body={message:'almacen: actualizar decisiones de picking y validaciones '+new Date().toISOString(),content,sha};
     const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -2943,6 +2996,9 @@ async function guardarDecisiones(){
     CONFIRMED_ASIG=mergedAsig;
     PENDING_ASIG={};
     localStorage.removeItem('fp_almacen_asignado_pending');
+    CONFIRMED_REVISORES=mergedRevisores;
+    PENDING_REVISORES={};
+    localStorage.removeItem('fp_almacen_revisores_pending');
     const savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE');
     document.querySelectorAll('.saveLblEl').forEach(l=>l.textContent=savedTxt);
     setLastSync('✔ '+new Date().toLocaleString('es-PE'));

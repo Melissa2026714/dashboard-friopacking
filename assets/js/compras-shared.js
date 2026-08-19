@@ -1,0 +1,948 @@
+// ============================================================
+// COMPRAS · lógica de importar Excel + guardar en GitHub, copiada
+// tal cual (sin reescribir) de compras.html para poder usarse también
+// desde el importador centralizado de plataforma.html, sin duplicar
+// la lógica de fusión anti-pisado que ya vive ahí.
+//
+// Namespaced en ComprasShared para no chocar con Almacen/Facturas
+// cuando las 3 conviven en la misma página (el launcher).
+//
+// Dos únicas líneas removidas respecto al original (documentado):
+// - refreshAllPages() dentro de importMaestro
+// - refreshP4() dentro de importPedidoSinReq
+// Ambas solo refrescan tablas del DOM propio de compras.html, que no
+// existen en el launcher — el resto de la función (parseo + D.oc=...
+// + saveLocal() + alert()) queda igual.
+// ============================================================
+const ComprasShared = (function(){
+let D = {"p4":[],"oc":[],"p5reqs":[],"sinoc":[],"proj":[],"supervisores":[],"proveedores":[],"gerencial":{"summary":{"totalOC":0,"pendientes":0,"atendidoParcial":0,"atendidoCompleto":0,"totalReqs":0,"pendienteReqs":0},"byResponsable":[],"byProject":[]},"ocMeta":{},"cotMeta":{}};
+let SKUS = {};
+let SKUS_P4 = {}; // usado internamente por importPedidoSinReq, no se sube ni se usa fuera de este módulo
+const LS_KEY='friopacking_2026_data';
+const GH_REPO='Melissa2026714/dashboard-friopacking';
+const GH_FILE='data.json';
+const GH_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE;
+const GH_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE;
+const GH_TOKEN_KEY='fp_gh_token';
+
+/* ==== INICIO: copiado de compras.html (ver cabecera del archivo) ==== */
+
+function saveLocal(){
+  if(!D.oc.length&&!D.p4.length&&!D.proj.length)return false;
+  // Excluir D.consultas del payload — es muy grande y se importa por separado
+  const {consultas:_omit,...Dsin}=D;
+  const payload=JSON.stringify({D:Dsin,SKUS,ts:Date.now()});
+  try{localStorage.setItem(LS_KEY,payload);}catch(e){console.warn('localStorage lleno, solo GitHub:',e);}
+  return payload;
+}
+// loadLocal()/loadGitHub() de compras.html NO se copiaron aquí a propósito: el
+// launcher no necesita leer el estado previo antes de importar — saveGitHub()
+// ya se protege solo (lee la nube en el momento de guardar y fusiona ahí).
+
+// Fusiona mapas de marcas manuales (ocMeta/cotMeta) campo por campo en vez de
+// sobrescribir el objeto completo — evita que una pestaña con datos desactualizados
+// borre marcas de REG./Cotización que otra persona guardó mientras tanto.
+
+function mergeOcMeta(remoteMeta,localMeta){
+  const merged=Object.assign({},remoteMeta||{});
+  Object.keys(localMeta||{}).forEach(function(oc){
+    const l=localMeta[oc],out=Object.assign({},merged[oc]||{});
+    Object.keys(l||{}).forEach(function(f){if(l[f])out[f]=l[f];});
+    merged[oc]=out;
+  });
+  return merged;
+}
+function mergeCotMeta(remoteMeta,localMeta){
+  const merged=Object.assign({},remoteMeta||{});
+  Object.keys(localMeta||{}).forEach(function(k){merged[k]=!!merged[k]||!!localMeta[k];});
+  return merged;
+}
+// Fusiona el padrón de supervisores por nombre en vez de reemplazar la lista
+// completa — si esta pestaña no tiene el padrón cargado (o lo tiene vacío),
+// se conserva íntegro el de la nube; si trae contactos nuevos o campos que la
+// nube no tiene, se agregan/completan (ver bug "última escritura gana": el
+// 2026-07-31 un guardado con D.supervisores=[] dejó el padrón en 0 contactos
+// y ninguna fusión existente lo restauraba).
+function mergeSupervisores(remoteList,localList){
+  const norm=function(n){return String(n||'').trim().toUpperCase();};
+  const merged={};
+  (remoteList||[]).forEach(function(s){merged[norm(s.nombre)]=Object.assign({},s);});
+  (localList||[]).forEach(function(s){
+    const k=norm(s.nombre);
+    const out=Object.assign({},merged[k]||{});
+    ['nombre','celular','area','proyecto','dni','correo'].forEach(function(f){if(s[f])out[f]=s[f];});
+    merged[k]=out;
+  });
+  return Object.values(merged);
+}
+// Igual que mergeSupervisores pero para el directorio de proveedores (clave: RUC si
+// existe, si no nombre normalizado).
+function mergeProveedores(remoteList,localList){
+  const key=function(p){return(p.ruc&&String(p.ruc).trim())||_normNombre(p.nombre||'');};
+  const merged={};
+  (remoteList||[]).forEach(function(p){merged[key(p)]=Object.assign({},p);});
+  (localList||[]).forEach(function(p){
+    const k=key(p);
+    const out=Object.assign({},merged[k]||{});
+    ['nombre','ruc','correo'].forEach(function(f){if(p[f])out[f]=p[f];});
+    merged[k]=out;
+  });
+  return Object.values(merged);
+}
+
+// ── Subir a GitHub (solo quién tenga el token) ────────────────────────────────
+async function saveGitHub(payload){
+  const token=localStorage.getItem(GH_TOKEN_KEY);
+  if(!token)return false;
+  try{
+    // Protección: no sobrescribir la nube perdiendo información sin avisar
+    try{
+      const localData=JSON.parse(payload);
+      const rCheck=await fetch(GH_RAW+'?t='+Date.now());
+      if(rCheck.ok){
+        const remote=await rCheck.json();
+        const locOc=(localData.D&&localData.D.oc)?localData.D.oc.length:0;
+        const remOc=(remote.D&&remote.D.oc)?remote.D.oc.length:0;
+        const warnings=[];
+        // OC es acumulativo: bajar es señal de estar subiendo una versión vieja.
+        if(remOc>0&&locOc<remOc)warnings.push('• oc: tienes '+locOc+' vs '+remOc+' que ya está en la nube');
+        // Las demás secciones pueden bajar de forma legítima (ej. p5reqs al
+        // resolverse requerimientos) — solo avisamos si tu versión las deja en cero.
+        ['p4','p5reqs','proj','sinoc'].forEach(function(k){
+          const locN=(localData.D&&localData.D[k])?localData.D[k].length:0;
+          const remN=(remote.D&&remote.D[k])?remote.D[k].length:0;
+          if(remN>0&&locN===0)warnings.push('• '+k+': tu versión lo deja VACÍO pero la nube tiene '+remN);
+        });
+        if(warnings.length){
+          if(!confirm('⚠️ ADVERTENCIA: vas a subir datos que podrían borrar información:\n\n'+warnings.join('\n')+'\n\nEsto probablemente borrará información más reciente que otra persona ya guardó.\n\n¿Seguro que quieres continuar de todos modos?')){
+            return false;
+          }
+        }
+        // Anti-pisado: conservar claves que la nube tiene y esta pestaña no conoce
+        // (ej. almacenValidado/almacenPicking creados por Almacén después de abrir esta pestaña)
+        let cambiado=false;
+        Object.keys(remote.D||{}).forEach(function(k){
+          if(localData.D[k]===undefined){localData.D[k]=remote.D[k];cambiado=true;}
+        });
+        // Anti-pisado: fusionar supervisores y proveedores en vez de reemplazar la
+        // lista completa (ver bug "última escritura gana", 2026-07-31: quedaron en 0)
+        if(Array.isArray(remote.D&&remote.D.supervisores)){
+          localData.D.supervisores=mergeSupervisores(remote.D.supervisores,localData.D.supervisores);
+          cambiado=true;
+        }
+        if(Array.isArray(remote.D&&remote.D.proveedores)){
+          localData.D.proveedores=mergeProveedores(remote.D.proveedores,localData.D.proveedores);
+          cambiado=true;
+        }
+        // Anti-pisado: fusionar marcas manuales de Regularización (ocMeta) y
+        // Cotización (cotMeta) en vez de reemplazarlas — ver bug "se perdieron
+        // las marcas manuales" (2026-07-31).
+        if(remote.D&&remote.D.ocMeta){
+          localData.D.ocMeta=mergeOcMeta(remote.D.ocMeta,localData.D.ocMeta);
+          cambiado=true;
+        }
+        if(remote.D&&remote.D.cotMeta){
+          localData.D.cotMeta=mergeCotMeta(remote.D.cotMeta,localData.D.cotMeta);
+          cambiado=true;
+        }
+        // Igual anti-pisado para los motivos/fechas de Archivar en Sin OC — Cotización
+        if(remote.D&&remote.D.archivoMeta){
+          localData.D.archivoMeta=mergeOcMeta(remote.D.archivoMeta,localData.D.archivoMeta);
+          cambiado=true;
+        }
+        if(cambiado){
+          payload=JSON.stringify(localData);
+          Object.assign(D,localData.D); // mantener también en memoria
+        }
+      }
+    }catch(e2){console.warn('[FP] Chequeo de conflicto antes de guardar falló, se continúa:',e2);}
+    let sha='';
+    const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+    if(check.ok){const meta=await check.json();sha=meta.sha||'';}
+    const content=btoa(unescape(encodeURIComponent(payload)));
+    const body={message:'update '+new Date().toISOString(),content};
+    if(sha)body.sha=sha;
+    const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    return res.ok;
+  }catch(e){console.warn('GitHub save failed:',e);return false;}
+}
+
+// ── Guardar consultas.json en GitHub ─────────────────────────────────────────
+
+function setupGHToken(){
+  const cur=localStorage.getItem(GH_TOKEN_KEY)||'';
+  const t=prompt('Ingresa tu GitHub Personal Access Token\n(se guarda solo en este navegador):',cur);
+  if(t!==null){
+    localStorage.setItem(GH_TOKEN_KEY,t.trim());
+    alert(t.trim()?'✅ Token guardado. Ya puedes usar GUARDAR.':'⚠ Token eliminado.');
+  }
+}
+
+// ── Helper etiqueta de fecha ──────────────────────────────────────────────────
+
+function handleMultiUpload(input){
+  if(!input.files||!input.files.length)return;
+  const files=Array.from(input.files);
+  let processed=0;
+  const results=[];
+  files.forEach(file=>{
+    const name=file.name.toLowerCase();
+    const reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+        if(name.includes('consulta')){
+          importConsultas(wb);
+          results.push('✅ '+file.name+' (CONSULTAS)');
+        } else if(name.includes('pedido')){
+          importPedidoSinReq(wb);
+          results.push('✅ '+file.name+' (Compras Directas)');
+        } else if(name.includes('supervisor')){
+          importSupervisores(wb);
+          results.push('✅ '+file.name+' (Supervisores)');
+        } else if(name.includes('proveedor')){
+          importProveedores(wb);
+          results.push('✅ '+file.name+' (Proveedores)');
+        } else {
+          importMaestro(wb);
+          results.push('✅ '+file.name+' (MAESTRO)');
+        }
+      }catch(err){
+        results.push('❌ '+file.name+': '+err.message);
+      }
+      processed++;
+      if(processed===files.length){
+        alert('Importación completada:\n\n'+results.join('\n'));
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+  input.value='';
+}
+
+
+function xd(v){
+  if(!v && v!==0)return '';
+  // Date object
+  if(v instanceof Date && !isNaN(v)){
+    return v.getDate().toString().padStart(2,'0')+'/'+(v.getMonth()+1).toString().padStart(2,'0')+'/'+v.getFullYear();
+  }
+  // Serial number (Excel stores dates as numbers since 1900-01-01)
+  if(typeof v==='number' && v>30000 && v<60000){
+    const d=new Date((v-25569)*86400000);
+    if(!isNaN(d))return d.getUTCDate().toString().padStart(2,'0')+'/'+(d.getUTCMonth()+1).toString().padStart(2,'0')+'/'+d.getUTCFullYear();
+  }
+  const s=String(v).trim();
+  // dd/mm/yyyy
+  if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s))return s;
+  // yyyy-mm-dd or yyyy-mm-ddThh:mm:ss
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)){
+    const p=s.split(/[-T ]/);
+    return p[2]+'/'+p[1]+'/'+p[0];
+  }
+  // m/d/yyyy (US format from SheetJS)
+  if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)){
+    const p=s.split('/');
+    return p[1].padStart(2,'0')+'/'+p[0].padStart(2,'0')+'/'+p[2];
+  }
+  return '';
+}
+function xs(v){return(v!=null&&v!==''&&String(v)!=='NaN'&&String(v)!=='undefined'&&String(v)!=='null')?String(v).trim():'';}
+function xn(v){const n=parseFloat(v);return isNaN(n)?0:n;}
+function is2026(dateStr){return dateStr&&(dateStr.includes('/2026')||dateStr.includes('-2026'));}
+function diffBizDays(d1s,d2s){
+  const d1=dateObj(d1s),d2=dateObj(d2s);
+  if(!d1||!d2||d2<d1)return null;
+  let n=0,cur=new Date(d1);
+  cur.setDate(cur.getDate()+1);
+  while(cur<=d2){const w=cur.getDay();if(w!==0&&w!==6)n++;cur.setDate(cur.getDate()+1);}
+  return n>365?null:n;
+}
+function signedBizDays(d1s,d2s){
+  // Positivo = tardío, negativo/cero = a tiempo o adelantado
+  const d1=dateObj(d1s),d2=dateObj(d2s);
+  if(!d1||!d2)return null;
+  if(d2>=d1)return diffBizDays(d1s,d2s);
+  const inv=diffBizDays(d2s,d1s);
+  return inv===null?null:-inv;
+}
+function dateObj(ds){
+  if(!ds)return null;
+  const[d,m,y]=ds.split('/');
+  if(!d||!m||!y)return null;
+  return new Date(+y,+m-1,+d);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// IMPORT MAESTRO
+// ══════════════════════════════════════════════════════════════════════════════
+
+function importMaestro(wb){
+  const t0=performance.now();
+
+  // ── 1. Read Reporte Maestro sheet ──────────────────────────────────────────
+  const wsName=wb.SheetNames.find(n=>n.toLowerCase().includes('reporte'))|| wb.SheetNames[0];
+  const ws=wb.Sheets[wsName];
+  const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  
+  // Auto-detect header row
+  let hdr=0;
+  for(let i=0;i<Math.min(10,raw.length);i++){
+    const r=raw[i];
+    if(r&&typeof r[0]==='string'&&r[0].match(/^Cod|^Id|^Fecha|^Nombre/i)){hdr=i;break;}
+  }
+  const headers=raw[hdr]||[];
+  const ci={};headers.forEach((h,i)=>{if(h)ci[String(h).trim()]=i;});
+  const g=(row,name)=>{const i=ci[name];return(i!==undefined)?xs(row[i]):'';};
+  const gd=(row,name)=>{const i=ci[name];return(i!==undefined)?xd(row[i]):'';};
+  const gn=(row,name)=>{const i=ci[name];return(i!==undefined)?xn(row[i]):0;};
+  // Columna de Observación: el header exacto varía entre exportes ("Observación REQ",
+  // "Observacion Req", etc.) — se busca por prefijo, sin distinguir mayúsculas/espacios.
+  const _obsHdr=Object.keys(ci).find(h=>h.toLowerCase().replace(/\s+/g,'').indexOf('observaci')===0);
+  const gObs=(row)=>_obsHdr?g(row,_obsHdr):'';
+
+  const allRows=raw.slice(hdr+1).filter(r=>r&&r.some(c=>c!=null&&c!==''));
+  
+  // Filter 2026
+  const rows=allRows.filter(r=>{
+    const idx=ci['FechaRequerimiento'];
+    if(idx===undefined)return false;
+    const val=r[idx];
+    if(val instanceof Date && !isNaN(val))return val.getFullYear()===2026;
+    if(typeof val==='number' && val>30000){
+      const dt=new Date((val-25569)*86400000);
+      return dt.getUTCFullYear()===2026;
+    }
+    return is2026(xd(val));
+  });
+  
+  console.log('MAESTRO: '+allRows.length+' total, '+rows.length+' rows 2026');
+  if(rows.length===0 && allRows.length>0){
+    // Debug: show what dates look like
+    const sampleIdx=ci['FechaRequerimiento'];
+    if(sampleIdx!==undefined){
+      const samples=allRows.slice(0,3).map(r=>{const v=r[sampleIdx];return typeof v+': '+String(v);});
+      console.log('Date samples: ',samples);
+    }
+    console.log('Headers found:',Object.keys(ci));
+  }
+
+  // ── 2. Build OC data (Page 2) ─────────────────────────────────────────────
+  const ocRows=rows.filter(r=>{
+    const cod=g(r,'CodOrden');
+    return cod&&cod!=='-'&&cod!=='nan';
+  });
+
+  // Group by CodOrden — first row is representative
+  const ocMap={};
+  const ocReqsMap={};
+  const skusMap={};
+  
+  ocRows.forEach(r=>{
+    const cod=g(r,'CodOrden');
+    if(!ocMap[cod]){
+      ocMap[cod]={
+        oc:cod,foc:gd(r,'FechaOrden'),fapro:gd(r,'FechaAprobacionOC'),fent:gd(r,'ParaFechaOrden'),
+        resp:g(r,'NombreResponsable'),estado:'',_estados:[],
+        prov:g(r,'NombreProveedor'),ruc:g(r,'RucProveedor'),
+        proy:g(r,'NombreProyecto'),idproy:g(r,'IdProyecto'),
+        req:g(r,'CodRequerimiento'),freq:gd(r,'FechaRequerimiento')||gd(r,'Fecha Requerimiento')||gd(r,'FechaReq')||gd(r,'Fecha de Requerimiento'),
+        prod:g(r,'Producto'),cod:g(r,'IdProducto'),
+        unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||g(r,'UM')||g(r,'Um')||g(r,'Und')||g(r,'UndMed')||g(r,'Unidad de Medida')||g(r,'UnidMed')||'',
+        nItems:0,cantOrd:0,cantRec:0,cantPend:0,
+        frec:gd(r,'FechaRecepcion'),fsal:gd(r,'FechaSalida')||gd(r,'FechaSali'),ucomp:g(r,'UsuarioCompras'),
+        ingreso:0,fingreso:'',
+        moneda:'',tc:0,_pus:[],montoSoles:0,
+        reqs:[],_obss:[],
+        ped:g(r,'CodPedido'),peds:[],fpedido:gd(r,'FechaPedido')||gd(r,'Fecha Pedido')||gd(r,'FechaPed')
+      };
+    }
+    const o=ocMap[cod];
+    o.nItems++;
+    const co=gn(r,'Cantidad de orden'), cr=gn(r,'CantRecepcion');
+    o.cantOrd+=co; o.cantRec+=cr;
+    o.ingreso+=gn(r,'Ingreso');
+    const monR=g(r,'MONEDA');
+    if(monR&&monR!=='-'){if(!o.moneda)o.moneda=monR;else if(o.moneda.indexOf(monR)<0)o.moneda+=' / '+monR;}
+    o._pus.push(gn(r,'PRECIO UNITARIO SIN IGV'));
+    const tcR=gn(r,'TIPO DE CAMBIO');if(tcR&&!o.tc)o.tc=tcR;
+    // Monto de la línea en soles (para indicadores financieros): si la moneda de la fila
+    // es dólares, convierte con el tipo de cambio de esa misma fila; si no, ya está en soles.
+    const puRow=gn(r,'PRECIO UNITARIO SIN IGV');
+    const esDolarRow=/DOLAR|DOLLAR|USD|US\$/.test((monR||'').toUpperCase());
+    o.montoSoles+=puRow*co*((esDolarRow&&tcR)?tcR:1);
+    const fing=gd(r,'FechaIngreso');
+    if(fing){
+      const dkey=s=>s.split('/').reverse().join('');
+      if(!o.fingreso||dkey(fing)>dkey(o.fingreso))o.fingreso=fing;
+    }
+    const itemEst=g(r,'EstadoOrden');
+    if(itemEst&&!o._estados.includes(itemEst))o._estados.push(itemEst);
+
+    // Collect unique reqs and peds
+    const req=g(r,'CodRequerimiento');
+    if(req&&!o.reqs.includes(req))o.reqs.push(req);
+    const ped=g(r,'CodPedido');
+    if(ped&&!o.peds.includes(ped))o.peds.push(ped);
+    const obsRow=gObs(r);
+    if(obsRow&&!o._obss.includes(obsRow))o._obss.push(obsRow);
+
+    // Build SKUS
+    if(!skusMap[cod])skusMap[cod]=[];
+    skusMap[cod].push({
+      cod:g(r,'IdProducto'),prod:g(r,'Producto'),
+      cantOrd:Math.round(co),cantRec:Math.round(cr),cantPend:Math.max(0,Math.round(co-cr)),
+      foc:gd(r,'FechaOrden'),fent:gd(r,'ParaFechaOrden'),
+      estado:g(r,'EstadoOrden'),ucomp:g(r,'UsuarioCompras'),
+      prov:g(r,'NombreProveedor'),resp:g(r,'NombreResponsable'),
+      idproy:g(r,'IdProyecto'),proy:g(r,'NombreProyecto'),
+      req:g(r,'CodRequerimiento'),freq:gd(r,'FechaRequerimiento'),
+      frec:gd(r,'FechaRecepcion'),
+      moneda:g(r,'MONEDA'),punit:gn(r,'PRECIO UNITARIO SIN IGV'),tc:gn(r,'TIPO DE CAMBIO'),
+      unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||g(r,'UM')||g(r,'Um')||g(r,'Und')||g(r,'UndMed')||g(r,'Unidad de Medida')||g(r,'UnidMed')||''
+    });
+  });
+
+  const ocData=Object.values(ocMap).map(o=>{
+    o.cantOrd=Math.round(o.cantOrd);o.cantRec=Math.round(o.cantRec);
+    o.ingreso=Math.round(o.ingreso);
+    o.cantPend=Math.max(0,o.cantOrd-o.cantRec);
+    // Derive estado from all item estados
+    const es=o._estados;
+    if(es.length===1){o.estado=es[0];}
+    else if(es.every(e=>e==='Atendido Completo')){o.estado='Atendido Completo';}
+    else if(es.every(e=>e==='Aprobado')){o.estado='Aprobado';}
+    else if(es.every(e=>e==='Pendiente')){o.estado='Pendiente';}
+    else if(es.includes('Atendido Completo')||es.includes('Atendido Parcial')){o.estado='Atendido Parcial';}
+    else if(es.includes('Aprobado')&&es.includes('Pendiente')){o.estado='Aprobado';}
+    else{o.estado=es[0]||'Pendiente';}
+    delete o._estados;
+    // Precio unitario sin IGV: un solo valor si todos los items lo comparten; null = "varios"
+    const pus=(o._pus||[]).filter(v=>v>0);
+    o.punit=pus.length&&pus.every(v=>v===pus[0])?pus[0]:(pus.length?null:0);
+    delete o._pus;
+    o.obs=(o._obss||[]).join(' | ');
+    delete o._obss;
+    o.montoSoles=Math.round(o.montoSoles*100)/100;
+    return o;
+  });
+  // Sort desc by foc; si empatan en fecha, desempatar por número de OC descendente
+  ocData.sort((a,b)=>{
+    const pa=a.foc?a.foc.split('/').reverse().join(''):'';
+    const pb=b.foc?b.foc.split('/').reverse().join(''):'';
+    if(pa!==pb)return pb.localeCompare(pa);
+    const na=parseInt((a.oc||'').replace(/\D/g,''),10)||0;
+    const nb=parseInt((b.oc||'').replace(/\D/g,''),10)||0;
+    return nb-na;
+  });
+
+  // ── 3. Build Sin OC data (Page 3) ─────────────────────────────────────────
+  // Incluir filas Pendientes sin OC, y también filas Pendientes CON OC parcial
+  // (cuando tiene CodOrden pero aún queda cantidad sin cubrir).
+  const sinOcRows=rows.filter(r=>g(r,'EstadoPedido')==='Pendiente');
+
+  const sinOcData=sinOcRows.map(r=>{
+    const hasCod=g(r,'CodOrden')&&g(r,'CodOrden')!=='-'&&g(r,'CodOrden')!=='nan';
+    const cantPed=Math.round(gn(r,'Cantidad de pedido'));
+    const cantArch=Math.round(gn(r,'CantidadArchivadaPedido')||gn(r,'CantidadArchivada')||0);
+    const cantOrd=hasCod?Math.round(gn(r,'Cantidad de orden')||gn(r,'CantidadOrden')||0):0;
+    const cantFinal=hasCod?Math.max(cantPed-cantArch-cantOrd,0):cantPed;
+    // Si tiene OC y el remanente es 0, no aparece en Sin OC
+    if(hasCod&&cantFinal===0)return null;
+    return {
+      ped:g(r,'CodPedido'),
+      fecha:gd(r,'FechaPedido'),
+      respPed:g(r,'ResponsablePedido'),
+      resp:g(r,'NombreResponsable'),
+      idproy:g(r,'IdProyecto'),proy:g(r,'NombreProyecto'),
+      cod:g(r,'IdProducto'),prod:g(r,'Producto'),
+      cant:cantFinal,
+      unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||'',
+      req:g(r,'CodRequerimiento'),
+      freq:gd(r,'FechaRequerimiento'),
+      estado:g(r,'EstadoPedido'),
+      parcial:hasCod,  // tiene OC pero cubre solo una parte
+      obs:gObs(r)
+    };
+  }).filter(Boolean);
+  sinOcData.sort((a,b)=>{
+    const pa=a.fecha?a.fecha.split('/').reverse().join(''):'';
+    const pb=b.fecha?b.fecha.split('/').reverse().join(''):'';
+    return pb.localeCompare(pa);
+  });
+
+  // ── 4. Build Req sin Pedido (Page 5) ───────────────────────────────────────
+  const p5Rows=rows.filter(r=>!!g(r,'EstadoRequerimiento'));
+  // El Maestro repite la MISMA línea (req+código+cantidad idéntica) una vez por cada evento de
+  // recepción/salida que se registra — esas hay que ignorarlas o se duplicaría la cantidad. Pero
+  // un mismo req+código con una cantidad DISTINTA es una línea de requerimiento real aparte (ver
+  // caso 0001-0022802: código 001904900016 con cant 2 y cant 1 en filas separadas) y hay que
+  // sumarla, no descartarla — antes se perdía silenciosamente quedándose solo con la primera.
+  const p5Seen=new Set();     // req+código+cantidad exacta ya contado (repetición de recepción)
+  const p5IdxByReqCod={};     // req+código -> índice en p5Data, para sumar cuando aparece otra cant
+  const p5Data=[];
+  p5Rows.forEach(r=>{
+    const req=g(r,'CodRequerimiento'),cod=g(r,'IdProducto');
+    const cant=Math.round(gn(r,'CantidadRequerimiento'));
+    const key3=req+'|'+cod+'|'+cant;
+    if(p5Seen.has(key3))return;
+    p5Seen.add(key3);
+    const key2=req+'|'+cod;
+    if(p5IdxByReqCod[key2]!=null){
+      p5Data[p5IdxByReqCod[key2]].cant+=cant;
+      return;
+    }
+    p5IdxByReqCod[key2]=p5Data.length;
+    p5Data.push({
+      req:req,fecha:gd(r,'FechaRequerimiento'),
+      resp:g(r,'NombreResponsable'),idproy:g(r,'IdProyecto'),
+      proy:g(r,'NombreProyecto'),cod:cod,
+      prod:g(r,'Producto'),cant:cant,
+      unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||g(r,'UM')||g(r,'Um')||g(r,'Und')||g(r,'UndMed')||g(r,'Unidad de Medida')||g(r,'UnidMed')||'',
+      freq:gd(r,'FechaRequerida')||gd(r,'FechaEntrega')||gd(r,'ParaFechaOrden')||gd(r,'Fecha Requerida')||gd(r,'FechaRequerimiento')||'',
+      estado:g(r,'EstadoRequerimiento')
+    });
+  });
+  p5Data.sort((a,b)=>{
+    const pa=a.fecha?a.fecha.split('/').reverse().join(''):'';
+    const pb=b.fecha?b.fecha.split('/').reverse().join(''):'';
+    return pb.localeCompare(pa);
+  });
+
+  // ── 5. Build Gerencial KPIs (Page 1) ───────────────────────────────────────
+  const validReqOC=ocData.filter(o=>{
+    const d1=dateObj(o.freq),d2=dateObj(o.foc);
+    if(!d1||!d2)return false;
+    const diff=Math.round((d2-d1)/(86400000));
+    o._dReqOC=diff;
+    return diff>=0&&diff<=365;
+  });
+  const validEntRec=ocData.filter(o=>{
+    const d1=dateObj(o.fent),d2=dateObj(o.frec);
+    if(!d1||!d2)return false;
+    const diff=Math.round((d2-d1)/(86400000));
+    o._dEntRec=diff;
+    return diff>=-30&&diff<=365;
+  });
+  
+  const avgReqOC=validReqOC.length?Math.round(validReqOC.reduce((s,o)=>s+o._dReqOC,0)/validReqOC.length*10)/10:0;
+  const sortedReqOC=validReqOC.map(o=>o._dReqOC).sort((a,b)=>a-b);
+  const medReqOC=sortedReqOC.length?sortedReqOC[Math.floor(sortedReqOC.length/2)]:0;
+  const avgEntRec=validEntRec.length?Math.round(validEntRec.reduce((s,o)=>s+o._dEntRec,0)/validEntRec.length*10)/10:0;
+  const pctOntime=validEntRec.length?Math.round(validEntRec.filter(o=>o._dEntRec<=0).length/validEntRec.length*1000)/10:0;
+
+  // Distribution buckets
+  const distReqOC={'0-3':0,'4-7':0,'8-15':0,'>15':0};
+  validReqOC.forEach(o=>{const d=o._dReqOC;if(d<=3)distReqOC['0-3']++;else if(d<=7)distReqOC['4-7']++;else if(d<=15)distReqOC['8-15']++;else distReqOC['>15']++;});
+  
+  const distEntRec={'A tiempo':0,'1-7 días':0,'8-15 días':0,'>15 días':0};
+  validEntRec.forEach(o=>{const d=o._dEntRec;if(d<=0)distEntRec['A tiempo']++;else if(d<=7)distEntRec['1-7 días']++;else if(d<=15)distEntRec['8-15 días']++;else distEntRec['>15 días']++;});
+
+  // Monthly trend
+  const monthlyReqOC={},monthlyEntRec={},monthlyCnt={},monthlyCnt2={};
+  validReqOC.forEach(o=>{
+    const m=o.foc?parseInt(o.foc.split('/')[1]):0;
+    if(!m)return;
+    monthlyReqOC[m]=(monthlyReqOC[m]||0)+o._dReqOC;
+    monthlyCnt[m]=(monthlyCnt[m]||0)+1;
+  });
+  validEntRec.forEach(o=>{
+    const m=o.frec?parseInt(o.frec.split('/')[1]):0;
+    if(!m)return;
+    monthlyEntRec[m]=(monthlyEntRec[m]||0)+o._dEntRec;
+    monthlyCnt2[m]=(monthlyCnt2[m]||0)+1;
+  });
+  const mReqOC={},mEntRec={};
+  Object.keys(monthlyReqOC).forEach(m=>{mReqOC[m]=Math.round(monthlyReqOC[m]/monthlyCnt[m]*10)/10;});
+  Object.keys(monthlyEntRec).forEach(m=>{mEntRec[m]=Math.round(monthlyEntRec[m]/monthlyCnt2[m]*10)/10;});
+
+  // By responsable
+  const respMap={};
+  validReqOC.forEach(o=>{
+    if(!o.resp)return;
+    if(!respMap[o.resp])respMap[o.resp]={sum:0,cnt:0};
+    respMap[o.resp].sum+=o._dReqOC;respMap[o.resp].cnt++;
+  });
+  const byResp=Object.entries(respMap).filter(([,v])=>v.cnt>=3).map(([k,v])=>({resp:k,avg:Math.round(v.sum/v.cnt*10)/10,cnt:v.cnt})).sort((a,b)=>a.avg-b.avg);
+
+  // Top proyectos
+  const proyMap={};
+  ocData.forEach(o=>{if(o.proy)proyMap[o.proy]=(proyMap[o.proy]||0)+1;});
+  const topProy=Object.entries(proyMap).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>({proy:k,cnt:v}));
+
+  // Estado count
+  const estadoCnt={};
+  ocData.forEach(o=>{estadoCnt[o.estado]=(estadoCnt[o.estado]||0)+1;});
+
+  const gerencial={
+    summary:{
+      total_oc:ocData.length,
+      pendientes:ocData.filter(o=>o.estado==='Pendiente').length,
+      parciales:ocData.filter(o=>o.estado==='Atendido Parcial').length,
+      completadas:ocData.filter(o=>o.estado==='Atendido Completo').length,
+      avg_req_oc:avgReqOC,med_req_oc:medReqOC,
+      avg_ent_rec:avgEntRec,pct_ontime:pctOntime,
+      total_responsables:new Set(ocData.map(o=>o.resp)).size,
+      total_proyectos:new Set(ocData.map(o=>o.proy).filter(Boolean)).size,
+    },
+    monthly_req_oc:mReqOC,monthly_ent_rec:mEntRec,
+    dist_req_oc:distReqOC,dist_ent_rec:distEntRec,
+    by_resp:byResp,top_proy:topProy,estado_cnt:estadoCnt
+  };
+
+  // ── 6. Read Proyectos sheet ────────────────────────────────────────────────
+  const projSheetName=wb.SheetNames.find(n=>n==='Proyectos');
+  let projData=D.proj; // keep existing if no sheet
+  if(projSheetName){
+    const pws=wb.Sheets[projSheetName];
+    const praw=XLSX.utils.sheet_to_json(pws,{header:1,defval:null,cellDates:true});
+    // Auto-detect header row for Proyectos
+    let phdrIdx=0;
+    for(let i=0;i<Math.min(5,praw.length);i++){
+      if(praw[i]&&typeof praw[i][0]==='string'&&praw[i][0].match(/Proyecto/i)){phdrIdx=i;break;}
+    }
+    const phdr=praw[phdrIdx]||[];
+    const pci={};phdr.forEach((h,i)=>{if(h)pci[String(h).trim()]=i;});
+    // case+accent-insensitive lookup helper
+    const pciNorm={};Object.keys(pci).forEach(k=>{pciNorm[k.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()]=pci[k];});
+    const pciGet=(name)=>{const exact=pci[name];if(exact!==undefined)return exact;return pciNorm[name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()];};
+    const pg=(row,name)=>{const i=pciGet(name);return(i!==undefined)?xs(row[i]):'';};
+    const pgd=(row,name)=>{const i=pciGet(name);return(i!==undefined)?xd(row[i]):'';};
+
+    // Read PRY sheet for ID mapping
+    const prySheetName=wb.SheetNames.find(n=>n==='PRY');
+    const pryMap={};
+    if(prySheetName){
+      const prws=wb.Sheets[prySheetName];
+      const prraw=XLSX.utils.sheet_to_json(prws,{header:1,defval:null,raw:false});
+      let prhdrIdx=0;
+      for(let i=0;i<Math.min(5,prraw.length);i++){
+        if(prraw[i]&&typeof prraw[i][0]==='string'&&prraw[i][0].match(/Proyecto/i)){prhdrIdx=i;break;}
+      }
+      const prhdr=prraw[prhdrIdx]||[];
+      const prci={};prhdr.forEach((h,i)=>{if(h)prci[String(h).trim()]=i;});
+      prraw.slice(prhdrIdx+1).forEach(r=>{
+        const nombre=xs(r[prci['Proyectos']]).toUpperCase().trim();
+        const pryId=xs(r[prci['PRY']]).trim();
+        if(nombre&&pryId){
+          if(!pryMap[nombre])pryMap[nombre]=[];
+          pryMap[nombre].push(pryId);
+        }
+      });
+    }
+    
+    const VALID_ESTADOS_PMO=new Set(['en progreso','por iniciar','con obs','pendiente valorización','pendiente valorizacion','cerrado','activo','en curso']);
+    projData=praw.slice(phdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&c!=='')).map(r=>{
+      const nombre=pg(r,'Proyectos').trim();
+      if(!nombre)return null;
+      // Skip summary/financial rows by name
+      if(/^(supervisor|valor|factur|total|subtotal|igv|monto)/i.test(nombre))return null;
+      const estadoRaw=(pg(r,'Estado')||'').trim().toLowerCase();
+      // Require a valid PMO state; rows with no state and no supervisor are also summary rows
+      if(!estadoRaw&&!pg(r,'SUPERVISOR')&&!pg(r,'ZONA'))return null;
+      if(estadoRaw&&!VALID_ESTADOS_PMO.has(estadoRaw))return null;
+      // Merge with existing project to preserve dates/GPS already parsed
+      const prev=D.proj.find(p=>p.nombre===nombre)||{};
+      const newInicio=pgd(r,'Fecha de inicio')||pgd(r,'Fecha Inicio')||pgd(r,'FechaInicio')||pgd(r,'Inicio');
+      const newFin=pgd(r,'Fecha de finalización')||pgd(r,'Fecha Fin')||pgd(r,'FechaFin')||pgd(r,'Fin');
+      const newGps=pg(r,'UBICACIÓN GPS')||pg(r,'GPS')||pg(r,'Ubicacion GPS')||pg(r,'Ubicación GPS');
+      return{
+        nombre:nombre,
+        prys:pryMap[nombre.toUpperCase()]||(prev.prys||[]),
+        estado:pg(r,'Estado')||prev.estado||'',
+        supervisor:pg(r,'SUPERVISOR')||prev.supervisor||'',
+        asistente:pg(r,'ASITENTE')||pg(r,'ASISTENTE')||prev.asistente||'',
+        zona:pg(r,'ZONA')||prev.zona||'',
+        distrito:pg(r,'Distrito')||prev.distrito||'',
+        depto:pg(r,'Departamento')||prev.depto||'',
+        inicio:newInicio||prev.inicio||'',
+        fin:newFin||prev.fin||'',
+        gps:newGps||prev.gps||'',
+        // Preserve parsed GPS coordinates
+        lat:prev.lat,lon:prev.lon,gps_exact:prev.gps_exact
+      };
+    }).filter(Boolean);
+  }
+
+  // Para filas de OC Parcial, heredar el responsable de quien colocó la OC
+  const reqRespMap={};
+  ocData.forEach(o=>{if(o.req)reqRespMap[o.req]={ucomp:o.ucomp,resp:o.resp};});
+  sinOcData.forEach(s=>{
+    if(s.parcial&&reqRespMap[s.req]){
+      s.respPed=reqRespMap[s.req].ucomp||s.respPed; // quien colocó la OC → RESP. PEDIDO
+      s.resp=reqRespMap[s.req].resp||s.resp;         // responsable de la OC → RESPONSABLE/SOLICITANTE
+    }
+  });
+
+  // ── 7. Apply to D and SKUS ─────────────────────────────────────────────────
+  D.oc=ocData;
+  D.sinoc=sinOcData;
+  D.p5reqs=p5Data;
+
+  D.gerencial=gerencial;
+  D.proj=projData;
+  SKUS=skusMap;
+
+  // ── 8. Re-render everything ────────────────────────────────────────────────
+  try{fixOcEstados();}catch(e){}
+  saveLocal();
+
+  const t1=performance.now();
+  const msg=`✅ MAESTRO importado (${Math.round(t1-t0)}ms)\n\n` +
+    `• ${ocData.length} OC (Pág. OC Pendientes)\n` +
+    `• ${sinOcData.length} Sin OC — Cotización\n` +
+    `• ${p5Data.length} Req. pendientes (Almacén — Requerimientos/Picking)\n` +
+    `• ${projData.length} Proyectos PMO\n` +
+    `• ${Object.keys(skusMap).length} SKU detalle`;
+  alert(msg);
+}
+
+function importPedidoSinReq(wb){
+  const t0=performance.now();
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  // Find header row: first row where first cell is a string that looks like a column name
+  let hdrIdx=0;
+  for(let i=0;i<Math.min(5,raw.length);i++){
+    if(raw[i]&&typeof raw[i][0]==='string'&&raw[i][0].match(/^[A-Z]/i)&&!raw[i][0].match(/^\d{4}-/)){hdrIdx=i;break;}
+  }
+  const headers=raw[hdrIdx]||[];
+  const ci={};headers.forEach((h,i)=>{if(h)ci[String(h).trim()]=i;});
+  const g=(row,name)=>{const i=ci[name];return(i!==undefined)?xs(row[i]):'';};
+  const gd=(row,name)=>{const i=ci[name];return(i!==undefined)?xd(row[i]):'';};
+  const gn=(row,name)=>{const i=ci[name];return(i!==undefined)?xn(row[i]):0;};
+
+  const allRows=raw.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&c!==''));
+  const rows=allRows.filter(r=>{
+    const idx=ci['FechaPedido'];
+    if(idx===undefined)return false;
+    const val=r[idx];
+    if(val instanceof Date && !isNaN(val))return val.getFullYear()===2026;
+    if(typeof val==='number' && val>30000){
+      const dt=new Date((val-25569)*86400000);
+      return dt.getUTCFullYear()===2026;
+    }
+    return is2026(xd(val));
+  });
+  
+  // Filter rows with OC
+  const ocRows=rows.filter(r=>{const c=g(r,'CodOrden');return c&&c!=='-'&&c!=='nan';});
+  
+  const ocMap={}, skusMap4={};
+  ocRows.forEach(r=>{
+    const cod=g(r,'CodOrden');
+    if(!ocMap[cod]){
+      ocMap[cod]={
+        oc:cod,foc:gd(r,'FechaOrden'),fapro:gd(r,'FechaAprobacionOC')||gd(r,'FechaAprobacion')||gd(r,'Fecha Aprobacion')||gd(r,'FechaAprobacionOrden'),fent:gd(r,'ParaFechaOrden'),
+        respPed:g(r,'ResponsablePedido'),estado:'',_estados:[],
+        prov:g(r,'NombreProveedor').slice(0,35),ucomp:g(r,'UsuarioCompras'),
+        ped:[],fpedido:gd(r,'FechaPedido')||gd(r,'Fecha Pedido')||gd(r,'FechaPed'),
+        cod:g(r,'IdProducto')||g(r,'CodigoProducto')||'',
+        prod:g(r,'Descripción')||g(r,'Producto')||g(r,'Descripcion')||'',
+        unid:g(r,'Medida')||g(r,'Unidad')||'',
+        cantOrd:0,cantRec:0,cantPend:0,nItems:0,frec:gd(r,'FechaRecepcion')
+      };
+    }
+    const o=ocMap[cod];
+    o.nItems++;
+    const co=gn(r,'Cantidad de orden'), cr=gn(r,'CantRecepcion');
+    o.cantOrd+=co; o.cantRec+=cr;
+    const itemEst4=g(r,'EstadoOrden');
+    if(itemEst4&&!o._estados.includes(itemEst4))o._estados.push(itemEst4);
+    const ped=g(r,'CodPedido');
+    if(ped&&!o.ped.includes(ped))o.ped.push(ped);
+    if(!skusMap4[cod])skusMap4[cod]=[];
+    skusMap4[cod].push({
+      cod:g(r,'IdProducto')||g(r,'CodigoProducto')||'',
+      prod:g(r,'Descripción')||g(r,'Producto')||g(r,'Descripcion')||'',
+      cantOrd:Math.round(co),cantRec:Math.round(cr),cantPend:Math.max(0,Math.round(co-cr)),
+      foc:gd(r,'FechaOrden'),fent:gd(r,'ParaFechaOrden'),
+      estado:g(r,'EstadoOrden'),ucomp:g(r,'UsuarioCompras'),
+      prov:g(r,'NombreProveedor').slice(0,35),resp:g(r,'ResponsablePedido'),
+      ped:ped||'',frec:gd(r,'FechaRecepcion'),
+      unid:g(r,'Medida')||g(r,'UnidadMedida')||g(r,'Unidad')||''
+    });
+  });
+  SKUS_P4 = skusMap4;
+
+  const p4Data=Object.values(ocMap).map(o=>{
+    o.cantOrd=Math.round(o.cantOrd);o.cantRec=Math.round(o.cantRec);
+    o.cantPend=Math.max(0,o.cantOrd-o.cantRec);
+    // Derive estado from all item estados (una OC con ítems ya atendidos y otros
+    // pendientes debe figurar como "Atendido Parcial", no quedarse con el estado
+    // del primer ítem leído del Excel)
+    const es4=o._estados;
+    if(es4.length===1){o.estado=es4[0];}
+    else if(es4.every(e=>e==='Atendido Completo')){o.estado='Atendido Completo';}
+    else if(es4.every(e=>e==='Pendiente')){o.estado='Pendiente';}
+    else{o.estado='Atendido Parcial';}
+    delete o._estados;
+    return o;
+  });
+  p4Data.sort((a,b)=>{
+    const pa=a.foc?a.foc.split('/').reverse().join(''):'';
+    const pb=b.foc?b.foc.split('/').reverse().join(''):'';
+    if(pa!==pb)return pb.localeCompare(pa);
+    const na=parseInt((a.oc||'').replace(/\D/g,''),10)||0;
+    const nb=parseInt((b.oc||'').replace(/\D/g,''),10)||0;
+    return nb-na;
+  });
+
+  D.p4=p4Data;
+  try{fixOcEstados();}catch(e){}
+  saveLocal();
+
+  const t1=performance.now();
+  alert(`✅ PedidoSinReq importado (${Math.round(t1-t0)}ms)\n\n• ${p4Data.length} OC Compras Directas`);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// IMPORT SUPERVISORES (directorio Nombre → DNI / Correo)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function importSupervisores(wb){
+  const t0=performance.now();
+  const wsName=wb.SheetNames.find(n=>n.toLowerCase().includes('supervisor'))||wb.SheetNames[0];
+  const ws=wb.Sheets[wsName];
+  const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  let hdr=0;
+  for(let i=0;i<Math.min(10,raw.length);i++){
+    const r=raw[i];
+    if(r&&r.some(c=>typeof c==='string'&&/^Nombres?\b/i.test(String(c).trim()))){hdr=i;break;}
+  }
+  const headers=raw[hdr]||[];
+  const ci={};headers.forEach((h,i)=>{if(h)ci[String(h).trim()]=i;});
+  const g=(row,name)=>{const i=ci[name];return(i!==undefined)?xs(row[i]):'';};
+  // Encabezados flexibles: acepta "Nombre" o "Nombres Completos (…)", "Correo" o
+  // "Correo electrónico", "Celular"/"Teléfono"/"Número de teléfono"/"WhatsApp", "Área", "Proyecto"
+  const hKeys=Object.keys(ci);
+  const hFind=re=>hKeys.find(k=>re.test(k))||'';
+  const hNom=hFind(/^Nombres?\b/i);
+  const hDni=hFind(/DNI/i);
+  const hCor=hFind(/^Correo/i);
+  const hCel=hFind(/tel[eé]fono|celular|whatsapp|^cel\b/i);
+  const hArea=hFind(/^[aá]rea$/i);
+  const hProy=hFind(/^Proyecto/i);
+  const supervisores=raw.slice(hdr+1)
+    .filter(r=>r&&g(r,hNom))
+    .map(r=>{
+      const s={nombre:g(r,hNom),dni:hDni?g(r,hDni):'',correo:(hCor?g(r,hCor):'').toLowerCase(),
+        celular:(hCel?g(r,hCel):'').replace(/\D/g,'')};
+      if(hArea)s.area=g(r,hArea);
+      if(hProy)s.proyecto=g(r,hProy);
+      return s;
+    });
+  D.supervisores=supervisores;
+  saveLocal();
+  const t1=performance.now();
+  const conCorreo=supervisores.filter(s=>s.correo).length;
+  const conCel=supervisores.filter(s=>s.celular&&s.celular!=='-').length;
+  alert(`✅ Supervisores importado (${Math.round(t1-t0)}ms)\n\n• ${supervisores.length} personas\n• ${conCorreo} con correo registrado\n• ${conCel} con celular (para WhatsApp)`);
+}
+
+// Normaliza un nombre para comparar sin tildes, mayúsculas ni orden estricto
+function _normNombre(s){
+  var map={'Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U','Ñ':'N','Ü':'U'};
+  var up=(s||'').toUpperCase(),out='';
+  for(var i=0;i<up.length;i++){out+=map[up[i]]||up[i];}
+  return out.replace(/[^A-Z ]/g,' ').replace(/\s+/g,' ').trim();
+}
+// Busca en D.supervisores un nombre que comparta al menos 2 palabras y ≥50% de
+// coincidencia (nombres pueden venir en distinto orden o con nombres de más)
+function buscarSupervisor(nombre){
+  const nws=new Set(_normNombre(nombre).split(' ').filter(Boolean));
+  if(!nws.size||!D.supervisores||!D.supervisores.length)return null;
+  let best=null,bestScore=0;
+  D.supervisores.forEach(function(s){
+    const sws=new Set(_normNombre(s.nombre).split(' ').filter(Boolean));
+    if(!sws.size)return;
+    let inter=0;nws.forEach(function(w){if(sws.has(w))inter++;});
+    const score=inter/Math.max(nws.size,sws.size);
+    if(inter>=2&&score>bestScore){bestScore=score;best=s;}
+  });
+  return (best&&bestScore>=0.5)?best:null;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// IMPORT PROVEEDORES (directorio Nombre/RUC → Correo)
+// ══════════════════════════════════════════════════════════════════════════════
+function importProveedores(wb){
+  const t0=performance.now();
+  const wsName=wb.SheetNames.find(n=>n.toLowerCase().includes('proveedor')&&n.toLowerCase()!=='data')||wb.SheetNames[0];
+  const ws=wb.Sheets[wsName];
+  const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  let hdr=0;
+  for(let i=0;i<Math.min(10,raw.length);i++){
+    const r=raw[i];
+    if(r&&r.some(c=>typeof c==='string'&&/^Nombre$/i.test(String(c).trim()))){hdr=i;break;}
+  }
+  const headers=raw[hdr]||[];
+  const ci={};headers.forEach((h,i)=>{if(h)ci[String(h).trim()]=i;});
+  const g=(row,name)=>{const i=ci[name];return(i!==undefined)?xs(row[i]):'';};
+  const totalFilas=raw.slice(hdr+1).filter(r=>r&&g(r,'Nombre')).length;
+  // Solo se guardan los que tienen correo: son los únicos útiles para autocompletar,
+  // y guardar el padrón completo (11 mil+) inflaría data.json que ya está al límite.
+  const proveedores=raw.slice(hdr+1)
+    .filter(r=>r&&g(r,'Nombre')&&g(r,'Email'))
+    .map(r=>({nombre:g(r,'Nombre'),ruc:g(r,'RUC'),correo:g(r,'Email').toLowerCase()}));
+  D.proveedores=proveedores;
+  saveLocal();
+  const t1=performance.now();
+  alert(`✅ Proveedores importado (${Math.round(t1-t0)}ms)\n\n• ${proveedores.length} proveedores con correo registrado\n• (${totalFilas-proveedores.length} sin correo se omitieron — agrégales correo en el Excel y reimporta)`);
+}
+// Razones sociales genéricas que no sirven para distinguir empresas entre sí
+var _PROV_STOPWORDS={'S':1,'A':1,'C':1,'R':1,'L':1,'SA':1,'SAC':1,'SRL':1,'EIRL':1,'SOCIEDAD':1,'ANONIMA':1,'CERRADA':1,'ABIERTA':1,'EMPRESA':1,'INDIVIDUAL':1,'RESPONSABILIDAD':1,'LIMITADA':1,'COMERCIAL':1,'DEL':1,'DE':1,'LA':1,'EL':1,'Y':1,'PERU':1};
+function _provWords(s){
+  return _normNombre(s).split(' ').filter(function(w){return w&&!_PROV_STOPWORDS[w];});
+}
+// Busca un proveedor primero por RUC exacto (confiable) y, si no hay match o no
+// hay RUC, por nombre — comparando solo palabras distintivas (sin S.A.C., etc.)
+function buscarProveedor(ruc,nombre){
+  if(!D.proveedores||!D.proveedores.length)return null;
+  const rucLimpio=(ruc||'').trim();
+  if(rucLimpio){
+    const porRuc=D.proveedores.find(function(p){return p.ruc&&p.ruc.trim()===rucLimpio;});
+    if(porRuc)return porRuc;
+  }
+  const nw=_provWords(nombre);
+  if(!nw.length)return null;
+  const nws=new Set(nw);
+  let best=null,bestScore=0;
+  D.proveedores.forEach(function(p){
+    const pw=_provWords(p.nombre);
+    if(!pw.length)return;
+    const pws=new Set(pw);
+    let inter=0;nws.forEach(function(w){if(pws.has(w))inter++;});
+    // Con pocas palabras distintivas se exige coincidencia total para no
+    // confundir empresas de nombre corto; con más, mayoría compartida.
+    const minInter=Math.min(nws.size,pws.size)<2?Math.max(nws.size,pws.size):2;
+    const score=inter/Math.max(nws.size,pws.size);
+    if(inter>=minInter&&score>bestScore){bestScore=score;best=p;}
+  });
+  return (best&&bestScore>=0.5)?best:null;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// REFRESH ALL PAGES
+// ══════════════════════════════════════════════════════════════════════════════
+// Repopulate a <select> preserving the current value if it still exists in new options
+
+/* ==== FIN copiado de compras.html ==== */
+
+function getD(){ return D; }
+function getToken(){ return (localStorage.getItem(GH_TOKEN_KEY)||'').trim(); }
+
+return {
+  handleMultiUpload,
+  importMaestro,
+  importPedidoSinReq,
+  importSupervisores,
+  importProveedores,
+  setupGHToken,
+  saveGitHub,
+  saveLocal,
+  getD,
+  getToken,
+  GH_TOKEN_KEY
+};
+})();
