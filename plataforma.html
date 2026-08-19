@@ -160,7 +160,7 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
       <div class="imp-files-list" id="impFilesList"></div>
     </div>
     <div class="imp-actions">
-      <button class="imp-btn" id="impBtnProcesar" onclick="procesarTodo()">Procesar y guardar</button>
+      <button class="imp-btn" id="impBtnProcesar" onclick="procesarTodo()" disabled>💾 Guardar</button>
       <div class="imp-tokens">
         <button class="imp-token-btn" onclick="ComprasShared.setupGHToken()">🔑 Token Compras</button>
         <button class="imp-token-btn" onclick="AlmacenShared.setupGHToken()">🔑 Token Almacén</button>
@@ -183,6 +183,8 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
    assets/js/{compras,almacen,facturas}-shared.js.
    ============================================================ */
 let impSelectedFiles = [];
+let impClassified = []; // [{file, tipo, wb}] — ya leídos y clasificados, listos para Guardar
+const TIPO_LABEL = {maestro:'Reporte Maestro', pedido:'Pedido Sin Req', supervisores:'Supervisores', proveedores:'Proveedores', almacen:'Reporte Almacén'};
 
 function renderLastImportPill(){
   const el = document.getElementById('lastImportPill');
@@ -212,18 +214,47 @@ function cerrarImportar(){ document.getElementById('impOverlay').classList.remov
 
 function renderImpFilesList(){
   const listEl = document.getElementById('impFilesList');
-  listEl.innerHTML = impSelectedFiles.map(f=>'📄 '+f.name).join('<br>');
+  listEl.innerHTML = '';
   document.getElementById('impDropText').style.display = impSelectedFiles.length ? 'none' : '';
+}
+// Se leen y clasifican los archivos apenas se eligen (sin subir nada todavía) — así el
+// usuario ve qué se detectó de cada uno ANTES de decidir si guardar.
+async function cargarArchivosSeleccionados(){
+  const btn = document.getElementById('impBtnProcesar');
+  const listEl = document.getElementById('impFilesList');
+  btn.disabled = true;
+  document.getElementById('impFiles').disabled = true;
+  listEl.innerHTML = impSelectedFiles.map(f=>'📄 '+f.name+' — cargando…').join('<br>');
+  impClassified = [];
+  for(const file of impSelectedFiles){
+    try{
+      const {tipo, wb} = await clasificarArchivo(file);
+      impClassified.push({file, tipo, wb});
+    }catch(e){
+      impClassified.push({file, tipo:'error', wb:null, error:e.message});
+    }
+  }
+  listEl.innerHTML = impClassified.map(c=>
+    c.tipo==='error' ? ('⚠ '+c.file.name+' — no se pudo leer ('+c.error+')')
+      : ('✅ '+c.file.name+' → '+(TIPO_LABEL[c.tipo]||c.tipo))
+  ).join('<br>');
+  document.getElementById('impFiles').disabled = false;
+  btn.disabled = !impClassified.some(c=>c.tipo!=='error');
 }
 function onImpFiles(fileList){
   impSelectedFiles = Array.from(fileList);
-  renderImpFilesList();
+  document.getElementById('impDropText').style.display = impSelectedFiles.length ? 'none' : '';
+  cargarArchivosSeleccionados();
 }
 function onImpDrop(evt){
   evt.preventDefault();
   document.getElementById('impDrop').classList.remove('drag');
   const files = Array.from(evt.dataTransfer.files).filter(f=>/\.xlsx?$/i.test(f.name));
-  if(files.length){ impSelectedFiles = files; renderImpFilesList(); }
+  if(files.length){
+    impSelectedFiles = files;
+    document.getElementById('impDropText').style.display = 'none';
+    cargarArchivosSeleccionados();
+  }
 }
 function impLogLine(html){
   document.getElementById('impLog').insertAdjacentHTML('beforeend','<div>'+html+'</div>');
@@ -246,16 +277,16 @@ async function clasificarArchivo(file){
 async function procesarTodo(){
   const btn = document.getElementById('impBtnProcesar');
   const logEl = document.getElementById('impLog');
-  if(!impSelectedFiles.length){
-    alert('Selecciona al menos un archivo para procesar.');
+  if(!impClassified.length){
+    alert('Elige los archivos primero — se cargan y clasifican automáticamente al seleccionarlos.');
     return;
   }
   btn.disabled = true;
   logEl.innerHTML = '';
   try{
     let wbMaestro=null, wbPedido=null;
-    for(const file of impSelectedFiles){
-      const {tipo, wb} = await clasificarArchivo(file);
+    for(const {file, tipo, wb} of impClassified){
+      if(tipo==='error'){ impLogLine('⚠ '+file.name+': no se pudo leer, se omite.'); continue; }
       if(tipo==='maestro'){ wbMaestro = wb; impLogLine('📄 '+file.name+' → Reporte Maestro'); }
       else if(tipo==='pedido'){ wbPedido = wb; impLogLine('📄 '+file.name+' → Pedido Sin Req'); }
       else if(tipo==='supervisores'){ ComprasShared.importSupervisores(wb); impLogLine('✅ Compras: Supervisores procesado ('+file.name+')'); }
@@ -322,13 +353,14 @@ async function procesarTodo(){
       renderLastImportPill();
     }
     impSelectedFiles = [];
+    impClassified = [];
     document.getElementById('impFiles').value = '';
     renderImpFilesList();
   }catch(err){
     console.error(err);
     impLogLine('<span style="color:#f87171">⚠ Error: '+err.message+'</span>');
   }finally{
-    btn.disabled = false;
+    btn.disabled = !impClassified.length;
   }
 }
 </script>
