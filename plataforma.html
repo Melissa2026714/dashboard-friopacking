@@ -31,6 +31,8 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
 .b2{color:#64748b;font-size:10px;letter-spacing:.5px}
 .nbr{margin-left:auto;display:flex;align-items:center;gap:10px;color:#64748b;font-size:11px}
 .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
+.nb-imp-btn{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);color:#fbbf24;font-size:11.5px;font-weight:700;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif}
+.nb-imp-btn:hover{background:rgba(251,191,36,.2);border-color:#fbbf24}
 /* HERO */
 .hero{text-align:center;padding:46px 20px 26px}
 .hero img{height:64px;filter:drop-shadow(0 2px 10px rgba(0,0,0,.5));margin-bottom:16px}
@@ -40,22 +42,45 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
 .hdiv{width:min(520px,80%);height:1px;background:linear-gradient(90deg,transparent,#334155,transparent);margin:24px auto 0}
 /* GRID */
 .wrap{flex:1;display:flex;flex-direction:column;align-items:center;padding:0 20px 40px}
-.sect{width:100%;max-width:860px;margin-top:30px}
+.sect{width:100%;max-width:960px;margin-top:30px}
 .sect-t{font-size:11px;font-weight:700;letter-spacing:2px;color:#475569;text-transform:uppercase;margin:0 6px 14px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
-.app{position:relative;background:rgba(15,23,42,.72);backdrop-filter:blur(10px);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:22px 16px 16px;
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px}
+.app{position:relative;background:rgba(15,23,42,.72);backdrop-filter:blur(10px);border:1px solid rgba(148,163,184,.18);border-radius:18px;padding:30px 20px 22px;
   text-align:center;cursor:pointer;transition:all .18s;text-decoration:none;display:block;box-shadow:0 4px 18px rgba(0,0,0,.35)}
 .app:hover{transform:translateY(-4px);border-color:#3b82f6;box-shadow:0 14px 34px rgba(0,0,0,.5)}
 .app.soon{cursor:not-allowed;opacity:.5}
 .app.soon:hover{transform:none;border-color:#1e293b;box-shadow:none}
-.ico{width:60px;height:60px;border-radius:16px;margin:0 auto 12px;display:flex;align-items:center;
-  justify-content:center;font-size:30px;box-shadow:0 6px 16px rgba(0,0,0,.4)}
-.app-t{color:#f1f5f9;font-size:13px;font-weight:700}
-.app-s{color:#64748b;font-size:10.5px;margin-top:3px;line-height:1.35}
+.ico{width:76px;height:76px;border-radius:20px;margin:0 auto 16px;display:flex;align-items:center;
+  justify-content:center;font-size:38px;box-shadow:0 6px 16px rgba(0,0,0,.4)}
+.app-t{color:#f1f5f9;font-size:16px;font-weight:700}
+.app-s{color:#64748b;font-size:12px;margin-top:5px;line-height:1.4}
 .badge{position:absolute;top:10px;right:10px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.5px}
 .b-live{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.35)}
 .b-soon{background:rgba(148,163,184,.12);color:#94a3b8;border:1px solid rgba(148,163,184,.25)}
 .foot{text-align:center;color:#475569;font-size:10.5px;padding:8px 20px 26px}
+/* IMPORTAR */
+.imp-overlay{display:none;position:fixed;inset:0;background:rgba(5,9,18,.75);backdrop-filter:blur(3px);z-index:100;align-items:center;justify-content:center;padding:20px}
+.imp-overlay.active{display:flex}
+.imp-card{width:100%;max-width:560px;background:rgba(15,23,42,.96);backdrop-filter:blur(10px);border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.imp-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.imp-close{background:transparent;border:none;color:#64748b;font-size:16px;cursor:pointer;padding:2px 6px;border-radius:6px}
+.imp-close:hover{color:#fff;background:rgba(255,255,255,.08)}
+.imp-drop{border:2px dashed rgba(148,163,184,.35);border-radius:10px;padding:14px 16px;text-align:center;margin-bottom:10px;transition:border-color .15s,background .15s}
+.imp-drop.drag{border-color:#3b82f6;background:rgba(59,130,246,.08)}
+.imp-drop-icon{font-size:20px;margin-bottom:2px}
+.imp-drop-text{color:#cbd5e1;font-size:11.5px;margin-bottom:8px;line-height:1.4}
+.imp-drop-sub{color:#64748b;font-size:10px}
+.imp-drop input[type=file]{display:none}
+.imp-drop-btn{display:inline-block;padding:6px 14px;border-radius:7px;border:1px solid rgba(148,163,184,.3);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:11.5px;font-weight:600;cursor:pointer}
+.imp-drop-btn:hover{border-color:#3b82f6;color:#fff}
+.imp-files-list{margin-top:8px;text-align:left;font-size:10.5px;color:#94a3b8;display:flex;flex-direction:column;gap:3px}
+.imp-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.imp-btn{padding:8px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;font-weight:700;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,.4)}
+.imp-btn:disabled{opacity:.5;cursor:not-allowed}
+.imp-tokens{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.imp-token-btn{padding:6px 10px;border-radius:6px;border:1px solid rgba(148,163,184,.3);background:transparent;color:#94a3b8;font-size:10px;cursor:pointer}
+.imp-token-btn:hover{border-color:#3b82f6;color:#fff}
+.imp-log{margin-top:8px;font-size:10.5px;color:#94a3b8;line-height:1.5;max-height:110px;overflow-y:auto}
 </style>
 </head>
 <body>
@@ -63,7 +88,10 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
 <nav class="nb">
   <div class="fp">FP</div>
   <div class="brand"><span class="b1">Plataforma LOGÍSTICA</span><span class="b2">FRIOPACKING S.A.</span></div>
-  <div class="nbr"><span class="dot"></span> En línea</div>
+  <div class="nbr">
+    <button class="nb-imp-btn" onclick="abrirImportar()">📂 Importar</button>
+    <span class="dot"></span> En línea
+  </div>
 </nav>
 
 <div class="hero">
@@ -100,6 +128,13 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
         <div class="app-s">Seguimiento de OC vs. factura y guía, piloto de proveedores</div>
       </a>
 
+      <a class="app" href="https://pierolp20.github.io/friopacking-citas/citas.html">
+        <span class="badge b-live">ACTIVO</span>
+        <div class="ico" style="background:linear-gradient(135deg,#1c3384,#2fd7a0)">🚚</div>
+        <div class="app-t">Citas</div>
+        <div class="app-s">Recepción de proveedores, almacén y SSOMA</div>
+      </a>
+
     </div>
   </div>
 
@@ -107,5 +142,166 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
 
 <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · versión de prueba 2026</div>
 
+<div class="imp-overlay" id="impOverlay" onclick="if(event.target===this) cerrarImportar()">
+  <div class="imp-card">
+    <div class="imp-card-head">
+      <div class="sect-t" style="margin:0">Importar datos (centralizado)</div>
+      <button class="imp-close" onclick="cerrarImportar()">✕</button>
+    </div>
+    <div class="imp-drop" id="impDrop"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="onImpDrop(event)">
+      <div class="imp-drop-icon">📂</div>
+      <div class="imp-drop-text" id="impDropText">Arrastra aquí o elige todos los archivos a importar<br><span class="imp-drop-sub">Reporte Maestro, Pedido Sin Req, Supervisores/Proveedores, Reporte Almacén — los que tengas, juntos</span></div>
+      <label class="imp-drop-btn">Elegir archivos<input type="file" id="impFiles" accept=".xlsx,.xls" multiple onchange="onImpFiles(this.files)"></label>
+      <div class="imp-files-list" id="impFilesList"></div>
+    </div>
+    <div class="imp-actions">
+      <button class="imp-btn" id="impBtnProcesar" onclick="procesarTodo()">Procesar y guardar</button>
+      <div class="imp-tokens">
+        <button class="imp-token-btn" onclick="ComprasShared.setupGHToken()">🔑 Token Compras</button>
+        <button class="imp-token-btn" onclick="AlmacenShared.setupGHToken()">🔑 Token Almacén</button>
+        <button class="imp-token-btn" onclick="FacturasShared.setupGHTokenFacturas()">🔑 Token Facturas</button>
+      </div>
+    </div>
+    <div class="imp-log" id="impLog"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="assets/js/compras-shared.js"></script>
+<script src="assets/js/almacen-shared.js"></script>
+<script src="assets/js/facturas-shared.js"></script>
+<script>
+/* ============================================================
+   IMPORTAR CENTRALIZADO — un solo lugar para subir los Excel de
+   Nisira y que alimenten a Compras, Almacén y Facturas a la vez,
+   reutilizando (sin reescribir) la lógica de cada módulo — ver
+   assets/js/{compras,almacen,facturas}-shared.js.
+   ============================================================ */
+let impSelectedFiles = [];
+
+function abrirImportar(){ document.getElementById('impOverlay').classList.add('active'); }
+function cerrarImportar(){ document.getElementById('impOverlay').classList.remove('active'); }
+
+function renderImpFilesList(){
+  const listEl = document.getElementById('impFilesList');
+  listEl.innerHTML = impSelectedFiles.map(f=>'📄 '+f.name).join('<br>');
+  document.getElementById('impDropText').style.display = impSelectedFiles.length ? 'none' : '';
+}
+function onImpFiles(fileList){
+  impSelectedFiles = Array.from(fileList);
+  renderImpFilesList();
+}
+function onImpDrop(evt){
+  evt.preventDefault();
+  document.getElementById('impDrop').classList.remove('drag');
+  const files = Array.from(evt.dataTransfer.files).filter(f=>/\.xlsx?$/i.test(f.name));
+  if(files.length){ impSelectedFiles = files; renderImpFilesList(); }
+}
+function impLogLine(html){
+  document.getElementById('impLog').insertAdjacentHTML('beforeend','<div>'+html+'</div>');
+}
+
+// Detecta qué es cada archivo (por contenido, no por nombre, salvo Supervisores/Proveedores
+// que no tienen una hoja distintiva propia) — así Piero no tiene que nombrarlos de forma exacta.
+async function clasificarArchivo(file){
+  const wb = XLSX.read(await file.arrayBuffer(), {type:'array', cellDates:true});
+  const name = file.name.toLowerCase();
+  const esAlmacen = wb.SheetNames.some(n=>/an[aá]lisis.*inventario|inventario.*an[aá]lisis/i.test(n)) || name.includes('almacen') || name.includes('almacén');
+  if(esAlmacen) return {tipo:'almacen', wb};
+  if(name.includes('supervisor')) return {tipo:'supervisores', wb};
+  if(name.includes('proveedor')) return {tipo:'proveedores', wb};
+  if(name.includes('pedido')) return {tipo:'pedido', wb};
+  // Reporte Maestro: por hoja "reporte" o columna CodRequerimiento; si no calza con nada más, se asume Maestro (igual que hoy en Compras).
+  return {tipo:'maestro', wb};
+}
+
+async function procesarTodo(){
+  const btn = document.getElementById('impBtnProcesar');
+  const logEl = document.getElementById('impLog');
+  if(!impSelectedFiles.length){
+    alert('Selecciona al menos un archivo para procesar.');
+    return;
+  }
+  btn.disabled = true;
+  logEl.innerHTML = '';
+  try{
+    let wbMaestro=null, wbPedido=null;
+    for(const file of impSelectedFiles){
+      const {tipo, wb} = await clasificarArchivo(file);
+      if(tipo==='maestro'){ wbMaestro = wb; impLogLine('📄 '+file.name+' → Reporte Maestro'); }
+      else if(tipo==='pedido'){ wbPedido = wb; impLogLine('📄 '+file.name+' → Pedido Sin Req'); }
+      else if(tipo==='supervisores'){ ComprasShared.importSupervisores(wb); impLogLine('✅ Compras: Supervisores procesado ('+file.name+')'); }
+      else if(tipo==='proveedores'){ ComprasShared.importProveedores(wb); impLogLine('✅ Compras: Proveedores procesado ('+file.name+')'); }
+      else if(tipo==='almacen'){
+        try{
+          const partes = AlmacenShared.procesarArchivo(wb);
+          impLogLine('✅ Almacén: '+partes.join(' · ')+' ('+file.name+')');
+        }catch(e){ impLogLine('⚠ Almacén ('+file.name+'): '+e.message); }
+      }
+    }
+
+    // ── Compras (data.json) ──────────────────────────────────────────────
+    if(wbMaestro || wbPedido){
+      if(wbMaestro){ ComprasShared.importMaestro(wbMaestro); impLogLine('✅ Compras: Reporte Maestro procesado'); }
+      if(wbPedido){ ComprasShared.importPedidoSinReq(wbPedido); impLogLine('✅ Compras: Pedido Sin Req procesado'); }
+    }
+    const tokenC = ComprasShared.getToken();
+    if(!tokenC){
+      impLogLine('⚠ Falta el Token de GitHub de Compras — usa el botón "🔑 Token Compras" y vuelve a intentar.');
+    } else {
+      const payload = ComprasShared.saveLocal();
+      if(payload){
+        const ok = await ComprasShared.saveGitHub(payload);
+        impLogLine(ok ? '☁ Compras subido a <b>data.json</b>' : '❌ Compras: la subida falló o se canceló (revisa la advertencia de conflicto, si salió)');
+      }
+    }
+
+    // ── Facturas (facturas_piloto.json) — reusa Maestro + Pedido ─────────
+    if(wbMaestro || wbPedido){
+      const records = [];
+      if(wbMaestro){
+        const cw = await FacturasShared.classifyWorkbook(wbMaestro);
+        records.push(...FacturasShared.sheetToRecords(wbMaestro, cw.sheet, 'req'));
+      }
+      if(wbPedido){
+        const cw = await FacturasShared.classifyWorkbook(wbPedido);
+        records.push(...FacturasShared.sheetToRecords(wbPedido, cw.sheet, 'sinreq'));
+      }
+      const orders = FacturasShared.aggregateOrders(records);
+      const tokenF = FacturasShared.getToken();
+      if(!tokenF){
+        impLogLine('⚠ Falta el Token de GitHub de Facturas — usa el botón "🔑 Token Facturas" y vuelve a intentar.');
+      } else {
+        await FacturasShared.saveOrders(orders);
+        impLogLine('☁ Facturas subido a <b>facturas_piloto.json</b> ('+orders.length+' OCs)');
+      }
+    }
+
+    // ── Almacén: subir lo que se haya procesado en el bucle de arriba ────
+    const tokenA = AlmacenShared.getToken();
+    if(AlmacenShared.hayCambios()){
+      if(!tokenA){
+        impLogLine('⚠ Falta el Token de GitHub de Almacén — usa el botón "🔑 Token Almacén" y vuelve a intentar.');
+      } else {
+        const subido = await AlmacenShared.guardarImportado();
+        impLogLine('☁ Almacén subido: '+subido.join(' + '));
+      }
+    }
+
+    if(!logEl.innerHTML) impLogLine('No se procesó nada — revisa que los archivos seleccionados tengan el formato esperado.');
+    impSelectedFiles = [];
+    document.getElementById('impFiles').value = '';
+    renderImpFilesList();
+  }catch(err){
+    console.error(err);
+    impLogLine('<span style="color:#f87171">⚠ Error: '+err.message+'</span>');
+  }finally{
+    btn.disabled = false;
+  }
+}
+</script>
 </body>
 </html>
