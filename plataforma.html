@@ -81,6 +81,7 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
 .imp-token-btn{padding:6px 10px;border-radius:6px;border:1px solid rgba(148,163,184,.3);background:transparent;color:#94a3b8;font-size:10px;cursor:pointer}
 .imp-token-btn:hover{border-color:#3b82f6;color:#fff}
 .imp-log{margin-top:8px;font-size:10.5px;color:#94a3b8;line-height:1.5;max-height:110px;overflow-y:auto}
+.nb-last-imp{font-size:10.5px;color:#94a3b8;font-family:'Inter',sans-serif;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -90,6 +91,7 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
   <div class="brand"><span class="b1">Plataforma LOGÍSTICA</span><span class="b2">FRIOPACKING S.A.</span></div>
   <div class="nbr">
     <button class="nb-imp-btn" onclick="abrirImportar()">📂 Importar</button>
+    <span class="nb-last-imp" id="lastImportPill"></span>
     <span class="dot"></span> En línea
   </div>
 </nav>
@@ -182,6 +184,29 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
    ============================================================ */
 let impSelectedFiles = [];
 
+function renderLastImportPill(){
+  const el = document.getElementById('lastImportPill');
+  if(!el) return;
+  const ts = localStorage.getItem('fp_plataforma_last_import');
+  el.textContent = ts ? '🕓 Últ. importación: '+new Date(+ts).toLocaleString('es-PE') : '';
+}
+renderLastImportPill();
+// El sello local (arriba) solo refleja lo que ESTE navegador importó — para que también se
+// vea lo que otra persona guardó desde otro equipo, se lee el "ts" real de data.json en GitHub
+// (mismo archivo que ya usa Compras) y se usa si es más reciente que el local.
+(async function syncLastImportFromRemote(){
+  try{
+    const res = await fetch('https://raw.githubusercontent.com/Melissa2026714/dashboard-friopacking/main/data.json?t='+Date.now());
+    if(!res.ok) return;
+    const j = await res.json();
+    const remoteTs = j && j.ts;
+    const localTs = +(localStorage.getItem('fp_plataforma_last_import')||0);
+    if(remoteTs && remoteTs > localTs){
+      localStorage.setItem('fp_plataforma_last_import', String(remoteTs));
+      renderLastImportPill();
+    }
+  }catch(e){ /* sin conexión — se queda con el sello local, si hay */ }
+})();
 function abrirImportar(){ document.getElementById('impOverlay').classList.add('active'); }
 function cerrarImportar(){ document.getElementById('impOverlay').classList.remove('active'); }
 
@@ -292,6 +317,10 @@ async function procesarTodo(){
     }
 
     if(!logEl.innerHTML) impLogLine('No se procesó nada — revisa que los archivos seleccionados tengan el formato esperado.');
+    if(logEl.innerHTML.includes('☁')){
+      localStorage.setItem('fp_plataforma_last_import', String(Date.now()));
+      renderLastImportPill();
+    }
     impSelectedFiles = [];
     document.getElementById('impFiles').value = '';
     renderImpFilesList();

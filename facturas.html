@@ -156,6 +156,9 @@ tbody tr:last-child td{border-bottom:none;}
 .chain.rojo .lbl{color:var(--red);}
 .chain.anulado .lbl{color:var(--muted);}
 .risk-flag{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--red);background:var(--red-dim);padding:3px 8px;border-radius:100px;margin-left:8px;font-family:'IBM Plex Mono';}
+.reg-flag{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;padding:3px 8px;border-radius:100px;margin-top:4px;font-family:'IBM Plex Mono';white-space:nowrap;}
+.reg-flag.pendiente_envio,.reg-flag.esperando_almacen{color:var(--amber);background:var(--amber-dim);}
+.reg-flag.cerrado{color:var(--green);background:var(--green-dim);}
 
 .empty-state{padding:60px 20px;text-align:center;color:var(--muted);}
 .empty-state .display{font-size:18px;color:var(--steel);margin-bottom:8px;}
@@ -258,6 +261,7 @@ tbody tr:last-child td{border-bottom:none;}
       <div class="titles"><div class="app-name">FRIOPACKING · <b>NEXO</b></div><div class="view-name">Vista Compras</div></div>
     </div>
     <div class="topbar-right">
+      <a href="plataforma.html" title="Volver al Inicio de la Plataforma LOGÍSTICA" style="display:flex;align-items:center;gap:6px;background:#1e293b;color:#93c5fd;border:1px solid #334155;padding:6px 11px;border-radius:7px;font-size:11px;font-weight:600;text-decoration:none;flex-shrink:0">◀ INICIO</a>
       <button class="btn-ghost" onclick="setupGHTokenFacturas()">🔑 Token GitHub</button>
       <button class="btn-ghost" onclick="cambiarClaveCompras()">🔒 Cambiar clave</button>
       <button class="btn-ghost" onclick="backToLanding()">← Cambiar de vista</button>
@@ -651,6 +655,35 @@ const GH_FILE_FACTURAS = 'facturas_piloto.json';
 const GH_RAW_FACTURAS = 'https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE_FACTURAS;
 const GH_API_FACTURAS = 'https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE_FACTURAS;
 const GH_TOKEN_KEY_FACTURAS = 'fp_gh_token_facturas'; // token propio de Facturas, independiente del de Compras/Almacén
+// Cruce de Regularización — Compras marca en su propio data.json (ocMeta[oc]: reg/compras/
+// fcompras/almacen/falmacen) qué OC son regularizaciones y en qué paso del cierre están.
+// Facturas solo LEE ese archivo (nunca escribe ahí) para mostrarle al proveedor y a Compras
+// en qué va el ciclo, sin duplicar el dato ni necesitar el token de Compras.
+const GH_RAW_COMPRAS_DATA = 'https://raw.githubusercontent.com/'+GH_REPO+'/main/data.json';
+let OC_META = {};
+async function loadOcMetaRemote(){
+  try{
+    const res = await fetchTO(GH_RAW_COMPRAS_DATA + '?t=' + Date.now());
+    if(!res.ok) return {};
+    const j = await res.json();
+    return (j && j.D && j.D.ocMeta) || {};
+  }catch(e){
+    console.error('No se pudo leer ocMeta desde data.json', e);
+    return {};
+  }
+}
+// null si la OC no está marcada como Regularización; si lo está, en qué paso del cierre va.
+function regularizacionInfo(o){
+  const rm = OC_META[o.codOrden];
+  if(!rm || !rm.reg) return null;
+  if(rm.almacen) return {estado:'cerrado', label:'✅ Regularización cerrada', detail:'Compras'+(rm.fcompras?' ('+rm.fcompras+')':'')+' y Almacén'+(rm.falmacen?' ('+rm.falmacen+')':'')+' ya completaron el ciclo.'};
+  if(rm.compras) return {estado:'esperando_almacen', label:'📋 Regularización — esperando Almacén', detail:'Compras ya envió los documentos'+(rm.fcompras?' el '+rm.fcompras:'')+'. Falta que Almacén cierre el ciclo.'};
+  return {estado:'pendiente_envio', label:'📋 Regularización — pendiente de envío', detail:'Compras marcó esta OC como regularización, todavía no envía los documentos a Almacén.'};
+}
+function regFlag(o){
+  const ri = regularizacionInfo(o);
+  return ri ? `<div class="reg-flag ${ri.estado}" title="${ri.detail}">${ri.label}</div>` : '';
+}
 
 // Un token de GitHub es una sola cadena alfanumérica: cualquier espacio/salto de línea colado
 // por un copy-paste rompe el header Authorization. Se limpia al guardar y al leer.
@@ -918,6 +951,8 @@ async function initCompras(){
   }
   const savedProv = await loadProveedoresPiloto();
   if(savedProv && savedProv.lista) PROVEEDORES_PILOTO = savedProv.lista;
+  OC_META = await loadOcMetaRemote();
+  if(ORDERS.length) renderTabla();
 }
 function checkReady(){
   const listo = (tempFiles.maestro && tempFiles.pedido) || tempFiles.proveedores;
@@ -1112,7 +1147,7 @@ function renderTabla(){
       <td data-label="Fecha Aprobación">${o.fechaAprobacionOCStr||'—'}</td>
       <td data-label="Vence pago">${o.fechaVencimientoCreditoStr||'—'}${o.pagoVencido?'<div class="risk-flag" style="margin-top:4px;">⏰ pago vencido</div>':''}</td>
       <td data-label="Condición pago">${o.condicionPagoStr||'—'}</td>
-      <td data-label="Estado OC">${o.estadoOrden||'—'}</td>
+      <td data-label="Estado OC">${o.estadoOrden||'—'}${regFlag(o)}</td>
       <td data-label="Factura">${chainIcon(o)} ${o.riesgoBloqueo?'<span class="risk-flag">⚠ riesgo</span>':''}${facturaRefText(o)}</td>
       <td data-label="Guía">${guiaChip(o)}</td>
       <td data-label="Pendiente por">${responsableChip(o)}</td>
@@ -1134,6 +1169,7 @@ function openDrawer(codOrden){
     <div class="drawer-sub">${o.nombreProveedor} · RUC ${o.rucProveedor||'—'}</div>
     ${chainIcon(o)} ${responsableChip(o)}
     ${o.riesgoBloqueo?'<div class="risk-flag" style="margin-top:10px;">⚠ Vencida, sin guía ni factura — seguimiento urgente de Compras</div>':''}
+    ${regFlag(o)}
     <div class="section-title">Datos de la orden</div>
     <div class="kv"><span class="k">Origen</span><span class="v">${o.origen==='req'?'Con requerimiento':'Sin requerimiento'}</span></div>
     ${o.codRequerimiento?`<div class="kv"><span class="k">Requerimiento</span><span class="v">${o.codRequerimiento}</span></div>`:''}
@@ -1167,6 +1203,7 @@ async function initProveedor(){
   if(saved && saved.orders) ORDERS = saved.orders;
   const savedProv = await loadProveedoresPiloto();
   if(savedProv && savedProv.lista) PROVEEDORES_PILOTO = savedProv.lista;
+  OC_META = await loadOcMetaRemote();
   document.getElementById('pRucInput').value='';
   document.getElementById('pEmailInput').value='';
   document.getElementById('loginError').style.display='none';
@@ -1274,14 +1311,13 @@ function renderProviderTable(){
     <tr>
       <td data-label="OC" class="oc-code">${o.codOrden}</td>
       <td data-label="Fecha Orden">${o.fechaOrdenStr||'—'}</td>
-      <td data-label="Vence">${o.paraFechaOrdenStr||'—'}</td>
-      <td data-label="Estado OC">${o.estadoOrden||'—'}</td>
+      <td data-label="Estado OC">${o.estadoOrden||'—'}${regFlag(o)}</td>
       <td data-label="Factura">${chainIcon(o)}${facturaRefText(o)}</td>
       <td data-label="Guía">${guiaChip(o)}</td>
       <td data-label="Monto">${formatMontos(o.montos)}</td>
     </tr>`).join('');
   document.getElementById('pTableWrap').innerHTML = filtered.length ? `<table>
-    <thead><tr><th>OC</th><th>Fecha Orden</th><th>Vence</th><th>Estado OC</th><th>Factura</th><th>Guía</th><th>Monto</th></tr></thead>
+    <thead><tr><th>OC</th><th>Fecha Orden</th><th>Estado OC</th><th>Factura</th><th>Guía</th><th>Monto</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>` : `<div class="empty-state"><div class="display">Sin resultados</div></div>`;
 }
