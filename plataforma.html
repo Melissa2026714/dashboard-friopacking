@@ -257,7 +257,9 @@ function onImpDrop(evt){
   }
 }
 function impLogLine(html){
-  document.getElementById('impLog').insertAdjacentHTML('beforeend','<div>'+html+'</div>');
+  const el = document.getElementById('impLog');
+  el.insertAdjacentHTML('beforeend','<div>'+html+'</div>');
+  el.scrollTop = el.scrollHeight; // la línea nueva (ej. "☁ subido") siempre debe quedar visible sin scrollear a mano
 }
 
 // Detecta qué es cada archivo (por contenido, no por nombre, salvo Supervisores/Proveedores
@@ -348,9 +350,17 @@ async function procesarTodo(){
     }
 
     if(!logEl.innerHTML) impLogLine('No se procesó nada — revisa que los archivos seleccionados tengan el formato esperado.');
-    if(logEl.innerHTML.includes('☁')){
+    const subioAlgo = logEl.innerHTML.includes('☁');
+    const hayAvisos = logEl.innerHTML.includes('⚠') || logEl.innerHTML.includes('❌');
+    if(subioAlgo){
       localStorage.setItem('fp_plataforma_last_import', String(Date.now()));
       renderLastImportPill();
+    }
+    // Resultado final bien visible — para no depender de leer/scrollear cada línea del log.
+    if(subioAlgo && !hayAvisos){
+      impLogLine('<b style="color:#4ade80">✅ Todo guardado y sincronizado con GitHub.</b>');
+    } else if(hayAvisos){
+      impLogLine('<b style="color:#fbbf24">⚠ Revisa los avisos arriba — no todo terminó de subirse.</b>');
     }
     impSelectedFiles = [];
     impClassified = [];
