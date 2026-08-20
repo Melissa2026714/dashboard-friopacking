@@ -8,3 +8,8 @@
 # Archivos temporales de sistema
 Thumbs.db
 .DS_Store
+
+# Daily Call In: la página vive en el repo de Piero (pierolp20/friopacking-citas),
+# no en este. Se deja una copia local solo para poder editarla — nunca debe
+# subirse aquí, o quedaría un duplicado sin usar en este dominio.
+/actividades.html

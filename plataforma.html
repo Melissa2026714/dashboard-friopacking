@@ -130,6 +130,13 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
         <div class="app-s">Seguimiento de OC vs. factura y guía, piloto de proveedores</div>
       </a>
 
+      <a class="app" href="https://pierolp20.github.io/friopacking-citas/actividades.html">
+        <span class="badge b-live">ACTIVO</span>
+        <div class="ico" style="background:linear-gradient(135deg,#0f766e,#65a30d)">📋</div>
+        <div class="app-t">Daily Call In</div>
+        <div class="app-s">Seguimiento diario de actividades del equipo</div>
+      </a>
+
       <a class="app" href="https://pierolp20.github.io/friopacking-citas/citas.html">
         <span class="badge b-live">ACTIVO</span>
         <div class="ico" style="background:linear-gradient(135deg,#1c3384,#2fd7a0)">🚚</div>
@@ -155,7 +162,7 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
       ondragleave="this.classList.remove('drag')"
       ondrop="onImpDrop(event)">
       <div class="imp-drop-icon">📂</div>
-      <div class="imp-drop-text" id="impDropText">Arrastra aquí o elige todos los archivos a importar<br><span class="imp-drop-sub">Reporte Maestro, Pedido Sin Req, Supervisores/Proveedores, Reporte Almacén — los que tengas, juntos</span></div>
+      <div class="imp-drop-text" id="impDropText">Arrastra aquí o elige todos los archivos a importar<br><span class="imp-drop-sub">Reporte Maestro, Pedido Sin Req, Supervisores/Proveedores, Reporte Almacén, Consulta, Actividades diarias — los que tengas, juntos</span></div>
       <label class="imp-drop-btn">Elegir archivos<input type="file" id="impFiles" accept=".xlsx,.xls" multiple onchange="onImpFiles(this.files)"></label>
       <div class="imp-files-list" id="impFilesList"></div>
     </div>
@@ -165,6 +172,7 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
         <button class="imp-token-btn" onclick="ComprasShared.setupGHToken()">🔑 Token Compras</button>
         <button class="imp-token-btn" onclick="AlmacenShared.setupGHToken()">🔑 Token Almacén</button>
         <button class="imp-token-btn" onclick="FacturasShared.setupGHTokenFacturas()">🔑 Token Facturas</button>
+        <button class="imp-token-btn" onclick="ActividadesShared.setupGHToken()">🔑 Token Actividades</button>
       </div>
     </div>
     <div class="imp-log" id="impLog"></div>
@@ -175,6 +183,7 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
 <script src="assets/js/compras-shared.js"></script>
 <script src="assets/js/almacen-shared.js"></script>
 <script src="assets/js/facturas-shared.js"></script>
+<script src="assets/js/actividades-shared.js"></script>
 <script>
 /* ============================================================
    IMPORTAR CENTRALIZADO — un solo lugar para subir los Excel de
@@ -184,7 +193,7 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
    ============================================================ */
 let impSelectedFiles = [];
 let impClassified = []; // [{file, tipo, wb}] — ya leídos y clasificados, listos para Guardar
-const TIPO_LABEL = {maestro:'Reporte Maestro', pedido:'Pedido Sin Req', supervisores:'Supervisores', proveedores:'Proveedores', almacen:'Reporte Almacén', consultas:'Consultas (histórico de precios)'};
+const TIPO_LABEL = {maestro:'Reporte Maestro', pedido:'Pedido Sin Req', supervisores:'Supervisores', proveedores:'Proveedores', almacen:'Reporte Almacén', consultas:'Consultas (histórico de precios)', actividades:'Daily Call In'};
 
 function renderLastImportPill(){
   const el = document.getElementById('lastImportPill');
@@ -278,6 +287,14 @@ async function clasificarArchivo(file){
   if(name.includes('supervisor')) return {tipo:'supervisores', wb};
   if(name.includes('proveedor')) return {tipo:'proveedores', wb};
   if(name.includes('pedido')) return {tipo:'pedido', wb};
+  // Daily Call In (consolidado de LISTS por Piero): se detecta por encabezados, no por
+  // nombre — el archivo puede llamarse distinto cada vez que Piero lo une.
+  const primeraHoja = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}).slice(0,10);
+  const esActividades = primeraHoja.some(row=>{
+    const up = row.map(c=>String(c||'').toUpperCase());
+    return up.some(c=>c.includes('TITULO')||c.includes('TÍTULO')) && up.some(c=>c.includes('RESPONSABLE')) && up.some(c=>c.includes('AVANCE')||c.includes('ESTADO'));
+  });
+  if(esActividades) return {tipo:'actividades', wb};
   // Reporte Maestro: por hoja "reporte" o columna CodRequerimiento; si no calza con nada más, se asume Maestro (igual que hoy en Compras).
   return {tipo:'maestro', wb};
 }
@@ -292,7 +309,7 @@ async function procesarTodo(){
   btn.disabled = true;
   logEl.innerHTML = '';
   try{
-    let wbMaestro=null, wbPedido=null, hayConsultas=false;
+    let wbMaestro=null, wbPedido=null, hayConsultas=false, actividadesRegistros=null;
     for(const {file, tipo, wb} of impClassified){
       if(tipo==='error'){ impLogLine('⚠ '+file.name+': no se pudo leer, se omite.'); continue; }
       if(tipo==='maestro'){ wbMaestro = wb; impLogLine('📄 '+file.name+' → Reporte Maestro'); }
@@ -309,6 +326,10 @@ async function procesarTodo(){
           const partes = AlmacenShared.procesarArchivo(wb);
           impLogLine('✅ Almacén: '+partes.join(' · ')+' ('+file.name+')');
         }catch(e){ impLogLine('⚠ Almacén ('+file.name+'): '+e.message); }
+      }
+      else if(tipo==='actividades'){
+        actividadesRegistros = ActividadesShared.parseWorkbook(wb);
+        impLogLine('✅ Daily Call In procesado — '+actividadesRegistros.length+' actividad(es) ('+file.name+')');
       }
     }
 
@@ -362,6 +383,19 @@ async function procesarTodo(){
       } else {
         const subido = await AlmacenShared.guardarImportado();
         impLogLine('☁ Almacén subido: '+subido.join(' + '));
+      }
+    }
+
+    // ── Daily Call In (actividades.json) ──────────────────────────────────
+    if(actividadesRegistros){
+      const tokenAct = ActividadesShared.getToken();
+      if(!tokenAct){
+        impLogLine('⚠ Falta el Token de GitHub de Actividades — usa el botón "🔑 Token Actividades" y vuelve a intentar.');
+      } else {
+        try{
+          const okAct = await ActividadesShared.saveActividades(actividadesRegistros);
+          impLogLine(okAct ? '☁ Daily Call In subido a <b>actividades.json</b>' : '❌ Daily Call In: la subida falló');
+        }catch(e){ impLogLine('❌ Daily Call In: '+e.message); }
       }
     }
 
