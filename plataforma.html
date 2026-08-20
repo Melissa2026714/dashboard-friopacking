@@ -349,8 +349,10 @@ async function procesarTodo(){
       }
       // consultas.json es un archivo aparte (~19 MB) — solo se re-sube si se importó Consultas.
       if(hayConsultas){
-        const okc = await ComprasShared.saveConsultasGitHub(tokenC);
-        impLogLine(okc ? '☁ Compras subido a <b>consultas.json</b>' : '❌ Compras: la subida de consultas.json falló');
+        try{
+          await ComprasShared.saveConsultasGitHub(tokenC);
+          impLogLine('☁ Compras subido a <b>consultas.json</b>');
+        }catch(e){ impLogLine('❌ Compras: la subida de consultas.json falló — '+e.message); }
       }
     }
 

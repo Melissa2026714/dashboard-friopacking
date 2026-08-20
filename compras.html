@@ -4127,12 +4127,13 @@ async function saveConsultasGitHub(token){
     const rows=D.consultas.map(function(r){return{oc:r.oc,fecha:r.fecha,ruc:r.ruc,proveedor:r.proveedor,moneda:r.moneda,codigo:r.codigo,desc:r.desc,cant:r.cant,um:r.um,valor:r.valor,resp:r.resp,estado:r.estado};});
     const cPayload=JSON.stringify({consultas:rows,ts:Date.now()});
     let sha='';
-    const check=await fetch(GH_CONSULTAS_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+    const check=await fetchTO(GH_CONSULTAS_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
     if(check.ok){const meta=await check.json();sha=meta.sha||'';}
     const content=btoa(unescape(encodeURIComponent(cPayload)));
     const body={message:'consultas '+new Date().toISOString(),content};
     if(sha)body.sha=sha;
-    const res=await fetch(GH_CONSULTAS_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    // consultas.json pesa ~20 MB — el timeout genérico de 45s corta la subida antes de tiempo.
+    const res=await fetchTO(GH_CONSULTAS_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)},180000);
     return res.ok;
   }catch(e){console.warn('Consultas GitHub save failed:',e);return false;}
 }

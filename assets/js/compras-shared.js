@@ -339,9 +339,16 @@ async function saveConsultasGitHub(token){
     const content=btoa(unescape(encodeURIComponent(cPayload)));
     const body={message:'consultas '+new Date().toISOString(),content};
     if(sha)body.sha=sha;
-    const res=await fetchTO(GH_CONSULTAS_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
-    return res.ok;
-  }catch(e){console.warn('Consultas GitHub save failed:',e);return false;}
+    // consultas.json pesa ~20 MB — el timeout genérico de 45s (pensado para data.json,
+    // mucho más chico) corta la subida antes de que termine con conexiones normales.
+    const res=await fetchTO(GH_CONSULTAS_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)},180000);
+    if(!res.ok){
+      let detalle='';
+      try{ detalle=(await res.json()).message||''; }catch(e2){}
+      throw new Error('GitHub respondió '+res.status+(detalle?': '+detalle:''));
+    }
+    return true;
+  }catch(e){ console.warn('Consultas GitHub save failed:',e); throw e; }
 }
 
 function setupGHToken(){
