@@ -1272,6 +1272,7 @@ let PROJ=[];           // D.proj (data.json, sigue compartido) — para derivar 
 // del código de cruce (REQCOD_OC, estadoItem, pedidoForItem, etc.) no necesitó cambiar.
 let SKUS_RAW={};       // líneas de OC agrupadas por N° OC, para cruzar por req+código
 let REQCOD_OC={};      // req+'|'+cod -> {ocs:[...], foc, fent, compras} — cruce con SKUS_RAW
+let SKU_IMPORT_COD={};  // código -> true si ALGUNA OC histórica de ese código es Tipo 0002 (Importación) — solo sugerencia, no reemplaza la marca manual
 let SINOC=[];           // pedidos "Sin OC — Cotización" propios de Almacén
 let SINOC_BY_REQCOD={}; // req+'|'+cod -> fila de SINOC (para saber si está en cotización/archivado)
 let OC_RAW=[];          // OC propias de Almacén — para sacar el N° de Pedido de un ítem que YA tiene
@@ -1626,8 +1627,11 @@ function showPedsPopup(evt,pedsStr){
 // por N° OC, mismo dato que usa Compras en OC Pendientes) y arma un lookup directo por req+cod.
 function buildReqCodOC(){
   REQCOD_OC={};
+  SKU_IMPORT_COD={};
   Object.keys(SKUS_RAW).forEach(function(oc){
+    const esImport=String(oc).startsWith('0002');
     (SKUS_RAW[oc]||[]).forEach(function(line){
+      if(esImport&&line.cod)SKU_IMPORT_COD[line.cod]=true;
       if(!line.req||!line.cod)return;
       const k=line.req+'|'+line.cod;
       if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fapro:line.fapro||'',fent:line.fent||'',compras:0,cantOrd:0,cantRec:0,guiasProv:[],frecep:'',ped:'',fped:'',respPed:''};
@@ -2274,6 +2278,7 @@ function verReqItems(rk){
         <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Descripción</th>
         <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0">Cant.</th>
         <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Unidad</th>
+        <th style="padding:8px 10px;text-align:center;border-bottom:1px solid #e2e8f0;color:#be185d" title="Marca manual de Almacén: este ítem se compra/viene por importación — se define al revisar el requerimiento">Importación</th>
         <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0;color:#b45309" title="OC ya aprobada, pendiente de recepción — mismo cálculo que la columna En Tránsito de la hoja General">En Tránsito</th>
         <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e2e8f0;color:#0d9488" title="En Tránsito menos lo que otros requerimientos ya reservaron de ese mismo código — clic para ver el detalle">Tránsito Disponible</th>
         <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Estado</th>
@@ -2352,6 +2357,15 @@ function verReqItems(rk){
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;white-space:normal;max-width:260px;font-weight:500">${r.prod||'—'}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700">${(r.cant||0).toLocaleString('es-PE')}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#64748b">${r.unid||'—'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:center">${(function(){
+              const importManual=(getRecord(key)||{}).importacion;
+              const importSugerido=!!SKU_IMPORT_COD[r.cod];
+              const importChecked=importManual!=null?importManual:importSugerido;
+              const hint=(importManual==null&&importSugerido)
+                ?' <span title="Sugerido por el sistema: este código tiene antecedente de compra por OC de Importación (0002) — confirma o corrige el check" style="cursor:help">💡</span>'
+                :'';
+              return `<input type="checkbox" ${importChecked?'checked':''} onchange="setImportacion('${key}',this.checked)" title="Marcar si este ítem es de importación">${hint}`;
+            })()}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#b45309;font-weight:600">${transCell}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:600">${dispCell}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9"><span class="pill" style="background:${s.bg};color:${s.c};white-space:nowrap">${estadoLbl}</span></td>
@@ -2456,6 +2470,11 @@ function showTransitoReservaPopup(evt,cod,excludeKey){
   if(top+120>window.innerHeight)top=r.top-130;
   d.style.top=top+'px';d.style.left=left+'px';
   setTimeout(function(){document.addEventListener('click',function h(){var p=document.getElementById('_trans_popup');if(p)p.remove();document.removeEventListener('click',h);});},50);
+}
+function setImportacion(key,checked){
+  const prev=getRecord(key)||{};
+  PENDING[key]={...prev,importacion:!!checked};
+  localStorage.setItem('fp_almacen_picking_pending',JSON.stringify(PENDING));
 }
 function setTransitoComprometido(key,val,maxDisp){
   let n=round2(parseFloat(val));
