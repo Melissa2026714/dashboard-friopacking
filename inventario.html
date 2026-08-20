@@ -177,6 +177,8 @@ tr:hover td{background:#f8fafc}
     <button class="tab" id="tab-req" onclick="nav('p-req')">⚡ Requerimientos</button>
     <button class="tab" id="tab-pick" onclick="nav('p-pick')" title="Solo lo pendiente por trabajar">🧰 Picking Pendiente</button>
     <button class="tab" id="tab-pickdone" onclick="nav('p-pickdone')" title="Antecedente de pickings cerrados con responsable, foto y fecha/hora">✅ Picking Finalizado</button>
+    <button class="tab" id="tab-despacho" onclick="nav('p-despacho')" title="Picking finalizado que aún no sale de almacén — falta armar camión y emitir guía">🚚 Despacho</button>
+    <button class="tab" id="tab-despachado" onclick="nav('p-despachado')" title="Antecedente de requerimientos ya despachados, con su N° de guía">✅ Despachado</button>
     <button class="tab" id="tab-cod" onclick="nav('p-cod')">🔖 Códigos</button>
   </div>
   <div class="nbr">
@@ -201,6 +203,8 @@ tr:hover td{background:#f8fafc}
     <div class="hcard" onclick="nav('p-req')"><div class="hci">⚡</div><div class="hct">Requerimientos</div><div class="hcs" id="hc-req">cargando…</div></div>
     <div class="hcard" onclick="nav('p-pick')"><div class="hci">🧰</div><div class="hct">Picking Pendiente</div><div class="hcs" id="hc-pick">cargando…</div></div>
     <div class="hcard" onclick="nav('p-pickdone')"><div class="hci">✅</div><div class="hct">Picking Finalizado</div><div class="hcs" id="hc-pickdone">cargando…</div></div>
+    <div class="hcard" onclick="nav('p-despacho')"><div class="hci">🚚</div><div class="hct">Despacho</div><div class="hcs" id="hc-despacho">cargando…</div></div>
+    <div class="hcard" onclick="nav('p-despachado')"><div class="hci">✅</div><div class="hct">Despachado</div><div class="hcs" id="hc-despachado">cargando…</div></div>
     <div class="hcard" onclick="nav('p-cod')"><div class="hci">🔖</div><div class="hct">Códigos</div><div class="hcs" id="hc-cod">cargando…</div></div>
   </div>
 </div>
@@ -375,16 +379,79 @@ tr:hover td{background:#f8fafc}
     </div>
   </div>
 
-  <div class="note live">✅ Aquí queda el <b>antecedente</b> de cada picking cerrado en la hoja Picking Pendiente. El registro se conserva aunque el requerimiento luego cambie de estado. Recuerda <b>💾 GUARDAR</b> para compartirlo.</div>
+  <div class="note live">✅ Aquí queda el <b>antecedente</b> de cada picking cerrado en la hoja Picking Pendiente. El registro se conserva aunque el requerimiento luego cambie de estado. Recuerda <b>💾 GUARDAR</b> para compartirlo. Ojo: esto <b>no significa que ya salió de NISIRA</b> — para eso ver la pestaña <b>🚚 Despacho</b>.</div>
 
   <div class="kpis" id="pickDoneKpis"></div>
 
   <div class="filters">
     <input id="pdq" type="text" placeholder="🔍 Buscar por código, descripción, proyecto, requerimiento o responsable…" oninput="renderPickDone()">
+    <button class="btn bi" onclick="exportarPickDone()" title="Exporta a Excel lo que se ve con el filtro de búsqueda actual">⬇ Exportar</button>
     <span class="fx" id="pdcnt"></span>
   </div>
 
   <div id="pickDoneGroups"></div>
+
+  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+</div>
+
+<!-- ══════════════ PÁGINA: DESPACHO (picking finalizado, aún sin guía — sigue en el patio) ══════════════ -->
+<div class="pg" id="p-despacho">
+  <div class="hd">
+    <div>
+      <h2>Despacho</h2>
+      <div class="sub">Picking ya finalizado que todavía no sale de almacén — agrupado por ID Proyecto y ordenado por Zona/Distrito para armar ruta de camión</div>
+    </div>
+  </div>
+
+  <div class="note crit">🚚 Un picking <b>Finalizado no significa que ya salió de NISIRA</b> — Katherine lo deja listo en el patio hasta que arma el camión y emite la guía. Márcalo aquí con <b>🚚 Marcar como Despachado</b> recién cuando eso pase — pasa entonces a la hoja <b>✅ Despachado</b> como antecedente.</div>
+
+  <div class="kpis" id="despachoKpis"></div>
+
+  <div class="savebar">
+    <button class="btn bi" onclick="guardarDecisiones()">💾 Guardar decisiones</button>
+    <button class="btn br" onclick="descartarCambiosLocales()" title="Borra Picking/Validación/En obra/Despacho que quedaron sin guardar en ESTE navegador — no afecta lo que ya comparten los demás">🗑 Descartar cambios locales</button>
+    <span class="dirtyLbl"></span>
+    <span class="saveLblEl"></span>
+  </div>
+
+  <div class="filters">
+    <input id="dpq" type="text" placeholder="🔍 Buscar por código, descripción, proyecto, ID proyecto o requerimiento…" oninput="renderDespacho()">
+    <button class="btn bi" onclick="exportarDespacho()" title="Exporta a Excel lo que se ve con el filtro de búsqueda actual">⬇ Exportar</button>
+    <span class="fx" id="dpcnt"></span>
+  </div>
+
+  <div id="despachoGroups"></div>
+
+  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+</div>
+
+<!-- ══════════════ PÁGINA: DESPACHADO (antecedente — ya salió de almacén, con guía) ══════════════ -->
+<div class="pg" id="p-despachado">
+  <div class="hd">
+    <div>
+      <h2>Despachado</h2>
+      <div class="sub">Registro histórico (antecedente) de lo ya despachado — N° de guía, responsable y fecha/hora</div>
+    </div>
+  </div>
+
+  <div class="note live">✅ Aquí queda el <b>antecedente</b> de cada requerimiento ya despachado, con su N° de Guía de Remisión. El registro se conserva como antecedente aunque haga falta corregirlo. Recuerda <b>💾 GUARDAR</b> para compartirlo.</div>
+
+  <div class="kpis" id="despachadoKpis"></div>
+
+  <div class="savebar">
+    <button class="btn bi" onclick="guardarDecisiones()">💾 Guardar decisiones</button>
+    <button class="btn br" onclick="descartarCambiosLocales()" title="Borra Picking/Validación/En obra/Despacho que quedaron sin guardar en ESTE navegador — no afecta lo que ya comparten los demás">🗑 Descartar cambios locales</button>
+    <span class="dirtyLbl"></span>
+    <span class="saveLblEl"></span>
+  </div>
+
+  <div class="filters">
+    <input id="ddq" type="text" placeholder="🔍 Buscar por código, descripción, proyecto, ID proyecto, requerimiento o N° de guía…" oninput="renderDespachado()">
+    <button class="btn bi" onclick="exportarDespachado()" title="Exporta a Excel lo que se ve con el filtro de búsqueda actual">⬇ Exportar</button>
+    <span class="fx" id="ddcnt"></span>
+  </div>
+
+  <div id="despachadoGroups"></div>
 
   <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
@@ -552,10 +619,35 @@ tr:hover td{background:#f8fafc}
   </div>
 </div>
 
+<!-- MODAL MARCAR REQUERIMIENTO COMO DESPACHADO (N° de guía) — el picking finalizado NO significa
+     que ya salió de NISIRA: sigue en el patio hasta que Katherine arma el camión y emite la guía. -->
+<div id="despachoBg" onclick="if(event.target===this)cerrarDespacho()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;width:100%;max-width:420px;border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="background:#1d4ed8;color:#fff;padding:16px 20px">
+      <div style="font-size:15px;font-weight:800">🚚 Marcar como Despachado</div>
+      <div style="font-size:11px;color:#dbeafe;margin-top:2px">Recién ahora sale de almacén — registra la guía de remisión</div>
+    </div>
+    <div style="padding:18px 20px">
+      <div id="desp-req-info" style="font-size:11.5px;color:#1d4ed8;font-weight:700;background:#eff6ff;border-radius:8px;padding:8px 10px;margin-bottom:14px"></div>
+      <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">N° de Guía de Remisión</label>
+      <input id="desp-guia" type="text" placeholder="Ej. 0001-000123" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Responsable del despacho</label>
+      <select id="desp-resp" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:6px">
+        <option value="">— Seleccionar —</option>
+      </select>
+      <div style="font-size:10.5px;color:#94a3b8;margin-bottom:16px">La fecha y hora se registran automáticamente al confirmar.</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bi" onclick="confirmarDespacho()" style="flex:1;justify-content:center;padding:10px">🚚 Confirmar despacho</button>
+        <button class="btn br" onclick="cerrarDespacho()" style="padding:10px 16px">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ═══════════════ NAVEGACIÓN ═══════════════ */
-const PAGES=['home','p-general','p-req','p-pick','p-pickdone','p-cod'];
-const TABS={home:'tab-home','p-general':'tab-general','p-req':'tab-req','p-pick':'tab-pick','p-pickdone':'tab-pickdone','p-cod':'tab-cod'};
+const PAGES=['home','p-general','p-req','p-pick','p-pickdone','p-despacho','p-despachado','p-cod'];
+const TABS={home:'tab-home','p-general':'tab-general','p-req':'tab-req','p-pick':'tab-pick','p-pickdone':'tab-pickdone','p-despacho':'tab-despacho','p-despachado':'tab-despachado','p-cod':'tab-cod'};
 function nav(id){
   PAGES.forEach(p=>{const el=document.getElementById(p==='home'?'ph':p);if(el)el.classList.remove('act');});
   document.getElementById(id==='home'?'ph':id).classList.add('act');
@@ -1266,6 +1358,17 @@ let CONFIRMED_REVISORES={}; // historial ya guardado en data.json (D.almacenRevi
 let PENDING_REVISORES={};   // entradas nuevas marcadas en este navegador y aún no guardadas, mismo formato
 let SUPERVISORES=[];  // directorio D.supervisores (nombre/correo/celular) para el aviso WhatsApp
 let PROJ=[];           // D.proj (data.json, sigue compartido) — para derivar Zona por nombre de proyecto
+let IDPROY_INFO={};    // ID Proyecto (PRY...) -> {zona,distrito,depto,nombre} — cruce por ID, no por nombre
+                        // (dos proyectos pueden compartir nombre de cliente, p.ej. DROKASA, pero tener
+                        // distinto ID Proyecto y distinta zona — agrupar por nombre los mezclaría)
+function buildIdproyInfo(){
+  IDPROY_INFO={};
+  (PROJ||[]).forEach(function(p){
+    (p.prys||[]).forEach(function(id){
+      if(id)IDPROY_INFO[id]={zona:p.zona||'',distrito:p.distrito||'',depto:p.depto||'',nombre:p.nombre||''};
+    });
+  });
+}
 // SKUS_RAW/OC_RAW/SINOC se llenan con el import PROPIO de Almacén (Reporte Almacén.xlsx →
 // almacen_requerimientos.json, ver parseRequerimientosWorkbook/setRequerimientosAlm) — ya NO
 // vienen de data.json ni de lo que importa Compras. Los nombres se conservan porque el resto
@@ -1284,6 +1387,19 @@ let CONFIRMED_OBRA={}; // "En obra"/"N° guía" ya guardados en data.json (D.obr
 let PENDING_OBRA={};   // ediciones de En obra/N° guía en este navegador aún no guardadas
 let reqViewMode='grupo'; // 'grupo' (agrupado por requerimiento, actual) | 'item' (por ítem, para vista de zona)
 let reqItemPage=0;
+// Despacho: Picking Finalizado ("✅ Completado") NO significa que la mercadería ya salió de
+// NISIRA — Katherine solo la deja lista en el patio hasta que arma el camión/guía. Por eso el
+// despacho es un estado APARTE, por N° Req. (clave = req, no req+cod, porque se despacha el
+// requerimiento completo de una vez con una sola guía).
+let CONFIRMED_DESPACHO={}; // despachos ya guardados en data.json (D.almacenDespacho), clave N° Req. -> {despachado,guia,responsable,fechaHora}
+let PENDING_DESPACHO={};   // despachos marcados en este navegador y aún no guardados
+function getDespacho(rk){
+  return Object.prototype.hasOwnProperty.call(PENDING_DESPACHO,rk)?PENDING_DESPACHO[rk]:(CONFIRMED_DESPACHO[rk]||null);
+}
+function isDespachado(rk){
+  const d=getDespacho(rk);
+  return !!(d&&d.despachado);
+}
 
 async function cargarLive(){
   try{
@@ -1298,7 +1414,9 @@ async function cargarLive(){
     SUPERVISORES=s.D.supervisores||[];
     CONFIRMED_COD=s.D.almacenCodigos||[];
     PROJ=s.D.proj||[];
+    buildIdproyInfo();
     CONFIRMED_OBRA=s.D.obraMeta||{};
+    CONFIRMED_DESPACHO=s.D.almacenDespacho||{};
     COTMETA=s.D.cotMeta||{};
     ARCHIVOMETA=s.D.archivoMeta||{};
     if(!TRANS_DIRTY&&s.D.almacenTransito&&Array.isArray(s.D.almacenTransito.t)){
@@ -1307,7 +1425,7 @@ async function cargarLive(){
     applyTransitoADatos();
     setLastSync('☁ '+(s.ts?new Date(s.ts).toLocaleString('es-PE'):'—'));
   }catch(e){
-    CONFIRMED={};CONFIRMED_VAL={};CONFIRMED_ASIG={};CONFIRMED_REVISORES={};SUPERVISORES=[];CONFIRMED_COD=[];PROJ=[];CONFIRMED_OBRA={};COTMETA={};ARCHIVOMETA={};
+    CONFIRMED={};CONFIRMED_VAL={};CONFIRMED_ASIG={};CONFIRMED_REVISORES={};SUPERVISORES=[];CONFIRMED_COD=[];PROJ=[];IDPROY_INFO={};CONFIRMED_OBRA={};CONFIRMED_DESPACHO={};COTMETA={};ARCHIVOMETA={};
     console.warn('[Almacén] No se pudo leer data.json:',e);
   }
   try{PENDING=JSON.parse(localStorage.getItem('fp_almacen_picking_pending')||'{}');}catch(e2){PENDING={};}
@@ -1315,6 +1433,7 @@ async function cargarLive(){
   try{PENDING_VAL=JSON.parse(localStorage.getItem('fp_almacen_validado_pending')||'{}');}catch(e3){PENDING_VAL={};}
   try{PENDING_ASIG=JSON.parse(localStorage.getItem('fp_almacen_asignado_pending')||'{}');}catch(e6){PENDING_ASIG={};}
   try{PENDING_REVISORES=JSON.parse(localStorage.getItem('fp_almacen_revisores_pending')||'{}');}catch(e7){PENDING_REVISORES={};}
+  try{PENDING_DESPACHO=JSON.parse(localStorage.getItem('fp_almacen_despacho_pending')||'{}');}catch(e8){PENDING_DESPACHO={};}
   PENDING_COD=loadPendingCodigos();
   // El picking nace LIMPIO: sin sugerencias automáticas. Las cantidades se asignan
   // manualmente en la revisión (pestaña Requerimientos) y recién ahí aparecen en Picking.
@@ -2034,13 +2153,13 @@ async function exportarReq(){
 // Arma el .xlsx con ExcelJS (a diferencia de xlsx.full.min.js, sí escribe relleno/fuente/bordes) —
 // paleta "Suave y limpio": encabezado azul claro, filas en banda blanco/celeste muy pálido y
 // bordes gris suave, para que se vea prolijo al abrir en Excel.
-async function escribirExcelReq(data,nombreArchivo){
+async function escribirExcelReq(data,nombreArchivo,sheetName){
   const headers=Object.keys(data[0]);
   const PAL={headerBg:'FFBFDDF2',headerText:'FF1E293B',bandA:'FFFFFFFF',bandB:'FFF7FAFC',border:'FFD4DADF',texto:'FF1E293B'};
-  const NUMCOLS=new Set(['Cant.','Cant. Total','Cant. a Picking','Cant. a Pedido','Ítems','Falta','En Obra','Cant. Recepcionada']);
+  const NUMCOLS=new Set(['Cant.','Cant. Total','Cant. a Picking','Cant. a Pedido','Ítems','Falta','En Obra','Cant. Recepcionada','Cant. Req.','Cant. Picking']);
   const anchos={'Proyecto':32,'Descripción':38,'Responsable':22,'Asignado a':18,'Id Proyecto':16,'Familia':20,'N° Req.':15};
   const wb=new ExcelJS.Workbook();
-  const ws=wb.addWorksheet('Requerimientos',{views:[{state:'frozen',ySplit:1}]});
+  const ws=wb.addWorksheet(sheetName||'Requerimientos',{views:[{state:'frozen',ySplit:1}]});
   ws.columns=headers.map(function(h){
     return{header:h,key:h,width:anchos[h]||Math.min(30,Math.max(11,h.length+6)),
       style:NUMCOLS.has(h)?{alignment:{horizontal:'right'}}:{}};
@@ -2508,7 +2627,7 @@ function computeAutoAlloc(pendientes){
   return auto;
 }
 function updateDirtyLabels(){
-  const dirty=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length+Object.keys(PENDING_REVISORES).length;
+  const dirty=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length+Object.keys(PENDING_REVISORES).length+Object.keys(PENDING_DESPACHO).length;
   document.querySelectorAll('.dirtyLbl').forEach(el=>{
     el.innerHTML=dirty?`<span class="dirty-badge">${dirty} cambio(s) sin guardar</span>`:'';
   });
@@ -2592,29 +2711,35 @@ function renderPick(){
     }).join('');
   }).join('') || `<div class="note">🧹 Sin picking pendiente: ningún ítem tiene cantidad asignada por trabajar. Asigna las cantidades en la pestaña <b>Requerimientos</b> (revisión de almacén) y aparecerán aquí agrupadas por proyecto y requerimiento. Los pickings ya cerrados están en <b>✅ Picking Finalizado</b>.</div>`;
   renderPickDone();
+  refrescarDespachoPages();
 }
 
 /* ═══════════════ PICKING FINALIZADO — antecedente de pickings cerrados ═══════════════ */
 // Se construye desde los registros guardados/pendientes (almacenPicking), no desde P5,
 // para que el antecedente se conserve aunque el requerimiento cambie luego de estado.
-function renderPickDone(){
-  const el=document.getElementById('pickDoneGroups');
-  if(!el)return;
-  const q=(document.getElementById('pdq').value||'').toLowerCase().trim();
+// Ítems con picking cerrado (✅ Completado) — base compartida por Picking Finalizado,
+// Despacho y Despachado, que solo difieren en cómo filtran/agrupan estos mismos datos.
+function collectFinalizados(){
   const byKey={};
   P5.forEach(r=>{byKey[r.req+'|'+r.cod]=r;});
   const recs={...CONFIRMED,...PENDING};
-  let items=Object.keys(recs).map(k=>{
+  return Object.keys(recs).map(k=>{
     const raw=recs[k];
     const rec=(raw&&typeof raw==='object')?raw:{picking:raw};
     if(!rec.completado)return null;
     const partes=k.split('|');
     const p5=byKey[k]||{};
     return {key:k,req:p5.req||partes[0],cod:p5.cod||partes[1]||'',prod:p5.prod||'(el requerimiento ya no está en revisión)',
-      proy:p5.proy||'',resp:p5.resp||'—',fecha:p5.fecha||'',cant:p5.cant!=null?p5.cant:'—',unid:p5.unid||'',
+      idproy:p5.idproy||'',proy:p5.proy||'',resp:p5.resp||'—',fecha:p5.fecha||'',cant:p5.cant!=null?p5.cant:'—',unid:p5.unid||'',
       picking:rec.picking!=null?rec.picking:(p5.cant||0),
       responsable:rec.responsable||'—',fechaHora:rec.fechaHora||'—',fotoPath:rec.fotoPath||''};
   }).filter(Boolean);
+}
+function renderPickDone(){
+  const el=document.getElementById('pickDoneGroups');
+  if(!el)return;
+  const q=(document.getElementById('pdq').value||'').toLowerCase().trim();
+  let items=collectFinalizados();
   if(q)items=items.filter(r=>[r.cod,r.prod,r.proy,r.resp,r.req,r.responsable].join(' ').toLowerCase().includes(q));
 
   const und=items.reduce((s,r)=>s+(+r.picking||0),0);
@@ -2673,6 +2798,182 @@ function renderPickDone(){
     }).join('');
   }).join('') || `<div class="note">Aún no hay pickings finalizados. Cuando cierres un ítem en <b>🧰 Picking Pendiente</b> (✅ Completado con responsable, foto y fecha/hora), quedará registrado aquí como antecedente.</div>`;
 }
+async function exportarPickDone(){
+  const q=(document.getElementById('pdq').value||'').toLowerCase().trim();
+  let items=collectFinalizados();
+  if(q)items=items.filter(r=>[r.cod,r.prod,r.proy,r.resp,r.req,r.responsable].join(' ').toLowerCase().includes(q));
+  if(!items.length){alert('No hay ítems que exportar con el filtro actual.');return;}
+  const fecha=new Date().toISOString().slice(0,10);
+  const data=items.map(r=>({
+    'Fecha':r.fecha,'N° Req.':r.req,'Proyecto':r.proy,'Código':r.cod,'Descripción':r.prod,
+    'Cant. Req.':r.cant,'Unidad':r.unid,'Cant. Picking':r.picking,'Responsable':r.responsable,'Fecha/Hora':r.fechaHora
+  }));
+  await escribirExcelReq(data,`picking_finalizado_${fecha}.xlsx`,'Picking Finalizado');
+}
+
+/* ═══════════════ DESPACHO / DESPACHADO (por requerimiento): picking Finalizado ≠ salida real
+   de NISIRA — Katherine deja el picking listo en el patio hasta que arma el camión y emite la
+   guía. Dos páginas separadas, mismo patrón que Picking Pendiente/Picking Finalizado: 🚚 Despacho
+   es la cola de trabajo (agrupada por ID Proyecto y ordenada por Zona/Distrito para armar ruta),
+   ✅ Despachado es el antecedente de lo ya salido, con su N° de guía. ═══════════════ */
+const ZONA_ORDER={NORTE:0,CENTRO:1,SUR:2};
+function renderDespachoBase(view,ids){
+  const el=document.getElementById(ids.groups);
+  if(!el)return;
+  const q=(document.getElementById(ids.q).value||'').toLowerCase().trim();
+  const allDone=collectFinalizados();
+
+  // Conteo global (sin filtro de búsqueda) de requerimientos pendientes de despacho vs ya
+  // despachados, para el KPI de abajo — igual en ambas páginas.
+  const reqsTodos=[...new Set(allDone.map(r=>r.req))];
+  const reqsPend=reqsTodos.filter(rk=>!isDespachado(rk));
+  const reqsDesp=reqsTodos.filter(rk=>isDespachado(rk));
+
+  let items=allDone.filter(r=>view==='despachado'?isDespachado(r.req):!isDespachado(r.req));
+  if(q)items=items.filter(r=>[r.cod,r.prod,r.proy,r.idproy,r.resp,r.req,r.responsable,(getDespacho(r.req)||{}).guia||''].join(' ').toLowerCase().includes(q));
+
+  const und=items.reduce((s,r)=>s+(+r.picking||0),0);
+  const proySet=new Set(items.map(r=>r.proy||'—'));
+  const conFoto=items.filter(r=>r.fotoPath).length;
+  document.getElementById(ids.kpis).innerHTML=`
+   <div class="kpi good"><div class="kl">${view==='despachado'?'Ítems despachados':'Ítems pendientes de despacho'}</div><div class="kv">${items.length.toLocaleString('es-PE')}</div><div class="kd">${view==='despachado'?'ya salieron con guía':'picking listo, aún en patio'}</div></div>
+   <div class="kpi"><div class="kl">Unidades</div><div class="kv">${und.toLocaleString('es-PE')}</div><div class="kd">${proySet.size} proyecto(s) · ${new Set(items.map(r=>r.req)).size} requerimiento(s)</div></div>
+   <div class="kpi"><div class="kl">Con foto de evidencia</div><div class="kv">${conFoto.toLocaleString('es-PE')}</div><div class="kd">de ${items.length.toLocaleString('es-PE')} ítems</div></div>
+   <div class="kpi ${reqsPend.length?'warn':'good'}"><div class="kl">Requerimientos</div><div class="kv">${reqsPend.length} / ${reqsDesp.length}</div><div class="kd">pendientes de despacho / ya despachados</div></div>`;
+  document.getElementById(ids.cnt).textContent=`${items.length} ítems ${view==='despachado'?'despachados':'pendientes de despacho'}`;
+
+  // Agrupar por ID Proyecto (no por nombre — dos proyectos pueden compartir nombre de cliente,
+  // p.ej. "DROKASA" con un PRY en el norte y otro en el sur, pero tienen ID Proyecto distinto).
+  // En Despacho (pendiente), además se ordena por Zona/Distrito (cruce con Proyectos PMO de
+  // Compras vía D.proj) para que Katherine vea de un vistazo qué requerimientos comparten ruta.
+  const groupsByProy={};
+  items.forEach(r=>{
+    const gk=r.idproy||('SIN ID · '+(r.proy||'—'));
+    (groupsByProy[gk]=groupsByProy[gk]||{idproy:r.idproy,proy:r.proy,rows:[]}).rows.push(r);
+  });
+  const proyKeys=Object.keys(groupsByProy).sort((a,b)=>{
+    const ga=groupsByProy[a],gb=groupsByProy[b];
+    if(view==='pendiente'){
+      const za=(IDPROY_INFO[ga.idproy]||{}).zona||'',zb=(IDPROY_INFO[gb.idproy]||{}).zona||'';
+      const oa=za in ZONA_ORDER?ZONA_ORDER[za]:99,ob=zb in ZONA_ORDER?ZONA_ORDER[zb]:99;
+      if(oa!==ob)return oa-ob;
+      const da=(IDPROY_INFO[ga.idproy]||{}).distrito||'',db=(IDPROY_INFO[gb.idproy]||{}).distrito||'';
+      if(da!==db)return da.localeCompare(db,'es');
+    }
+    return (ga.proy||'').localeCompare(gb.proy||'','es');
+  });
+
+  el.innerHTML=proyKeys.map(gk=>{
+    const grp=groupsByProy[gk];
+    const list=grp.rows;
+    const info=IDPROY_INFO[grp.idproy]||{};
+    const pPick=list.reduce((s,r)=>s+(+r.picking||0),0);
+    const groups={};
+    list.forEach(r=>{(groups[r.req]=groups[r.req]||[]).push(r);});
+    const reqCodes=Object.keys(groups).sort((a,b)=>{
+      const fa=groups[a][0].fecha||'',fb=groups[b][0].fecha||'';
+      return fb.localeCompare(fa);
+    });
+    const idproyPill=grp.idproy?`<span style="font-size:10px;font-weight:700;color:#0891b2;background:#e0f2fe;padding:2px 7px;border-radius:5px">${esc(grp.idproy)}</span>`:'';
+    const zonaPill=info.zona?`<span style="font-size:10px;font-weight:700;background:rgba(255,255,255,.18);border-radius:5px;padding:2px 8px">📍 ${esc(info.zona)}${info.distrito?' · '+esc(info.distrito):''}</span>`:'';
+    return `<div style="margin:20px 0 10px;background:#14532d;color:#fff;border-radius:9px;padding:11px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span style="font-weight:800;font-size:13px">📁 ${esc(grp.proy)||'— SIN PROYECTO —'}</span>
+      ${idproyPill}
+      ${zonaPill}
+      <span style="font-size:11px;opacity:.9">TOTAL: <b>${pPick.toLocaleString('es-PE')} und.</b> · ${list.length} SKUs · ${reqCodes.length} requerimiento(s)</span>
+    </div>`+
+    reqCodes.map(rc=>{
+      const g=groups[rc];
+      const gPick=g.reduce((s,r)=>s+(+r.picking||0),0);
+      const desp=getDespacho(rc);
+      return `<div class="reqgroup">
+      <div class="reqgroup-hd">
+        <span class="rg-req">${rc}</span>
+        <span class="rg-meta">${g.length} SKUs · ${gPick.toLocaleString('es-PE')} und. finalizadas · ${g[0].resp||'—'} · ${g[0].fecha||'—'}</span>
+        ${view==='despachado'
+          ?`<span class="pill p-ok">🚚 DESPACHADO</span> <span style="font-size:10.5px;color:#64748b">Guía ${esc((desp&&desp.guia)||'—')} · ${esc((desp&&desp.responsable)||'—')} · ${esc((desp&&desp.fechaHora)||'—')}</span>
+             <button class="btn br" style="padding:6px 12px;font-size:11px;color:#b91c1c" onclick="deshacerDespacho('${rc}')">↩ Deshacer despacho</button>`
+          :`<button class="btn bi" style="padding:6px 12px;font-size:11px" onclick="abrirDespacho('${rc}')">🚚 Marcar como Despachado</button>`}
+      </div>
+      <table>
+        <thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant. req.</th><th class="num">Cant. picking</th><th>Cierre de ciclo</th></tr></thead>
+        <tbody>
+        ${g.map(r=>`<tr>
+          <td class="mono">${r.cod}</td>
+          <td style="white-space:normal;max-width:300px;font-weight:500">${r.prod||'—'}</td>
+          <td class="num">${r.cant}</td>
+          <td class="num" style="font-weight:700">${r.picking}</td>
+          <td><span class="pill p-ok">✅ COMPLETADO</span> <span style="font-size:10.5px;color:#64748b">${r.responsable} · ${r.fechaHora}</span></td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+    }).join('');
+  }).join('') || `<div class="note">${view==='despachado'
+      ?'Aún no hay pickings despachados. En cuanto marques un requerimiento con 🚚 Marcar como Despachado en la pestaña Despacho, aparecerá aquí con su N° de guía.'
+      :'Aún no hay pickings pendientes de despacho. Cuando cierres un ítem en <b>🧰 Picking Pendiente</b>, quedará aquí hasta que se registre el despacho con su guía.'}</div>`;
+}
+function renderDespacho(){renderDespachoBase('pendiente',{groups:'despachoGroups',kpis:'despachoKpis',q:'dpq',cnt:'dpcnt'});}
+function renderDespachado(){renderDespachoBase('despachado',{groups:'despachadoGroups',kpis:'despachadoKpis',q:'ddq',cnt:'ddcnt'});}
+function refrescarDespachoPages(){
+  if(document.getElementById('despachoGroups'))renderDespacho();
+  if(document.getElementById('despachadoGroups'))renderDespachado();
+}
+let _despachoReq=null;
+function abrirDespacho(rk){
+  _despachoReq=rk;
+  document.getElementById('desp-resp').innerHTML='<option value="">— Seleccionar —</option>'+OPERARIOS.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
+  document.getElementById('desp-resp').value='';
+  document.getElementById('desp-guia').value='';
+  document.getElementById('desp-req-info').textContent='Requerimiento '+rk;
+  document.getElementById('despachoBg').style.display='flex';
+}
+function cerrarDespacho(){
+  document.getElementById('despachoBg').style.display='none';
+  _despachoReq=null;
+}
+function confirmarDespacho(){
+  const guia=(document.getElementById('desp-guia').value||'').trim();
+  const resp=document.getElementById('desp-resp').value;
+  if(!guia){alert('Ingresa el N° de Guía de Remisión.');return;}
+  if(!resp){alert('Selecciona quién hizo el despacho.');return;}
+  PENDING_DESPACHO[_despachoReq]={despachado:true,guia,responsable:resp,fechaHora:new Date().toLocaleString('es-PE')};
+  localStorage.setItem('fp_almacen_despacho_pending',JSON.stringify(PENDING_DESPACHO));
+  cerrarDespacho();
+  refrescarDespachoPages();
+  updateDirtyLabels();
+  updateHomeCounters();
+}
+function deshacerDespacho(rk){
+  if(!confirm('¿Deshacer el despacho de '+rk+'? Volverá a la lista de Despacho (Pendiente).'))return;
+  const prev=getDespacho(rk)||{};
+  PENDING_DESPACHO[rk]={...prev,despachado:false};
+  localStorage.setItem('fp_almacen_despacho_pending',JSON.stringify(PENDING_DESPACHO));
+  refrescarDespachoPages();
+  updateDirtyLabels();
+  updateHomeCounters();
+}
+async function exportarDespachoBase(view,qId){
+  const q=(document.getElementById(qId).value||'').toLowerCase().trim();
+  let items=collectFinalizados().filter(r=>view==='despachado'?isDespachado(r.req):!isDespachado(r.req));
+  if(q)items=items.filter(r=>[r.cod,r.prod,r.proy,r.idproy,r.resp,r.req,r.responsable,(getDespacho(r.req)||{}).guia||''].join(' ').toLowerCase().includes(q));
+  if(!items.length){alert('No hay ítems que exportar con el filtro actual.');return;}
+  const fecha=new Date().toISOString().slice(0,10);
+  const data=items.map(r=>{
+    const info=IDPROY_INFO[r.idproy]||{};
+    const desp=getDespacho(r.req)||{};
+    return{
+      'Fecha':r.fecha,'N° Req.':r.req,'Id Proyecto':r.idproy,'Proyecto':r.proy,'Zona':info.zona||'','Distrito':info.distrito||'',
+      'Código':r.cod,'Descripción':r.prod,'Cant. Req.':r.cant,'Unidad':r.unid,'Cant. Picking':r.picking,
+      'Responsable Picking':r.responsable,'Fecha/Hora Picking':r.fechaHora,
+      'Estado Despacho':isDespachado(r.req)?'DESPACHADO':'PENDIENTE','N° Guía':desp.guia||'','Responsable Despacho':desp.responsable||'','Fecha/Hora Despacho':desp.fechaHora||''
+    };
+  });
+  const nombre=view==='despachado'?'despachado':'despacho_pendiente';
+  await escribirExcelReq(data,`${nombre}_${fecha}.xlsx`,view==='despachado'?'Despachado':'Despacho');
+}
+async function exportarDespacho(){await exportarDespachoBase('pendiente','dpq');}
+async function exportarDespachado(){await exportarDespachoBase('despachado','ddq');}
 
 /* ═══════════════ CIERRE DE CICLO DE PICKING (foto + responsable + fecha/hora) ═══════════════ */
 // El cierre es por TODO el requerimiento a la vez (una sola persona/foto/hora para todas
@@ -2946,18 +3247,21 @@ async function confirmarAdjuntarFoto(){
 // decisiones" — útil para descartar pruebas/pilotos que nunca se llegaron a compartir.
 // No toca nada de lo que ya está guardado en data.json (eso hay que resetearlo aparte).
 function descartarCambiosLocales(){
-  const n=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length+Object.keys(PENDING_REVISORES).length;
+  const n=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length+Object.keys(PENDING_REVISORES).length+Object.keys(PENDING_DESPACHO).length;
   if(!n){alert('No hay cambios locales sin guardar en este navegador.');return;}
-  if(!confirm('Se van a descartar '+n+' cambio(s) sin guardar en ESTE navegador (Picking / Validación / En obra / Asignación / Revisores).\nEsto NO afecta lo que ya está guardado y ven los demás.\n\n¿Continuar?'))return;
-  PENDING={};PENDING_VAL={};PENDING_OBRA={};PENDING_ASIG={};PENDING_REVISORES={};
+  if(!confirm('Se van a descartar '+n+' cambio(s) sin guardar en ESTE navegador (Picking / Validación / En obra / Asignación / Revisores / Despacho).\nEsto NO afecta lo que ya está guardado y ven los demás.\n\n¿Continuar?'))return;
+  PENDING={};PENDING_VAL={};PENDING_OBRA={};PENDING_ASIG={};PENDING_REVISORES={};PENDING_DESPACHO={};
   localStorage.removeItem('fp_almacen_picking_pending');
   localStorage.removeItem('fp_almacen_validado_pending');
   localStorage.removeItem('fp_almacen_obra_pending');
   localStorage.removeItem('fp_almacen_asignado_pending');
   localStorage.removeItem('fp_almacen_revisores_pending');
+  localStorage.removeItem('fp_almacen_despacho_pending');
   if(document.getElementById('tbreq'))renderReqTable();
   if(document.getElementById('tbreqitem'))renderReqItemTable();
   if(document.getElementById('pickGroups'))renderPick();
+  if(document.getElementById('pickDoneGroups'))renderPickDone();
+  refrescarDespachoPages();
   updateHomeCounters();
   alert('✔ Cambios locales descartados.');
 }
@@ -2967,7 +3271,8 @@ async function guardarDecisiones(){
   const okeys=Object.keys(PENDING_OBRA);
   const akeys=Object.keys(PENDING_ASIG);
   const rkeys=Object.keys(PENDING_REVISORES);
-  if(!keys.length&&!vkeys.length&&!okeys.length&&!akeys.length&&!rkeys.length){alert('No hay cambios nuevos para guardar.');return;}
+  const dkeys=Object.keys(PENDING_DESPACHO);
+  if(!keys.length&&!vkeys.length&&!okeys.length&&!akeys.length&&!rkeys.length&&!dkeys.length){alert('No hay cambios nuevos para guardar.');return;}
   const token=getGHTokenAlmacen();
   if(!token){
     if(confirm('Para guardar decisiones de Picking (compartidas con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
@@ -3002,6 +3307,8 @@ async function guardarDecisiones(){
     const mergedRevisores={...remoteRevisores};
     rkeys.forEach(rk=>{ mergedRevisores[rk]=[...(remoteRevisores[rk]||[]), ...PENDING_REVISORES[rk]]; });
     remote.D.almacenRevisores=mergedRevisores;
+    const mergedDespacho={...(remote.D.almacenDespacho||{}),...PENDING_DESPACHO};
+    remote.D.almacenDespacho=mergedDespacho;
     const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
     const body={message:'almacen: actualizar decisiones de picking y validaciones '+new Date().toISOString(),content,sha};
     const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -3021,12 +3328,17 @@ async function guardarDecisiones(){
     CONFIRMED_REVISORES=mergedRevisores;
     PENDING_REVISORES={};
     localStorage.removeItem('fp_almacen_revisores_pending');
+    CONFIRMED_DESPACHO=mergedDespacho;
+    PENDING_DESPACHO={};
+    localStorage.removeItem('fp_almacen_despacho_pending');
     const savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE');
     document.querySelectorAll('.saveLblEl').forEach(l=>l.textContent=savedTxt);
     setLastSync('✔ '+new Date().toLocaleString('es-PE'));
     if(document.getElementById('tbreq'))renderReqTable();
     if(document.getElementById('tbreqitem'))renderReqItemTable();
     if(document.getElementById('pickGroups'))renderPick();
+    if(document.getElementById('pickDoneGroups'))renderPickDone();
+    refrescarDespachoPages();
     updateHomeCounters();
     return true;
   }catch(e){
@@ -3513,6 +3825,14 @@ function updateHomeCounters(){
     let fin=0;
     Object.values(recsAll).forEach(v=>{if(v&&typeof v==='object'&&v.completado)fin++;});
     elPD.textContent=`${fin.toLocaleString('es-PE')} ítems con antecedente`;
+  }
+  const elDp=document.getElementById('hc-despacho'),elDd=document.getElementById('hc-despachado');
+  if(elDp||elDd){
+    const reqsFin=[...new Set(collectFinalizados().map(r=>r.req))];
+    const reqsPend=reqsFin.filter(rk=>!isDespachado(rk)).length;
+    const reqsDesp=reqsFin.filter(rk=>isDespachado(rk)).length;
+    if(elDp)elDp.textContent=`${reqsPend.toLocaleString('es-PE')} requerimiento(s) en patio`;
+    if(elDd)elDd.textContent=`${reqsDesp.toLocaleString('es-PE')} requerimiento(s) despachados`;
   }
   document.getElementById('hc-cod').textContent=`${getCatalogo().length} códigos registrados`;
 }
