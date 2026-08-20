@@ -1071,7 +1071,7 @@ function instNav(id){
       </div></div>
     <table class="ttbl"><thead><tr>
       <th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">📋 REG.</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">ALMACÉN</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. ALMACÉN</th>
-      <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th>ESTADO</th><th>USUARIO COMP.</th>
+      <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002)">📦 ENTREGA PROVEEDOR</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002)">⚓ ZARPE</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002); la fecha pactada de F. Entrega no siempre refleja cuándo llega realmente">🚢 ETA ESTIMADA</th><th>ESTADO</th><th>USUARIO COMP.</th>
       <th>PROVEEDOR</th><th>RESPONSABLE</th><th>ID PROYECTO</th><th>PROYECTO</th><th>N° PEDIDO</th><th>F. PEDIDO</th><th>N° REQ.</th><th>F. REQ.</th>
       <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">MONEDA</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">P. UNIT. SIN IGV</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">TIPO CAMBIO</th><th>OBSERVACIÓN</th>
     </tr></thead><tbody id="tb2"></tbody></table>
@@ -1162,7 +1162,7 @@ function instNav(id){
       <div class="thr"><button class="thb" id="p4pgsz" onclick="togglePgsz4()">50/pág</button></div>
     </div>
     <table class="ttbl"><thead><tr>
-      <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th>ESTADO</th><th>USR. COMP.</th>
+      <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002)">📦 ENTREGA PROVEEDOR</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002)">⚓ ZARPE</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002); la fecha pactada de F. Entrega no siempre refleja cuándo llega realmente">🚢 ETA ESTIMADA</th><th>ESTADO</th><th>USR. COMP.</th>
       <th>PROVEEDOR</th><th>RESP. PEDIDO</th><th>N° PEDIDO</th><th>F. PEDIDO</th>
       <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th>
       <th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th>
@@ -1434,13 +1434,17 @@ function renderP2Table(){
   const tb=document.getElementById('tb2');
   tb.innerHTML=rows.map(r=>{
     const completed=(r.estado==='Atendido Completo');
-    const ds=completed?'none':dateStatus(r.fent);
-    const fentHtml=r.fent?(
-      completed ? r.fent :
-      ds==='late'  ? `<span class="dvenc" title="Fecha vencida">⚠ ${r.fent}</span>` :
-      ds==='today' ? `<span class="dhoy" title="Vence hoy">● ${r.fent}</span>` :
-                     `<span class="dok">${r.fent}</span>`
+    const fentOverride=(D.ocMeta[r.oc]&&D.ocMeta[r.oc].fentManual)||'';
+    const fentEff=fentOverride||r.fent;
+    const isOverride=!!fentOverride&&fentOverride!==r.fent;
+    const ds=completed?'none':dateStatus(fentEff);
+    const fentColor=fentEff?(
+      completed ? fentEff :
+      ds==='late'  ? `<span class="dvenc" title="Fecha vencida">⚠ ${fentEff}</span>` :
+      ds==='today' ? `<span class="dhoy" title="Vence hoy">● ${fentEff}</span>` :
+                     `<span class="dok">${fentEff}</span>`
     ):'—';
+    const fentHtml=`<span onclick="editFEntrega(this,'${r.oc.replace(/'/g,"\\'")}','${r.fent||''}')" style="cursor:pointer;text-decoration:underline dotted ${isOverride?'#b45309':'#cbd5e1'};${isOverride?'background:#fef3c7;border-radius:4px;padding:1px 6px;':''}" title="${isOverride?'Fecha corregida a mano (Maestro trae '+(r.fent||'—')+') — clic para editar':'Clic para corregir si el proveedor movió la fecha'}">${fentColor}${isOverride?' ✏':''}</span>`;
     const extra=r.nItems>1?` <span style="color:#94a3b8;font-size:9px">(+${r.nItems-1} ítems)</span>`:'';
     const ocEsc=r.oc.replace(/'/g,"\\'");
     const ocId=r.oc.replace(/[^a-z0-9]/gi,'_');
@@ -1457,6 +1461,7 @@ function renderP2Table(){
       <td style="text-align:center;background:#f0fdf4"><input type="checkbox" ${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].correo)?'checked':''} onchange="toggleCorreo(this,'${r.oc}')" style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a"></td>
       <td onclick="editFCorreo(this,'${r.oc}')" title="Clic para corregir la fecha real de envío del correo" style="text-align:center;background:#f0fdf4;font-size:11px;color:#15803d;font-weight:600;white-space:nowrap;cursor:pointer;text-decoration:underline dotted #15803d" id="fcorreo_${r.oc.replace(/[^a-z0-9]/gi,'_')}">${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].fcorreo)||'—'}</td>
       <td>${fentHtml}</td>
+      ${importTrackingCellsHtml(r.oc)}
       <td>${badgeOC(r.estado)}</td>
       <td><span style="font-size:10px;font-weight:600;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px">${r.ucomp||'—'}</span></td>
       <td title="${r.prov}">${r.prov}</td>
@@ -1587,6 +1592,81 @@ function editFCorreo(cell,oc){
   const row=cell.closest('tr');
   if(row){const cb=row.querySelector('input[type=checkbox][onchange^="toggleCorreo"]');if(cb)cb.checked=!!D.ocMeta[oc].correo;}
   saveLocal();
+}
+// F. Entrega manual: el Maestro trae la fecha pactada original (r.fent), pero el proveedor a
+// veces la mueve — esto permite corregirla por OC sin perder de vista cuál era la del Maestro
+// (se resalta en ámbar con ✏ cuando hay una corrección vigente). Guardar vacío o igual al
+// Maestro borra la corrección y vuelve a usar la fecha de importación tal cual.
+function editFEntrega(cell,oc,fentDefault){
+  if(!D.ocMeta)D.ocMeta={};
+  if(!D.ocMeta[oc])D.ocMeta[oc]={};
+  const actual=D.ocMeta[oc].fentManual||'';
+  const v=prompt('Nueva fecha de entrega pactada con el proveedor (dd/mm/aaaa).\nMaestro (por defecto): '+(fentDefault||'—')+'\nDeja el campo vacío para volver a usar la fecha del Maestro.',actual||fentDefault||'');
+  if(v===null)return; // canceló
+  const t=v.trim();
+  if(t===''||t===fentDefault){
+    delete D.ocMeta[oc].fentManual;
+  } else {
+    const m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(!m){alert('Formato inválido. Usa dd/mm/aaaa, por ejemplo 07/07/2026.');return;}
+    const dd=+m[1],mm=+m[2],yy=+m[3];
+    const dt=new Date(yy,mm-1,dd);
+    if(dt.getFullYear()!==yy||dt.getMonth()!==mm-1||dt.getDate()!==dd){alert('Esa fecha no existe. Revisa el día y el mes.');return;}
+    D.ocMeta[oc].fentManual=String(dd).padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+yy;
+  }
+  saveLocal();
+  renderP2Table();
+  renderP4Table();
+}
+// Seguimiento de importación (OC Tipo 0002) — tres fechas manuales que llena Camila, cada una
+// con su propia línea de tiempo real: el proveedor entrega la mercadería a su forwarder, luego
+// el barco zarpa, y recién ahí se puede estimar cuándo llega (ETA). Separadas de F. Entrega
+// (la fecha pactada del Maestro) porque no son lo mismo. Para OC Nacionales (0001) no aplican
+// — se colapsan en un solo rótulo "NACIONAL" para no mostrar 3 campos vacíos sin sentido.
+const OC_META_FECHA_CAMPOS={
+  fEntregaProv:{icono:'📦',etiqueta:'Entrega Proveedor'},
+  fZarpe:{icono:'⚓',etiqueta:'Fecha de Zarpe'},
+  eta:{icono:'🚢',etiqueta:'ETA Estimada'}
+};
+function editOcMetaFecha(cell,oc,campo){
+  const cfg=OC_META_FECHA_CAMPOS[campo];
+  if(!D.ocMeta)D.ocMeta={};
+  if(!D.ocMeta[oc])D.ocMeta[oc]={};
+  const actual=D.ocMeta[oc][campo]||'';
+  const v=prompt(cfg.etiqueta+' (dd/mm/aaaa).\nDeja el campo vacío para borrarla.',actual);
+  if(v===null)return; // canceló
+  const t=v.trim();
+  if(t===''){
+    delete D.ocMeta[oc][campo];
+  } else {
+    const m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(!m){alert('Formato inválido. Usa dd/mm/aaaa, por ejemplo 07/07/2026.');return;}
+    const dd=+m[1],mm=+m[2],yy=+m[3];
+    const dt=new Date(yy,mm-1,dd);
+    if(dt.getFullYear()!==yy||dt.getMonth()!==mm-1||dt.getDate()!==dd){alert('Esa fecha no existe. Revisa el día y el mes.');return;}
+    D.ocMeta[oc][campo]=String(dd).padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+yy;
+  }
+  saveLocal();
+  renderP2Table();
+  renderP4Table();
+}
+function ocMetaFechaCellHtml(oc,campo){
+  const cfg=OC_META_FECHA_CAMPOS[campo];
+  const val=(D.ocMeta[oc]&&D.ocMeta[oc][campo])||'';
+  const ocEsc=oc.replace(/'/g,"\\'");
+  const label=val?(cfg.icono+' '+val):'<span style="color:#f59e0b">— pendiente</span>';
+  const tip=val?(cfg.etiqueta+' (dato manual) — clic para editar'):('Clic para registrar '+cfg.etiqueta.toLowerCase());
+  return `<span onclick="editOcMetaFecha(this,'${ocEsc}','${campo}')" style="cursor:pointer;text-decoration:underline dotted ${val?'#1d4ed8':'#cbd5e1'};${val?'background:#dbeafe;border-radius:4px;padding:1px 6px;color:#1d4ed8;font-weight:600;':''}" title="${tip}">${label}</span>`;
+}
+// Las 3 celdas de seguimiento de importación de una fila — o un solo rótulo "NACIONAL" si la
+// OC no empieza con 0002 (Tipo Importaciones).
+function importTrackingCellsHtml(oc){
+  if(!String(oc).startsWith('0002')){
+    return `<td colspan="3" style="text-align:center;color:#94a3b8;font-size:10px;font-weight:700;letter-spacing:.4px;background:#f8fafc">NACIONAL</td>`;
+  }
+  return `<td style="background:#eff6ff">${ocMetaFechaCellHtml(oc,'fEntregaProv')}</td>`
+    +`<td style="background:#eff6ff">${ocMetaFechaCellHtml(oc,'fZarpe')}</td>`
+    +`<td style="background:#eff6ff">${ocMetaFechaCellHtml(oc,'eta')}</td>`;
 }
 function toggleCotiz(key,checked){
   if(!D.cotMeta)D.cotMeta={};
@@ -4168,7 +4248,13 @@ function renderSkuResumen(oc,items,extraChips){
   h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px">';
   h+=chip('Estado',estadoTxt);
   h+=chip('F. OC',it0.foc);
-  h+=chip('F. Entrega',it0.fent);
+  const fentOv=(D.ocMeta[oc]&&D.ocMeta[oc].fentManual)||'';
+  h+=chip('F. Entrega',(fentOv||it0.fent||'—')+(fentOv&&fentOv!==it0.fent?' ✏':''));
+  if(String(oc).startsWith('0002')){
+    h+=chip('Entrega Proveedor',(D.ocMeta[oc]&&D.ocMeta[oc].fEntregaProv)?'📦 '+D.ocMeta[oc].fEntregaProv:'');
+    h+=chip('Fecha de Zarpe',(D.ocMeta[oc]&&D.ocMeta[oc].fZarpe)?'⚓ '+D.ocMeta[oc].fZarpe:'');
+    h+=chip('ETA Estimada',(D.ocMeta[oc]&&D.ocMeta[oc].eta)?'🚢 '+D.ocMeta[oc].eta:'');
+  }
   h+=chip('Responsable',it0.resp);
   h+=chip('Proyecto',(it0.idproy||'')+(it0.proy?((it0.idproy?' — ':'')+it0.proy):''));
   h+=chip('Ítems',n);
@@ -5165,13 +5251,17 @@ function renderP4Table(){
   const rows=p4fil.slice(p4pg*p4pgsz,(p4pg+1)*p4pgsz);
   document.getElementById('tb4').innerHTML=rows.map(r=>{
     const completed=(r.estado==='Atendido Completo');
-    const ds=completed?'none':dateStatus(r.fent);
-    const fentHtml=r.fent?(
-      completed ? r.fent :
-      ds==='late'  ? `<span class="dvenc" title="Fecha vencida">⚠ ${r.fent}</span>` :
-      ds==='today' ? `<span class="dhoy" title="Vence hoy">● ${r.fent}</span>` :
-                     `<span class="dok">${r.fent}</span>`
+    const fentOverride=(D.ocMeta[r.oc]&&D.ocMeta[r.oc].fentManual)||'';
+    const fentEff=fentOverride||r.fent;
+    const isOverride=!!fentOverride&&fentOverride!==r.fent;
+    const ds=completed?'none':dateStatus(fentEff);
+    const fentColor=fentEff?(
+      completed ? fentEff :
+      ds==='late'  ? `<span class="dvenc" title="Fecha vencida">⚠ ${fentEff}</span>` :
+      ds==='today' ? `<span class="dhoy" title="Vence hoy">● ${fentEff}</span>` :
+                     `<span class="dok">${fentEff}</span>`
     ):'—';
+    const fentHtml=`<span onclick="editFEntrega(this,'${r.oc.replace(/'/g,"\\'")}','${r.fent||''}')" style="cursor:pointer;text-decoration:underline dotted ${isOverride?'#b45309':'#cbd5e1'};${isOverride?'background:#fef3c7;border-radius:4px;padding:1px 6px;':''}" title="${isOverride?'Fecha corregida a mano (Maestro trae '+(r.fent||'—')+') — clic para editar':'Clic para corregir si el proveedor movió la fecha'}">${fentColor}${isOverride?' ✏':''}</span>`;
     const pedHtml=(r.ped&&r.ped.length>1)
       ? r.ped.map(p=>`<span style="display:inline-block;margin:1px 2px;font-size:10px;background:#f1f5f9;color:#334155;padding:1px 5px;border-radius:4px">${p}</span>`).join('')
       : (r.ped&&r.ped[0])||'—';
@@ -5184,6 +5274,7 @@ function renderP4Table(){
       <td style="text-align:center;background:#f0fdf4"><input type="checkbox" ${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].correo)?'checked':''} onchange="toggleCorreo(this,'${r.oc}')" style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a"></td>
       <td onclick="editFCorreo(this,'${r.oc}')" title="Clic para corregir la fecha real de envío del correo" style="text-align:center;background:#f0fdf4;font-size:11px;color:#15803d;font-weight:600;white-space:nowrap;cursor:pointer;text-decoration:underline dotted #15803d" id="fcorreo_${r.oc.replace(/[^a-z0-9]/gi,'_')}">${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].fcorreo)||'—'}</td>
       <td>${fentHtml}</td>
+      ${importTrackingCellsHtml(r.oc)}
       <td>${badgeOC(r.estado)}</td>
       <td><span style="font-size:10px;font-weight:600;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px">${r.ucomp||'—'}</span></td>
       <td title="${r.prov}">${r.prov}</td>

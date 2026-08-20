@@ -1348,6 +1348,7 @@ let AUTO_MAP={};   // sugerencia automática de cant. a Picking por req+código 
 let CONFIRMED_VAL={}; // validaciones de almacén ya guardadas en data.json (D.almacenValidado)
 let PENDING_VAL={};   // validaciones marcadas en este navegador y aún no guardadas
 const OPERARIOS=['Jasiel','Fernando','Jhon','Ricardo']; // personal operativo asignable a revisión
+const DESPACHO_RESPONSABLES=['Jasiel','Fernando']; // solo ellos hacen despacho (distinto del personal de picking)
 let CONFIRMED_ASIG={}; // asignación de revisión ya guardada en data.json (D.almacenAsignado), clave N° Req.
 let PENDING_ASIG={};   // asignaciones marcadas en este navegador y aún no guardadas
 // Historial de quién revisó cada requerimiento — a diferencia de "Asignado a" (un solo operario
@@ -2922,7 +2923,7 @@ function refrescarDespachoPages(){
 let _despachoReq=null;
 function abrirDespacho(rk){
   _despachoReq=rk;
-  document.getElementById('desp-resp').innerHTML='<option value="">— Seleccionar —</option>'+OPERARIOS.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
+  document.getElementById('desp-resp').innerHTML='<option value="">— Seleccionar —</option>'+DESPACHO_RESPONSABLES.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
   document.getElementById('desp-resp').value='';
   document.getElementById('desp-guia').value='';
   document.getElementById('desp-req-info').textContent='Requerimiento '+rk;
@@ -2937,12 +2938,98 @@ function confirmarDespacho(){
   const resp=document.getElementById('desp-resp').value;
   if(!guia){alert('Ingresa el N° de Guía de Remisión.');return;}
   if(!resp){alert('Selecciona quién hizo el despacho.');return;}
-  PENDING_DESPACHO[_despachoReq]={despachado:true,guia,responsable:resp,fechaHora:new Date().toLocaleString('es-PE')};
+  const req=_despachoReq;
+  const desp={despachado:true,guia,responsable:resp,fechaHora:new Date().toLocaleString('es-PE')};
+  PENDING_DESPACHO[req]=desp;
   localStorage.setItem('fp_almacen_despacho_pending',JSON.stringify(PENDING_DESPACHO));
+  const items=collectFinalizados().filter(r=>r.req===req);
   cerrarDespacho();
   refrescarDespachoPages();
   updateDirtyLabels();
   updateHomeCounters();
+  enviarCorreoDespacho(req,items,desp);
+  enviarWhatsAppDespacho(req,items,desp);
+}
+// Correo de constancia de despacho — mismo patrón que enviarCorreoPickingCompletado (Graph
+// de Microsoft 365 si hay sesión guardada en este navegador, si no copia el HTML al portapapeles
+// y abre un correo en blanco para pegarlo), al mismo grupo interno de Compras/Logística.
+function enviarCorreoDespacho(req,items,desp){
+  const g0=items[0]||{};
+  const asunto='DESPACHO REQ '+req+' — GUÍA '+(desp.guia||'—');
+  const to='kalbujar@friopacking.pe';
+  const cc='jcenteno@friopacking.pe,mcondori@grupofriopacking.pe,jmanueco@grupofriopacking.pe';
+  const THEAD='<thead><tr style="background:#dbeafe"><th style="padding:9px 12px;border:1px solid #93c5fd;color:#1e3a8a;font-weight:700;font-size:13px;width:30px">#</th>'
+    +'<th style="padding:9px 12px;border:1px solid #93c5fd;color:#1e3a8a;font-weight:700;font-size:13px;white-space:nowrap">Código</th>'
+    +'<th style="padding:9px 12px;border:1px solid #93c5fd;color:#1e3a8a;font-weight:700;font-size:13px;min-width:220px">Descripción</th>'
+    +'<th style="padding:9px 12px;border:1px solid #93c5fd;color:#1e3a8a;font-weight:700;font-size:13px;width:70px">Cant.</th></tr></thead>';
+  let filas='';
+  items.forEach(function(r,idx){
+    const bg=idx%2===0?'#ffffff':'#eff6ff';
+    filas+='<tr style="background:'+bg+'">'
+      +'<td style="padding:9px 12px;border:1px solid #93c5fd;text-align:center;color:#64748b;font-size:13px">'+(idx+1)+'</td>'
+      +'<td style="padding:9px 12px;border:1px solid #93c5fd;color:#1e3a8a;font-weight:600;font-size:13px;white-space:nowrap">'+(r.cod||'—')+'</td>'
+      +'<td style="padding:9px 12px;border:1px solid #93c5fd;font-size:13px">'+(r.prod||'—')+'</td>'
+      +'<td style="padding:9px 12px;border:1px solid #93c5fd;text-align:center;font-weight:700;font-size:13px">'+r.picking+(r.unid?' '+r.unid:'')+'</td>'
+      +'</tr>';
+  });
+  const htmlBody='<div style="font-family:Calibri,Arial,sans-serif;font-size:14px;line-height:1.8;color:#1e293b;max-width:760px">'
+    +'<p>Se despachó el requerimiento <strong>'+req+'</strong>.</p>'
+    +'<p><strong>Proyecto:</strong> '+(g0.idproy?g0.idproy+' — ':'')+(g0.proy||'—')+'<br>'
+    +'<strong>N° de Guía de Remisión:</strong> '+(desp.guia||'—')+'<br>'
+    +'<strong>Responsable del despacho:</strong> '+(desp.responsable||'—')+'<br>'
+    +'<strong>Fecha/Hora:</strong> '+(desp.fechaHora||'—')+'</p>'
+    +'<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin:12px 0">'+THEAD+'<tbody>'+filas+'</tbody></table>'
+    +'<p style="margin-top:18px">Saludos cordiales,<br><strong>Almacén — FRIOPACKING S.A.</strong></p>'
+    +'</div>';
+  function abrirMailVacio(){
+    window.location.href='mailto:'+to+'?cc='+encodeURIComponent(cc)+'&subject='+encodeURIComponent(asunto);
+  }
+  function fallbackClipboard(){
+    if(navigator.clipboard&&window.ClipboardItem){
+      const blob=new Blob([htmlBody],{type:'text/html'});
+      const item=new ClipboardItem({'text/html':blob});
+      navigator.clipboard.write([item]).then(function(){
+        showToastAlm('📋 Correo de despacho copiado — pega con Ctrl+V en Outlook');
+        setTimeout(abrirMailVacio,400);
+      },function(){abrirMailVacio();});
+    }else{abrirMailVacio();}
+  }
+  if(typeof window.sendMailViaGraph==='function'){
+    window.sendMailViaGraph(to,cc,null,asunto,htmlBody,function(ok){
+      if(ok)showToastAlm('✅ Correo de despacho enviado (Microsoft 365)');
+      else fallbackClipboard();
+    });
+  }else{
+    fallbackClipboard();
+  }
+}
+// Aviso WhatsApp al supervisor que generó el requerimiento — mismo patrón que enviarWhatsAppReq
+// (validación): busca su celular en el directorio de Supervisores por nombre.
+function enviarWhatsAppDespacho(req,items,desp){
+  const g0=items[0]||{};
+  const L=[];
+  L.push('Hola'+(g0.resp?' *'+g0.resp+'*':''));
+  L.push('');
+  L.push('Su requerimiento *'+req+'* ya fue *despachado*.');
+  L.push('');
+  if(g0.idproy||g0.proy)L.push('*Proyecto:* '+(g0.idproy||'')+(g0.proy?((g0.idproy?' — ':'')+g0.proy):''));
+  L.push('*N° de Guía:* '+(desp.guia||'—'));
+  L.push('*Fecha/Hora de despacho:* '+(desp.fechaHora||'—'));
+  L.push('');
+  L.push('*Ítems despachados:*');
+  items.forEach(function(r,i){L.push((i+1)+'. '+r.cod+' — '+r.prod+' — *'+r.picking+'* '+(r.unid||''));});
+  L.push('');
+  L.push('_Almacén — FRIOPACKING S.A._');
+  const txt=L.join('\n');
+  const sup=buscarSupervisorAl(g0.resp);
+  let num='';
+  if(sup&&sup.celular){
+    let dg=String(sup.celular).replace(/\D/g,'');
+    if(dg.length===9)dg='51'+dg;
+    if(dg.length>=10)num=dg;
+  }
+  const url=num?('https://wa.me/'+num+'?text='+encodeURIComponent(txt)):('https://api.whatsapp.com/send?text='+encodeURIComponent(txt));
+  window.open(url,'_blank');
 }
 function deshacerDespacho(rk){
   if(!confirm('¿Deshacer el despacho de '+rk+'? Volverá a la lista de Despacho (Pendiente).'))return;
