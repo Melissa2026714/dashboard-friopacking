@@ -1071,7 +1071,7 @@ function instNav(id){
       </div></div>
     <table class="ttbl"><thead><tr>
       <th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">📋 REG.</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. COMPRAS</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">ALMACÉN</th><th class="reg-col" style="background:#fef3c7;color:#92400e;white-space:nowrap">F. ALMACÉN</th>
-      <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002)">📦 ENTREGA PROVEEDOR</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002)">⚓ ZARPE</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002); la fecha pactada de F. Entrega no siempre refleja cuándo llega realmente">🚢 ETA ESTIMADA</th><th>ESTADO</th><th>USUARIO COMP.</th>
+      <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th>ESTADO</th><th>USUARIO COMP.</th>
       <th>PROVEEDOR</th><th>RESPONSABLE</th><th>ID PROYECTO</th><th>PROYECTO</th><th>N° PEDIDO</th><th>F. PEDIDO</th><th>N° REQ.</th><th>F. REQ.</th>
       <th>CÓDIGO</th><th>DESCRIPCIÓN PRODUCTO</th><th>UNIDAD</th><th>CANT. ORD.</th><th>CANT. ATEND.</th><th>CANT. PEND.</th><th>F. RECEPCIÓN</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">MONEDA</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">P. UNIT. SIN IGV</th><th style="white-space:nowrap;background:#fef3c7;color:#92400e">TIPO CAMBIO</th><th>OBSERVACIÓN</th>
     </tr></thead><tbody id="tb2"></tbody></table>
@@ -1461,7 +1461,6 @@ function renderP2Table(){
       <td style="text-align:center;background:#f0fdf4"><input type="checkbox" ${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].correo)?'checked':''} onchange="toggleCorreo(this,'${r.oc}')" style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a"></td>
       <td onclick="editFCorreo(this,'${r.oc}')" title="Clic para corregir la fecha real de envío del correo" style="text-align:center;background:#f0fdf4;font-size:11px;color:#15803d;font-weight:600;white-space:nowrap;cursor:pointer;text-decoration:underline dotted #15803d" id="fcorreo_${r.oc.replace(/[^a-z0-9]/gi,'_')}">${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].fcorreo)||'—'}</td>
       <td>${fentHtml}</td>
-      ${importTrackingCellsHtml(r.oc)}
       <td>${badgeOC(r.estado)}</td>
       <td><span style="font-size:10px;font-weight:600;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px">${r.ucomp||'—'}</span></td>
       <td title="${r.prov}">${r.prov}</td>

@@ -344,6 +344,10 @@ async function procesarTodo(){
     } else {
       const payload = ComprasShared.saveLocal();
       if(payload){
+        // saveGitHub compara con la nube antes de subir y puede abrir una ventana nativa
+        // de confirmación (fuera de este recuadro) si detecta un posible conflicto —
+        // este aviso existe para que no parezca que el proceso se congeló.
+        impLogLine('⏳ Comparando con la nube antes de subir — si aparece una ventana de confirmación del navegador, revísala y responde para continuar.');
         const ok = await ComprasShared.saveGitHub(payload);
         impLogLine(ok ? '☁ Compras subido a <b>data.json</b>' : '❌ Compras: la subida falló o se canceló (revisa la advertencia de conflicto, si salió)');
       }
