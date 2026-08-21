@@ -1066,6 +1066,7 @@ function instNav(id){
   <div class="tw">
     <div class="th"><span class="thtt">Detalle de Órdenes de Compra</span>
       <div class="thr">
+        <button class="thb" onclick="exportarP2()" title="Exporta a Excel lo que se ve con los filtros actuales (todas las páginas, no solo la visible)" style="background:#0d9488;color:#fff;border-color:#0d9488">⬇ Exportar</button>
         <button class="thb" id="p2regcols-btn" onclick="toggleRegCols()" title="Mostrar/ocultar columnas de Regularización" style="background:#fef3c7;color:#92400e;border-color:#f59e0b">◀ REG.</button>
         <button class="thb" id="p2pgsz" onclick="togglePgsz2()">50/pág</button>
       </div></div>
@@ -1492,6 +1493,74 @@ function renderP2Table(){
   document.getElementById('p2info').textContent=`Mostrando ${p2pg*p2pgsz+1}–${Math.min((p2pg+1)*p2pgsz,tot)} de ${tot} OC`;
   renderPag('p2pag',pages,p2pg,p=>{p2pg=p;renderP2Table();});
   if(_regColsHidden)document.querySelectorAll('.reg-col').forEach(el=>el.style.display='none');
+}
+// Exportar OC Pendientes — misma paleta "Suave y limpio" que ya usa Almacén para exportar
+// Requerimientos (encabezado azul claro #BFDDF2, filas en banda blanco/celeste pálido), armada
+// con ExcelJS (a diferencia de xlsx.full.min.js, sí escribe relleno/fuente/bordes reales).
+function escribirExcelCompras(data,nombreArchivo,sheetName){
+  if(!data.length){alert('No hay OC que exportar con los filtros actuales.');return;}
+  const headers=Object.keys(data[0]);
+  const PAL={headerBg:'FFBFDDF2',headerText:'FF1E293B',bandA:'FFFFFFFF',bandB:'FFF7FAFC',border:'FFD4DADF',texto:'FF1E293B'};
+  const NUMCOLS=new Set(['N° SKU','Cant. Ord.','Cant. Atend.','Cant. Pend.','P.Unit. Sin IGV','Tipo Cambio']);
+  const anchos={'Proveedor':28,'Proyecto':32,'Descripción':38,'Responsable':22,'Id Proyecto':16,'Observación':30};
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet(sheetName||'OC Pendientes',{views:[{state:'frozen',ySplit:1}]});
+  ws.columns=headers.map(function(h){
+    return{header:h,key:h,width:anchos[h]||Math.min(30,Math.max(11,h.length+6)),
+      style:NUMCOLS.has(h)?{alignment:{horizontal:'right'}}:{}};
+  });
+  data.forEach(function(row){ws.addRow(row);});
+  const headerRow=ws.getRow(1);
+  headerRow.height=20;
+  headerRow.eachCell(function(cell){
+    cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:PAL.headerBg}};
+    cell.font={bold:true,color:{argb:PAL.headerText}};
+    cell.alignment={vertical:'middle',horizontal:'center'};
+    cell.border={bottom:{style:'thin',color:{argb:PAL.border}}};
+  });
+  for(let i=2;i<=ws.rowCount;i++){
+    const bg=(i%2===0)?PAL.bandB:PAL.bandA;
+    ws.getRow(i).eachCell(function(cell,colNumber){
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
+      cell.border={bottom:{style:'thin',color:{argb:PAL.border}}};
+      cell.font={color:{argb:PAL.texto}};
+      if(NUMCOLS.has(headers[colNumber-1])&&typeof cell.value==='number')cell.numFmt='#,##0.##';
+    });
+  }
+  ws.autoFilter={from:{row:1,column:1},to:{row:1,column:headers.length}};
+  wb.xlsx.writeBuffer().then(function(buf){
+    const blob=new Blob([buf],{type:'application/octet-stream'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=nombreArchivo;document.body.appendChild(a);a.click();
+    document.body.removeChild(a);URL.revokeObjectURL(url);
+  });
+}
+function exportarP2(){
+  if(typeof ExcelJS==='undefined'){
+    _ldScriptParent('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',exportarP2);
+    return;
+  }
+  if(!p2fil.length){alert('No hay OC que exportar con los filtros actuales.');return;}
+  const data=p2fil.map(function(r){
+    const rm=D.ocMeta[r.oc]||{};
+    const fentOverride=rm.fentManual||'';
+    const fentEff=fentOverride||r.fent;
+    return{
+      'OC':r.oc,'N° SKU':r.nItems||0,'F. OC':r.foc||'','F. Aprob.':r.fapro||'',
+      'Correo':rm.correo?'Sí':'No','F. Correo':rm.fcorreo||'',
+      'F. Entrega':fentEff||'','Estado':r.estado||'','Usuario Comp.':r.ucomp||'',
+      'Proveedor':r.prov||'','Responsable':r.resp||'','Id Proyecto':r.idproy||'','Proyecto':r.proy||'',
+      'N° Pedido':(r.peds&&r.peds.length?r.peds.join(', '):(r.ped||'')),'F. Pedido':r.fpedido||'',
+      'N° Req.':r.req||'','F. Req.':r.freq||'',
+      'Código':r.cod||'','Descripción':r.prod||'','Unidad':r.unid||'',
+      'Cant. Ord.':r.cantOrd||0,'Cant. Atend.':r.cantRec||0,'Cant. Pend.':r.cantPend||0,'F. Recepción':r.frec||'',
+      'Moneda':r.moneda||'','P.Unit. Sin IGV':(typeof r.punit==='number'?r.punit:0),'Tipo Cambio':r.tc||0,
+      'Observación':r.obs||''
+    };
+  });
+  const fecha=new Date().toISOString().slice(0,10);
+  escribirExcelCompras(data,`oc_pendientes_${fecha}.xlsx`);
 }
 let _f2RegOnly=false;
 let _regColsHidden=true;
