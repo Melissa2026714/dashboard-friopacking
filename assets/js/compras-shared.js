@@ -36,6 +36,29 @@ function fetchTO(url, opts, ms){
 
 /* ==== INICIO: copiado de compras.html (ver cabecera del archivo) ==== */
 
+// Reemplaza el confirm() nativo del navegador (ventana del sistema, aparte del recuadro
+// de importación — fácil de perder de vista o dejar sin responder, y ahí es cuando el
+// guardado se cancela en silencio) por un modal dentro de la misma página, imposible de
+// no ver. Misma semántica: bloquea hasta que la persona responda, resuelve true/false.
+function askConfirmVisual(mensaje){
+  return new Promise(function(resolve){
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+    const box=document.createElement('div');
+    box.style.cssText='background:#fff;border-radius:12px;padding:24px;max-width:480px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-family:Arial,sans-serif';
+    box.innerHTML='<div style="font-size:14px;line-height:1.6;white-space:pre-wrap;color:#1e293b;margin-bottom:18px">'+String(mensaje).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'
+      +'<div style="display:flex;gap:10px;justify-content:flex-end">'
+      +'<button id="_cfNo" style="padding:9px 16px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:#1e293b">Cancelar</button>'
+      +'<button id="_cfSi" style="padding:9px 16px;border:none;border-radius:8px;background:#dc2626;color:#fff;cursor:pointer;font-size:13px;font-weight:700">Sí, subir de todos modos</button>'
+      +'</div>';
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    function cerrar(v){ document.body.removeChild(overlay); resolve(v); }
+    box.querySelector('#_cfSi').onclick=function(){cerrar(true);};
+    box.querySelector('#_cfNo').onclick=function(){cerrar(false);};
+  });
+}
+
 function saveLocal(){
   if(!D.oc.length&&!D.p4.length&&!D.proj.length)return false;
   // Excluir D.consultas del payload — es muy grande y se importa por separado
@@ -123,9 +146,8 @@ async function saveGitHub(payload){
           if(remN>0&&locN===0)warnings.push('• '+k+': tu versión lo deja VACÍO pero la nube tiene '+remN);
         });
         if(warnings.length){
-          if(!confirm('⚠️ ADVERTENCIA: vas a subir datos que podrían borrar información:\n\n'+warnings.join('\n')+'\n\nEsto probablemente borrará información más reciente que otra persona ya guardó.\n\n¿Seguro que quieres continuar de todos modos?')){
-            return false;
-          }
+          const ok=await askConfirmVisual('⚠️ ADVERTENCIA: vas a subir datos que podrían borrar información:\n\n'+warnings.join('\n')+'\n\nEsto probablemente borrará información más reciente que otra persona ya guardó.\n\n¿Seguro que quieres continuar de todos modos?');
+          if(!ok) return false;
         }
         // Anti-pisado: conservar claves que la nube tiene y esta pestaña no conoce
         // (ej. almacenValidado/almacenPicking creados por Almacén después de abrir esta pestaña)

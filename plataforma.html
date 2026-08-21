@@ -193,29 +193,30 @@ let impSelectedFiles = [];
 let impClassified = []; // [{file, tipo, wb}] — ya leídos y clasificados, listos para Guardar
 const TIPO_LABEL = {maestro:'Reporte Maestro', pedido:'Pedido Sin Req', supervisores:'Supervisores', proveedores:'Proveedores', almacen:'Reporte Almacén', consultas:'Consultas (histórico de precios)'};
 
-function renderLastImportPill(){
+// La hora mostrada SIEMPRE debe ser la real de data.json en GitHub, nunca un sello local
+// optimista — un sello local se marcaba con solo con que ALGO se subiera bien (aunque fuera
+// Almacén y Compras hubiera fallado), y por eso podía mostrar una hora distinta a la real de
+// compras.html, generando desconfianza. El sello local ahora es SOLO un placeholder instantáneo
+// mientras se confirma con la nube — nunca la versión final.
+function renderLastImportPill(ts, confirmado){
   const el = document.getElementById('lastImportPill');
   if(!el) return;
-  const ts = localStorage.getItem('fp_plataforma_last_import');
-  el.textContent = ts ? '🕓 Últ. importación: '+new Date(+ts).toLocaleString('es-PE') : '';
+  if(!ts){ el.textContent=''; return; }
+  el.textContent = (confirmado?'☁ Últ. actualización (confirmada): ':'🕓 Sincronizando… ') + new Date(+ts).toLocaleString('es-PE');
 }
-renderLastImportPill();
-// El sello local (arriba) solo refleja lo que ESTE navegador importó — para que también se
-// vea lo que otra persona guardó desde otro equipo, se lee el "ts" real de data.json en GitHub
-// (mismo archivo que ya usa Compras) y se usa si es más reciente que el local.
-(async function syncLastImportFromRemote(){
+renderLastImportPill(localStorage.getItem('fp_plataforma_last_import'), false);
+async function syncLastImportFromRemote(){
   try{
     const res = await fetch('https://raw.githubusercontent.com/Melissa2026714/dashboard-friopacking/main/data.json?t='+Date.now());
     if(!res.ok) return;
     const j = await res.json();
-    const remoteTs = j && j.ts;
-    const localTs = +(localStorage.getItem('fp_plataforma_last_import')||0);
-    if(remoteTs && remoteTs > localTs){
-      localStorage.setItem('fp_plataforma_last_import', String(remoteTs));
-      renderLastImportPill();
+    if(j && j.ts){
+      localStorage.setItem('fp_plataforma_last_import', String(j.ts));
+      renderLastImportPill(j.ts, true);
     }
-  }catch(e){ /* sin conexión — se queda con el sello local, si hay */ }
-})();
+  }catch(e){ /* sin conexión — se queda con el sello local (sin confirmar), si hay */ }
+}
+syncLastImportFromRemote();
 function abrirImportar(){ document.getElementById('impOverlay').classList.add('active'); }
 function cerrarImportar(){ document.getElementById('impOverlay').classList.remove('active'); }
 
@@ -298,6 +299,7 @@ async function procesarTodo(){
   }
   btn.disabled = true;
   logEl.innerHTML = '';
+  impLogLine('⏳ Leyendo y procesando archivos… esto puede tardar si hay Consultas (~20 MB) de por medio.');
   try{
     let wbMaestro=null, wbPedido=null, hayConsultas=false;
     for(const {file, tipo, wb} of impClassified){
@@ -381,15 +383,17 @@ async function procesarTodo(){
     if(!logEl.innerHTML) impLogLine('No se procesó nada — revisa que los archivos seleccionados tengan el formato esperado.');
     const subioAlgo = logEl.innerHTML.includes('☁');
     const hayAvisos = logEl.innerHTML.includes('⚠') || logEl.innerHTML.includes('❌');
-    if(subioAlgo){
-      localStorage.setItem('fp_plataforma_last_import', String(Date.now()));
-      renderLastImportPill();
-    }
-    // Resultado final bien visible — para no depender de leer/scrollear cada línea del log.
+    // Siempre se vuelve a confirmar con la nube al terminar — nunca con un sello local
+    // optimista, para que la hora mostrada sea la real incluso si el guardado de Compras
+    // específicamente falló (ej. por quedar un confirm() sin responder).
+    await syncLastImportFromRemote();
+    // Resultado final bien visible (recuadro con color, no una línea más perdida en el log).
     if(subioAlgo && !hayAvisos){
-      impLogLine('<b style="color:#4ade80">✅ Todo guardado y sincronizado con GitHub.</b>');
+      impLogLine('<div style="margin-top:8px;padding:10px 14px;border-radius:8px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.4);color:#4ade80;font-weight:700">✅ Todo guardado y sincronizado con GitHub.</div>');
     } else if(hayAvisos){
-      impLogLine('<b style="color:#fbbf24">⚠ Revisa los avisos arriba — no todo terminó de subirse.</b>');
+      impLogLine('<div style="margin-top:8px;padding:10px 14px;border-radius:8px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.4);color:#fbbf24;font-weight:700">⚠ Revisa los avisos arriba — no todo terminó de subirse.</div>');
+    } else if(!subioAlgo){
+      impLogLine('<div style="margin-top:8px;padding:10px 14px;border-radius:8px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.4);color:#f87171;font-weight:700">❌ No se subió nada a GitHub.</div>');
     }
     impSelectedFiles = [];
     impClassified = [];
