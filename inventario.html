@@ -1360,6 +1360,11 @@ let PENDING_ASIG={};   // asignaciones marcadas en este navegador y aún no guar
 // vigente, se sobreescribe), esto ACUMULA: varias personas (Mary, Javier, Katherine, Jose) pueden
 // ir revisando el mismo req en distintos momentos/días, y se necesita ver a todos, no solo al último.
 const REVISORES=['Mary','Javier','Katherine','Jose'];
+// Solo lectura de D.ocMeta (data.json de Compras) — para que la F. Entrega que corrige Compras a
+// mano (ocMeta[oc].fentManual, ver editFEntrega en compras.html) se vea también aquí, donde la
+// revisa el supervisor. Sin esto, esta vista solo mostraba la fecha del último import de NISIRA,
+// que nunca refleja una corrección hecha a mano en Compras.
+let OCMETA_LIVE={};
 let CONFIRMED_REVISORES={}; // historial ya guardado en data.json (D.almacenRevisores), clave N° Req. -> [{nombre,fecha}]
 let PENDING_REVISORES={};   // entradas nuevas marcadas en este navegador y aún no guardadas, mismo formato
 // Igual historial pero para el paso de Despacho — es un checkpoint distinto (revisar que la
@@ -1422,6 +1427,7 @@ async function cargarLive(){
     CONFIRMED_ASIG=s.D.almacenAsignado||{};
     CONFIRMED_REVISORES=s.D.almacenRevisores||{};
     CONFIRMED_REVISORES_DESPACHO=s.D.almacenRevisoresDespacho||{};
+    OCMETA_LIVE=s.D.ocMeta||{};
     SUPERVISORES=s.D.supervisores||[];
     CONFIRMED_COD=s.D.almacenCodigos||[];
     PROJ=s.D.proj||[];
@@ -1436,7 +1442,7 @@ async function cargarLive(){
     applyTransitoADatos();
     setLastSync('☁ '+(s.ts?new Date(s.ts).toLocaleString('es-PE'):'—'));
   }catch(e){
-    CONFIRMED={};CONFIRMED_VAL={};CONFIRMED_ASIG={};CONFIRMED_REVISORES={};CONFIRMED_REVISORES_DESPACHO={};SUPERVISORES=[];CONFIRMED_COD=[];PROJ=[];IDPROY_INFO={};CONFIRMED_OBRA={};CONFIRMED_DESPACHO={};COTMETA={};ARCHIVOMETA={};
+    CONFIRMED={};CONFIRMED_VAL={};CONFIRMED_ASIG={};CONFIRMED_REVISORES={};CONFIRMED_REVISORES_DESPACHO={};OCMETA_LIVE={};SUPERVISORES=[];CONFIRMED_COD=[];PROJ=[];IDPROY_INFO={};CONFIRMED_OBRA={};CONFIRMED_DESPACHO={};COTMETA={};ARCHIVOMETA={};
     console.warn('[Almacén] No se pudo leer data.json:',e);
   }
   try{PENDING=JSON.parse(localStorage.getItem('fp_almacen_picking_pending')||'{}');}catch(e2){PENDING={};}
@@ -1450,6 +1456,9 @@ async function cargarLive(){
   // El picking nace LIMPIO: sin sugerencias automáticas. Las cantidades se asignan
   // manualmente en la revisión (pestaña Requerimientos) y recién ahí aparecen en Picking.
   AUTO_MAP={};
+  // OCMETA_LIVE recién se acaba de llenar (o vaciar) arriba — hay que reconstruir REQCOD_OC para
+  // que la F. Entrega corregida a mano en Compras (o su ausencia, si falló la carga) se refleje.
+  if(SKUS_RAW&&Object.keys(SKUS_RAW).length)buildReqCodOC();
   fillFilters();
   render();
   renderAlertBox();
@@ -1765,7 +1774,8 @@ function buildReqCodOC(){
       if(esImport&&line.cod)SKU_IMPORT_COD[line.cod]=true;
       if(!line.req||!line.cod)return;
       const k=line.req+'|'+line.cod;
-      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fapro:line.fapro||'',fent:line.fent||'',compras:0,cantOrd:0,cantRec:0,guiasProv:[],frecep:'',ped:'',fped:'',respPed:''};
+      const fentOverride=OCMETA_LIVE[oc]&&OCMETA_LIVE[oc].fentManual;
+      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fapro:line.fapro||'',fent:fentOverride||line.fent||'',compras:0,cantOrd:0,cantRec:0,guiasProv:[],frecep:'',ped:'',fped:'',respPed:''};
       else if(REQCOD_OC[k].ocs.indexOf(oc)<0)REQCOD_OC[k].ocs.push(oc);
       REQCOD_OC[k].compras+=(line.cantPend||0);
       REQCOD_OC[k].cantOrd+=(line.cantOrd||0);
