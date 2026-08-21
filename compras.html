@@ -1669,7 +1669,9 @@ function importTrackingCellsHtml(oc){
 }
 function toggleCotiz(key,checked){
   if(!D.cotMeta)D.cotMeta={};
+  if(!D.cotMetaFecha)D.cotMetaFecha={};
   D.cotMeta[key]=checked;
+  D.cotMetaFecha[key]=checked?_hoy():'';
   saveLocal();
 }
 function enviarCorreoOC(oc){
@@ -4008,6 +4010,13 @@ function mergeCotMeta(remoteMeta,localMeta){
   Object.keys(localMeta||{}).forEach(function(k){merged[k]=!!merged[k]||!!localMeta[k];});
   return merged;
 }
+// Igual anti-pisado para la fecha real en que se marcó cada cotización (usada por
+// Daily Call In para saber qué se cotizó HOY) — se prefiere la fecha local si existe.
+function mergeCotMetaFecha(remoteMeta,localMeta){
+  const merged=Object.assign({},remoteMeta||{});
+  Object.keys(localMeta||{}).forEach(function(k){if(localMeta[k])merged[k]=localMeta[k];});
+  return merged;
+}
 // Fusiona el padrón de supervisores por nombre en vez de reemplazar la lista
 // completa — si esta pestaña no tiene el padrón cargado (o lo tiene vacío),
 // se conserva íntegro el de la nube; si trae contactos nuevos o campos que la
@@ -4094,6 +4103,10 @@ async function saveGitHub(payload){
         }
         if(remote.D&&remote.D.cotMeta){
           localData.D.cotMeta=mergeCotMeta(remote.D.cotMeta,localData.D.cotMeta);
+          cambiado=true;
+        }
+        if(remote.D&&remote.D.cotMetaFecha){
+          localData.D.cotMetaFecha=mergeCotMetaFecha(remote.D.cotMetaFecha,localData.D.cotMetaFecha);
           cambiado=true;
         }
         // Igual anti-pisado para los motivos/fechas de Archivar en Sin OC — Cotización

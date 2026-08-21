@@ -625,17 +625,22 @@ tr:hover td{background:#f8fafc}
   <div style="background:#fff;width:100%;max-width:420px;border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)">
     <div style="background:#1d4ed8;color:#fff;padding:16px 20px">
       <div style="font-size:15px;font-weight:800">🚚 Marcar como Despachado</div>
-      <div style="font-size:11px;color:#dbeafe;margin-top:2px">Recién ahora sale de almacén — registra la guía de remisión</div>
+      <div style="font-size:11px;color:#dbeafe;margin-top:2px">Recién ahora sale de almacén — confirma con la guía que ya registró NISIRA</div>
     </div>
     <div style="padding:18px 20px">
       <div id="desp-req-info" style="font-size:11.5px;color:#1d4ed8;font-weight:700;background:#eff6ff;border-radius:8px;padding:8px 10px;margin-bottom:14px"></div>
-      <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">N° de Guía de Remisión</label>
-      <input id="desp-guia" type="text" placeholder="Ej. 0001-000123" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">N° de Guía de Remisión <span style="font-weight:400;color:#94a3b8">(directo de NISIRA, no se digita)</span></label>
+      <div id="desp-guia" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:14px;background:#f8fafc;color:#0f172a;font-weight:600"></div>
       <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Responsable del despacho</label>
       <select id="desp-resp" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:6px">
         <option value="">— Seleccionar —</option>
       </select>
-      <div style="font-size:10.5px;color:#94a3b8;margin-bottom:16px">La fecha y hora se registran automáticamente al confirmar.</div>
+      <div style="font-size:10.5px;color:#94a3b8;margin-bottom:14px">La fecha y hora se registran automáticamente al confirmar.</div>
+      <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Revisado por</label>
+      <select id="desp-revisor-add" onchange="agregarRevisorDespacho(_despachoReq,this.value);this.value=''" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:6px">
+        <option value="">+ Agregar revisor…</option>
+      </select>
+      <div id="desp-revisores-hist" style="font-size:10.5px;color:#0f766e;margin-bottom:16px;min-height:14px"></div>
       <div style="display:flex;gap:8px">
         <button class="btn bi" onclick="confirmarDespacho()" style="flex:1;justify-content:center;padding:10px">🚚 Confirmar despacho</button>
         <button class="btn br" onclick="cerrarDespacho()" style="padding:10px 16px">Cancelar</button>
@@ -1357,6 +1362,10 @@ let PENDING_ASIG={};   // asignaciones marcadas en este navegador y aún no guar
 const REVISORES=['Mary','Javier','Katherine','Jose'];
 let CONFIRMED_REVISORES={}; // historial ya guardado en data.json (D.almacenRevisores), clave N° Req. -> [{nombre,fecha}]
 let PENDING_REVISORES={};   // entradas nuevas marcadas en este navegador y aún no guardadas, mismo formato
+// Igual historial pero para el paso de Despacho — es un checkpoint distinto (revisar que la
+// guía/despacho salió bien), independiente de si ya se revisó el requerimiento en Picking.
+let CONFIRMED_REVISORES_DESPACHO={}; // D.almacenRevisoresDespacho, clave N° Req. -> [{nombre,fecha}]
+let PENDING_REVISORES_DESPACHO={};
 let SUPERVISORES=[];  // directorio D.supervisores (nombre/correo/celular) para el aviso WhatsApp
 let PROJ=[];           // D.proj (data.json, sigue compartido) — para derivar Zona por nombre de proyecto
 let IDPROY_INFO={};    // ID Proyecto (PRY...) -> {zona,distrito,depto,nombre} — cruce por ID, no por nombre
@@ -1412,6 +1421,7 @@ async function cargarLive(){
     CONFIRMED_VAL=s.D.almacenValidado||{};
     CONFIRMED_ASIG=s.D.almacenAsignado||{};
     CONFIRMED_REVISORES=s.D.almacenRevisores||{};
+    CONFIRMED_REVISORES_DESPACHO=s.D.almacenRevisoresDespacho||{};
     SUPERVISORES=s.D.supervisores||[];
     CONFIRMED_COD=s.D.almacenCodigos||[];
     PROJ=s.D.proj||[];
@@ -1426,7 +1436,7 @@ async function cargarLive(){
     applyTransitoADatos();
     setLastSync('☁ '+(s.ts?new Date(s.ts).toLocaleString('es-PE'):'—'));
   }catch(e){
-    CONFIRMED={};CONFIRMED_VAL={};CONFIRMED_ASIG={};CONFIRMED_REVISORES={};SUPERVISORES=[];CONFIRMED_COD=[];PROJ=[];IDPROY_INFO={};CONFIRMED_OBRA={};CONFIRMED_DESPACHO={};COTMETA={};ARCHIVOMETA={};
+    CONFIRMED={};CONFIRMED_VAL={};CONFIRMED_ASIG={};CONFIRMED_REVISORES={};CONFIRMED_REVISORES_DESPACHO={};SUPERVISORES=[];CONFIRMED_COD=[];PROJ=[];IDPROY_INFO={};CONFIRMED_OBRA={};CONFIRMED_DESPACHO={};COTMETA={};ARCHIVOMETA={};
     console.warn('[Almacén] No se pudo leer data.json:',e);
   }
   try{PENDING=JSON.parse(localStorage.getItem('fp_almacen_picking_pending')||'{}');}catch(e2){PENDING={};}
@@ -1434,6 +1444,7 @@ async function cargarLive(){
   try{PENDING_VAL=JSON.parse(localStorage.getItem('fp_almacen_validado_pending')||'{}');}catch(e3){PENDING_VAL={};}
   try{PENDING_ASIG=JSON.parse(localStorage.getItem('fp_almacen_asignado_pending')||'{}');}catch(e6){PENDING_ASIG={};}
   try{PENDING_REVISORES=JSON.parse(localStorage.getItem('fp_almacen_revisores_pending')||'{}');}catch(e7){PENDING_REVISORES={};}
+  try{PENDING_REVISORES_DESPACHO=JSON.parse(localStorage.getItem('fp_almacen_revisores_despacho_pending')||'{}');}catch(e7b){PENDING_REVISORES_DESPACHO={};}
   try{PENDING_DESPACHO=JSON.parse(localStorage.getItem('fp_almacen_despacho_pending')||'{}');}catch(e8){PENDING_DESPACHO={};}
   PENDING_COD=loadPendingCodigos();
   // El picking nace LIMPIO: sin sugerencias automáticas. Las cantidades se asignan
@@ -2289,6 +2300,22 @@ function agregarRevisor(rk,nombre){
   verReqItems(rk);
   updateDirtyLabels();
 }
+function getRevisoresDespacho(rk){
+  return [...(CONFIRMED_REVISORES_DESPACHO[rk]||[]), ...(PENDING_REVISORES_DESPACHO[rk]||[])];
+}
+function agregarRevisorDespacho(rk,nombre){
+  if(!nombre)return;
+  PENDING_REVISORES_DESPACHO[rk]=[...(PENDING_REVISORES_DESPACHO[rk]||[]), {nombre, fecha:new Date().toLocaleString('es-PE')}];
+  localStorage.setItem('fp_almacen_revisores_despacho_pending',JSON.stringify(PENDING_REVISORES_DESPACHO));
+  renderDespachoRevisoresHist(rk);
+  updateDirtyLabels();
+}
+function renderDespachoRevisoresHist(rk){
+  const el=document.getElementById('desp-revisores-hist');
+  if(!el)return;
+  const hist=getRevisoresDespacho(rk);
+  el.innerHTML=hist.length?('Revisado por: '+hist.map(function(h){return h.nombre+' ('+h.fecha+')';}).join(' · ')):'';
+}
 // Busca al supervisor en D.supervisores por coincidencia de nombre (≥2 palabras y ≥50%)
 function _normNombreAl(s){
   var map={'Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U','Ñ':'N','Ü':'U'};
@@ -2628,7 +2655,7 @@ function computeAutoAlloc(pendientes){
   return auto;
 }
 function updateDirtyLabels(){
-  const dirty=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length+Object.keys(PENDING_REVISORES).length+Object.keys(PENDING_DESPACHO).length;
+  const dirty=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length+Object.keys(PENDING_REVISORES).length+Object.keys(PENDING_REVISORES_DESPACHO).length+Object.keys(PENDING_DESPACHO).length;
   document.querySelectorAll('.dirtyLbl').forEach(el=>{
     el.innerHTML=dirty?`<span class="dirty-badge">${dirty} cambio(s) sin guardar</span>`:'';
   });
@@ -2921,12 +2948,31 @@ function refrescarDespachoPages(){
   if(document.getElementById('despachadoGroups'))renderDespachado();
 }
 let _despachoReq=null;
+let _despachoGuiaDetectada='';
+// La guía de remisión ya NO se digita a mano (pedido de Katherine) — sale directo de NISIRA:
+// cuando el Reporte Almacén se reimporta con la columna DocumentoDeOrigen ya llena, aparece
+// sola acá (mismo dato que ya usa "En Obra", ver SALIDAS_ALM).
+function guiasDeRequerimiento(rk){
+  const items=collectFinalizados().filter(function(r){return r.req===rk;});
+  const guias=[];
+  items.forEach(function(r){
+    const salida=SALIDAS_ALM[r.req+'|'+r.cod];
+    (salida&&salida.guias||[]).forEach(function(g){ if(g&&guias.indexOf(g)<0)guias.push(g); });
+  });
+  return guias;
+}
 function abrirDespacho(rk){
   _despachoReq=rk;
   document.getElementById('desp-resp').innerHTML='<option value="">— Seleccionar —</option>'+DESPACHO_RESPONSABLES.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
   document.getElementById('desp-resp').value='';
-  document.getElementById('desp-guia').value='';
+  const guias=guiasDeRequerimiento(rk);
+  _despachoGuiaDetectada=guias.join(', ');
+  const guiaEl=document.getElementById('desp-guia');
+  guiaEl.textContent=guias.length?guias.join(', '):'⏳ Aún no aparece en NISIRA — reimporta el Reporte Almacén cuando esté registrada.';
+  guiaEl.style.color=guias.length?'#0f172a':'#b45309';
   document.getElementById('desp-req-info').textContent='Requerimiento '+rk;
+  document.getElementById('desp-revisor-add').innerHTML='<option value="">+ Agregar revisor…</option>'+REVISORES.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
+  renderDespachoRevisoresHist(rk);
   document.getElementById('despachoBg').style.display='flex';
 }
 function cerrarDespacho(){
@@ -2934,9 +2980,9 @@ function cerrarDespacho(){
   _despachoReq=null;
 }
 function confirmarDespacho(){
-  const guia=(document.getElementById('desp-guia').value||'').trim();
+  const guia=_despachoGuiaDetectada;
   const resp=document.getElementById('desp-resp').value;
-  if(!guia){alert('Ingresa el N° de Guía de Remisión.');return;}
+  if(!guia){alert('Todavía no aparece la guía de remisión en NISIRA para este requerimiento.\nReimporta el Reporte Almacén actualizado (Plataforma → Importar) y vuelve a intentar.');return;}
   if(!resp){alert('Selecciona quién hizo el despacho.');return;}
   const req=_despachoReq;
   const desp={despachado:true,guia,responsable:resp,fechaHora:new Date().toLocaleString('es-PE')};
@@ -3334,15 +3380,16 @@ async function confirmarAdjuntarFoto(){
 // decisiones" — útil para descartar pruebas/pilotos que nunca se llegaron a compartir.
 // No toca nada de lo que ya está guardado en data.json (eso hay que resetearlo aparte).
 function descartarCambiosLocales(){
-  const n=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length+Object.keys(PENDING_REVISORES).length+Object.keys(PENDING_DESPACHO).length;
+  const n=Object.keys(PENDING).length+Object.keys(PENDING_VAL).length+Object.keys(PENDING_OBRA).length+Object.keys(PENDING_ASIG).length+Object.keys(PENDING_REVISORES).length+Object.keys(PENDING_REVISORES_DESPACHO).length+Object.keys(PENDING_DESPACHO).length;
   if(!n){alert('No hay cambios locales sin guardar en este navegador.');return;}
   if(!confirm('Se van a descartar '+n+' cambio(s) sin guardar en ESTE navegador (Picking / Validación / En obra / Asignación / Revisores / Despacho).\nEsto NO afecta lo que ya está guardado y ven los demás.\n\n¿Continuar?'))return;
-  PENDING={};PENDING_VAL={};PENDING_OBRA={};PENDING_ASIG={};PENDING_REVISORES={};PENDING_DESPACHO={};
+  PENDING={};PENDING_VAL={};PENDING_OBRA={};PENDING_ASIG={};PENDING_REVISORES={};PENDING_REVISORES_DESPACHO={};PENDING_DESPACHO={};
   localStorage.removeItem('fp_almacen_picking_pending');
   localStorage.removeItem('fp_almacen_validado_pending');
   localStorage.removeItem('fp_almacen_obra_pending');
   localStorage.removeItem('fp_almacen_asignado_pending');
   localStorage.removeItem('fp_almacen_revisores_pending');
+  localStorage.removeItem('fp_almacen_revisores_despacho_pending');
   localStorage.removeItem('fp_almacen_despacho_pending');
   if(document.getElementById('tbreq'))renderReqTable();
   if(document.getElementById('tbreqitem'))renderReqItemTable();
@@ -3358,8 +3405,9 @@ async function guardarDecisiones(){
   const okeys=Object.keys(PENDING_OBRA);
   const akeys=Object.keys(PENDING_ASIG);
   const rkeys=Object.keys(PENDING_REVISORES);
+  const rdkeys=Object.keys(PENDING_REVISORES_DESPACHO);
   const dkeys=Object.keys(PENDING_DESPACHO);
-  if(!keys.length&&!vkeys.length&&!okeys.length&&!akeys.length&&!rkeys.length&&!dkeys.length){alert('No hay cambios nuevos para guardar.');return;}
+  if(!keys.length&&!vkeys.length&&!okeys.length&&!akeys.length&&!rkeys.length&&!rdkeys.length&&!dkeys.length){alert('No hay cambios nuevos para guardar.');return;}
   const token=getGHTokenAlmacen();
   if(!token){
     if(confirm('Para guardar decisiones de Picking (compartidas con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
@@ -3394,6 +3442,11 @@ async function guardarDecisiones(){
     const mergedRevisores={...remoteRevisores};
     rkeys.forEach(rk=>{ mergedRevisores[rk]=[...(remoteRevisores[rk]||[]), ...PENDING_REVISORES[rk]]; });
     remote.D.almacenRevisores=mergedRevisores;
+    // Mismo criterio de acumular (no reemplazar) para el revisor del paso de Despacho.
+    const remoteRevisoresDespacho=remote.D.almacenRevisoresDespacho||{};
+    const mergedRevisoresDespacho={...remoteRevisoresDespacho};
+    rdkeys.forEach(rk=>{ mergedRevisoresDespacho[rk]=[...(remoteRevisoresDespacho[rk]||[]), ...PENDING_REVISORES_DESPACHO[rk]]; });
+    remote.D.almacenRevisoresDespacho=mergedRevisoresDespacho;
     const mergedDespacho={...(remote.D.almacenDespacho||{}),...PENDING_DESPACHO};
     remote.D.almacenDespacho=mergedDespacho;
     const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
@@ -3415,6 +3468,9 @@ async function guardarDecisiones(){
     CONFIRMED_REVISORES=mergedRevisores;
     PENDING_REVISORES={};
     localStorage.removeItem('fp_almacen_revisores_pending');
+    CONFIRMED_REVISORES_DESPACHO=mergedRevisoresDespacho;
+    PENDING_REVISORES_DESPACHO={};
+    localStorage.removeItem('fp_almacen_revisores_despacho_pending');
     CONFIRMED_DESPACHO=mergedDespacho;
     PENDING_DESPACHO={};
     localStorage.removeItem('fp_almacen_despacho_pending');
