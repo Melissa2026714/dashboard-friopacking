@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Friopacking · Portal de Seguimiento de Facturas</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -263,7 +264,7 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="topbar-right">
       <a href="plataforma.html" title="Volver al Inicio de la Plataforma LOGÍSTICA" style="display:flex;align-items:center;gap:6px;background:#1e293b;color:#93c5fd;border:1px solid #334155;padding:6px 11px;border-radius:7px;font-size:11px;font-weight:600;text-decoration:none;flex-shrink:0">◀ INICIO</a>
       <button class="btn-ghost" onclick="setupGHTokenFacturas()">🔑 Token GitHub</button>
-      <button class="btn-ghost" onclick="cambiarClaveCompras()">🔒 Cambiar clave</button>
+      <button class="btn-ghost" onclick="cerrarSesionCompras()">🚪 Cerrar sesión</button>
       <button class="btn-ghost" onclick="backToLanding()">← Cambiar de vista</button>
     </div>
   </div>
@@ -762,28 +763,34 @@ async function loadProveedoresPiloto(){
 }
 
 /* ============================================================
-   AUTENTICACIÓN COMPRAS (clave compartida del equipo)
+   AUTENTICACIÓN COMPRAS (Supabase Auth — cuenta individual por persona)
    ============================================================ */
-const DOMINIO_COMPRAS = '@friopacking.pe';
-// Clave única del equipo de Compras, guardada solo como hash (nunca en texto plano).
-const DEFAULT_COMPRAS_HASH = 'd8d44fc8863bee652c78f8e09de99560e709d8dbe6cbfb5ba88fa7ea09ecef64';
-async function sha256(text){
-  const enc = new TextEncoder().encode(text);
-  const buf = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-async function loadComprasHash(){
-  const remote = await loadFacturasRemote();
-  return (remote && remote.comprasHash) || DEFAULT_COMPRAS_HASH;
-}
-async function saveComprasHash(hash){
-  await saveFacturasSection('comprasHash', hash);
-}
-// Sesión válida solo mientras el archivo permanece abierto en el navegador.
-// Al cerrar y volver a abrir (nueva sesión), se pide la clave de nuevo.
+const SUPABASE_URL = 'https://gxjwhubmwsizrxbmavlz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_535ifADM-ulajDIt8GXKbg_PnJ4wWNm';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Sesión de Supabase (persistida por supabase-js en localStorage) + el perfil
+// (public.profiles) de quien inició sesión — se valida tipo='interno' y activo=true
+// antes de dejar pasar a Compras.
 let comprasSesionActiva = false;
-function gateCompras(){
+let comprasPerfil = null;
+async function cargarPerfilCompras(userId){
+  const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
+  if(error || !data || data.tipo !== 'interno' || data.activo === false){
+    comprasPerfil = null;
+    return false;
+  }
+  comprasPerfil = data;
+  return true;
+}
+async function gateCompras(){
   if(comprasSesionActiva){
+    goTo('compras');
+    return;
+  }
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session && await cargarPerfilCompras(session.user.id)){
+    comprasSesionActiva = true;
     goTo('compras');
     return;
   }
@@ -793,62 +800,38 @@ function gateCompras(){
 function closeAuthOverlay(){
   document.getElementById('authOverlay').classList.remove('active');
 }
-function renderAuthSetup(){
-  document.getElementById('authModalContent').innerHTML = `
-    <h3 style="margin:0 0 6px;font-size:18px;color:var(--text);">Cambiar clave de Compras</h3>
-    <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Define una nueva clave compartida para todo el equipo de Compras. Solo personal de Friopacking (correo ${DOMINIO_COMPRAS}) puede rotarla.</p>
-    <input type="text" id="authEmail" placeholder="Tu correo ${DOMINIO_COMPRAS}">
-    <input type="password" id="authNewPass" placeholder="Nueva clave (mínimo 4 caracteres)">
-    <input type="password" id="authNewPass2" placeholder="Confirmar clave">
-    <div id="authError" style="color:var(--red);font-size:12.5px;margin-bottom:10px;display:none;"></div>
-    <button class="tbtn guardar" style="width:100%;justify-content:center;" onclick="confirmarSetup()">Actualizar clave</button>
-  `;
-}
 function renderAuthLogin(){
   document.getElementById('authModalContent').innerHTML = `
     <h3 style="margin:0 0 6px;font-size:18px;color:var(--text);">Acceso Compras</h3>
-    <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Solo personal de Friopacking (correo ${DOMINIO_COMPRAS}) puede ingresar. Se vuelve a pedir cada vez que se abre el portal.</p>
-    <input type="text" id="authEmail" placeholder="Tu correo ${DOMINIO_COMPRAS}">
+    <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Ingresa con tu cuenta de Friopacking.</p>
+    <input type="text" id="authEmail" placeholder="Tu correo">
     <input type="password" id="authPass" placeholder="Clave">
     <div id="authError" style="color:var(--red);font-size:12.5px;margin-bottom:10px;display:none;"></div>
     <button class="tbtn importar" style="width:100%;justify-content:center;" onclick="confirmarLogin()">Ingresar</button>
   `;
 }
-function validarDominioCompras(){
-  const err = document.getElementById('authError');
-  const email = (document.getElementById('authEmail').value||'').trim().toLowerCase();
-  if(!email.endsWith(DOMINIO_COMPRAS)){
-    err.textContent = `Solo se permite el acceso con un correo ${DOMINIO_COMPRAS}.`;
-    err.style.display='block';
-    return false;
-  }
-  return true;
-}
-async function confirmarSetup(){
-  const p1 = document.getElementById('authNewPass').value;
-  const p2 = document.getElementById('authNewPass2').value;
-  const err = document.getElementById('authError');
-  if(!validarDominioCompras()) return;
-  if(!p1 || p1.length<4){ err.textContent='La clave debe tener al menos 4 caracteres.'; err.style.display='block'; return; }
-  if(p1!==p2){ err.textContent='Las claves no coinciden.'; err.style.display='block'; return; }
-  await saveComprasHash(await sha256(p1));
-  comprasSesionActiva = true;
-  closeAuthOverlay();
-  goTo('compras');
-}
 async function confirmarLogin(){
-  const p = document.getElementById('authPass').value;
+  const email = (document.getElementById('authEmail').value||'').trim();
+  const pass = document.getElementById('authPass').value;
   const err = document.getElementById('authError');
-  if(!validarDominioCompras()) return;
-  const hash = await loadComprasHash();
-  if((await sha256(p)) !== hash){ err.textContent='Clave incorrecta.'; err.style.display='block'; return; }
+  err.style.display='none';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ err.textContent='Correo o clave incorrectos.'; err.style.display='block'; return; }
+  if(!(await cargarPerfilCompras(data.user.id))){
+    err.textContent='Esta cuenta no tiene acceso a Compras.';
+    err.style.display='block';
+    await sb.auth.signOut();
+    return;
+  }
   comprasSesionActiva = true;
   closeAuthOverlay();
   goTo('compras');
 }
-function cambiarClaveCompras(){
-  document.getElementById('authOverlay').classList.add('active');
-  renderAuthSetup();
+async function cerrarSesionCompras(){
+  await sb.auth.signOut();
+  comprasSesionActiva = false;
+  comprasPerfil = null;
+  backToLanding();
 }
 
 /* ============================================================
