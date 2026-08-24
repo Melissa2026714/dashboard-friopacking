@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -348,6 +349,64 @@ body.dark .g-rank-card{background:#111b2b!important}
 </head>
 <body>
 
+<!-- Puerta de acceso (Supabase Auth) — cubre toda la app hasta iniciar sesión con una
+     cuenta interna válida (public.profiles.tipo='interno'). Ver assets/js/compras-shared.js
+     no aplica aquí: esta lógica vive en este mismo archivo, igual que en facturas.html. -->
+<div id="authGate" style="position:fixed;inset:0;z-index:999999;background:#0b1120;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif">
+  <div style="background:#fff;border-radius:14px;padding:34px 38px;width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.45)">
+    <div style="font-size:26px;margin-bottom:10px">🔒</div>
+    <h2 style="font-size:16px;margin:0 0 4px;color:#0f172a">Acceso Compras</h2>
+    <p style="font-size:12px;color:#64748b;margin:0 0 22px">Ingresa con tu cuenta de Friopacking.</p>
+    <input type="text" id="authGateEmail" placeholder="Tu correo" autocomplete="username"
+      style="width:100%;box-sizing:border-box;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:8px;font-family:'Inter',sans-serif"
+      onkeydown="if(event.key==='Enter')document.getElementById('authGatePass').focus()">
+    <input type="password" id="authGatePass" placeholder="Clave" autocomplete="current-password"
+      style="width:100%;box-sizing:border-box;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:8px;font-family:'Inter',sans-serif"
+      onkeydown="if(event.key==='Enter')authGateLogin()">
+    <div id="authGateErr" style="color:#dc2626;font-size:11.5px;min-height:16px;margin-bottom:8px;font-family:'Inter',sans-serif"></div>
+    <button onclick="authGateLogin()" style="width:100%;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">Ingresar</button>
+  </div>
+</div>
+<script>
+const SUPABASE_URL = 'https://gxjwhubmwsizrxbmavlz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_535ifADM-ulajDIt8GXKbg_PnJ4wWNm';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let sesionPerfil = null; // fila de public.profiles de quien inició sesión
+async function authGateCheck(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session){
+    const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+    if(!error && data && data.tipo==='interno' && data.activo!==false){
+      sesionPerfil = data;
+      document.getElementById('authGate').style.display='none';
+      return;
+    }
+  }
+}
+async function authGateLogin(){
+  const email = (document.getElementById('authGateEmail').value||'').trim();
+  const pass = document.getElementById('authGatePass').value;
+  const err = document.getElementById('authGateErr');
+  err.textContent='';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ err.textContent='Correo o clave incorrectos.'; return; }
+  const { data:prof, error:perr } = await sb.from('profiles').select('*').eq('id', data.user.id).single();
+  if(perr || !prof || prof.tipo!=='interno' || prof.activo===false){
+    err.textContent='Esta cuenta no tiene acceso a Compras.';
+    await sb.auth.signOut();
+    return;
+  }
+  sesionPerfil = prof;
+  document.getElementById('authGate').style.display='none';
+}
+async function cerrarSesionApp(){
+  await sb.auth.signOut();
+  sesionPerfil = null;
+  location.reload();
+}
+authGateCheck();
+</script>
+
 <nav class="nb">
   <a href="plataforma.html" title="Volver al Inicio de la Plataforma LOGÍSTICA" style="display:flex;align-items:center;gap:6px;background:#1e293b;color:#93c5fd;border:1px solid #334155;padding:6px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;flex-shrink:0">◀ INICIO</a>
   <div class="tabs">
@@ -366,6 +425,7 @@ body.dark .g-rank-card{background:#111b2b!important}
     <button class="btn" id="saveBtn" onclick="manualSave()" title="Guardar y sincronizar con todos los usuarios" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
     <button id="spLoginBtn" onclick="spLogin()" title="Iniciar sesión para subir a SharePoint" style="display:none;background:#0078d4;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">☁ SP</button>
     <button class="btn" onclick="setupGHToken()" title="Configurar token GitHub (solo admin)" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer">🔑</button>
+    <button class="btn" onclick="cerrarSesionApp()" title="Cerrar sesión" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer">🚪</button>
     <button class="btn br">↻</button>
     <button class="btn br" id="darkBtn" onclick="toggleDark()" title="Modo nocturno" style="font-size:16px">🌙</button>
   </div>
