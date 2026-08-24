@@ -318,6 +318,7 @@ tr:hover td{background:#f8fafc}
     <table>
       <thead><tr>
         <th>Fecha</th><th>N° Req.</th><th>Responsable</th><th>Id Proyecto</th><th>Proyecto</th><th>Estado</th>
+        <th style="text-align:center;background:#fce7f3;color:#be185d;cursor:pointer" onclick="showImportacionResumen()" title="Clic para ver el resumen de todos los SKU en importación (según los filtros actuales)">Importación 📋</th>
         <th>Código</th><th>Descripción</th><th class="num">Cant.</th><th>Unidad</th>
         <th class="num" style="background:#ecfdf5;color:#065f46" title="Cantidad que Almacén repartió a Picking (stock) en el modal del requerimiento">Cant. a Picking</th>
         <th class="num" style="background:#ecfdf5;color:#065f46" title="Cantidad que Almacén repartió a Pedido (compra) en el modal del requerimiento">Cant. a Pedido</th>
@@ -1257,7 +1258,9 @@ function fichaTransHTML(cod){
 }
 
 // Ventana emergente: detalle completo del Stock en Tránsito de un SKU — a qué OC/pedido pertenece, fechas, usuario, proveedor.
-function verDetalleTransito(cod){
+// volverRk (opcional): N° de Requerimiento al que regresar con el botón "Volver" — se usa cuando se abre
+// desde el detalle de un Requerimiento (columna "En Tránsito"), para no perder ese contexto al cerrar.
+function verDetalleTransito(cod,volverRk){
   const d=DATA_BY_COD[cod]||{cod:cod,desc:'',um:''};
   const ocs=TRANS.filter(t=>t.cod===cod);
   const tot=ocs.reduce((a,t)=>a+(t.cantPend!=null?t.cantPend:t.cant||0),0);
@@ -1271,8 +1274,11 @@ function verDetalleTransito(cod){
     </div>
     <div style="padding:12px 16px;overflow-x:auto">
       ${ocs.length?`<table style="width:100%;border-collapse:collapse">
-        <thead><tr><th style="${th}">Fuente</th><th style="${th}">Requerimiento</th><th style="${th}">Solicitante</th><th style="${th}">Proyecto / Área</th><th style="${th}">Pedido</th><th style="${th}">F. Pedido</th><th style="${th}">Estado Pedido</th><th style="${th}">Orden de Compra</th><th style="${th}">F. Orden</th><th style="${th}">F. Aprobación</th><th style="${th}">F. Est. Llegada</th><th style="${th};text-align:right">Cant. Orden</th><th style="${th};text-align:right">Recibida</th><th style="${th};text-align:right">Pendiente</th><th style="${th}">Estado OC</th><th style="${th}">Resp. Pedido</th><th style="${th}">Usuario Compras</th><th style="${th}">Proveedor</th></tr></thead>
-        <tbody>${ocs.map(t=>`<tr>
+        <thead><tr><th style="${th}">Fuente</th><th style="${th}">Requerimiento</th><th style="${th}">Solicitante</th><th style="${th}">Proyecto / Área</th><th style="${th}">Pedido</th><th style="${th}">F. Pedido</th><th style="${th}">Estado Pedido</th><th style="${th}">Orden de Compra</th><th style="${th}">F. Orden</th><th style="${th}">F. Aprobación</th><th style="${th}" title="Fecha de llegada asumida al colocar la OC (corregible desde Compras)">F. Entrega</th><th style="${th};background:#0f4c4c" title="Cuándo el proveedor entrega la carga al agente / la mercadería queda lista (dato de Compras)">📦 Entrega Proveedor</th><th style="${th};background:#0f4c4c" title="Fecha en que el barco zarpa de origen con la carga (dato de Compras)">⚓ Zarpe</th><th style="${th};background:#0f4c4c" title="Fecha estimada de arribo (dato de Compras)">🚢 ETA Estimada</th><th style="${th};text-align:right">Cant. Orden</th><th style="${th};text-align:right">Recibida</th><th style="${th};text-align:right">Pendiente</th><th style="${th}">Estado OC</th><th style="${th}">Resp. Pedido</th><th style="${th}">Usuario Compras</th><th style="${th}">Proveedor</th></tr></thead>
+        <tbody>${ocs.map(t=>{
+          const om=OCMETA_LIVE[t.oc]||{};
+          const fent=om.fentManual||t.fent||'';
+          return `<tr>
           <td style="${td}">${t.fuente}</td>
           <td style="${td};font-family:ui-monospace,monospace">${t.ref||'—'}</td>
           <td style="${td}">${t.resp||t.respPed||'—'}</td>
@@ -1283,7 +1289,10 @@ function verDetalleTransito(cod){
           <td style="${td};font-family:ui-monospace,monospace"><b>${t.oc||'— (sin OC)'}</b></td>
           <td style="${td}">${t.foc||'—'}</td>
           <td style="${td}">${t.fapro||'—'}</td>
-          <td style="${td}">${t.fent||'—'}</td>
+          <td style="${td}">${fent||'—'}</td>
+          <td style="${td};background:#f0fdfa">${om.fEntregaProv?('📦 '+om.fEntregaProv):'<span style="color:#f59e0b">— pendiente</span>'}</td>
+          <td style="${td};background:#f0fdfa">${om.fZarpe?('⚓ '+om.fZarpe):'<span style="color:#f59e0b">— pendiente</span>'}</td>
+          <td style="${td};background:#f0fdfa">${om.eta?('🚢 '+om.eta):'<span style="color:#f59e0b">— pendiente</span>'}</td>
           <td style="${td};text-align:right">${fmtq(t.cant)}</td>
           <td style="${td};text-align:right">${fmtq(t.cantRec)}</td>
           <td style="${td};text-align:right"><b style="color:#b45309">${fmtq(t.cantPend!=null?t.cantPend:t.cant)}</b></td>
@@ -1291,10 +1300,11 @@ function verDetalleTransito(cod){
           <td style="${td}">${t.respPed||'—'}</td>
           <td style="${td}">${t.ucomp||'—'}</td>
           <td style="${td}">${t.prov||'—'}</td>
-        </tr>`).join('')}</tbody></table>`
+        </tr>`;}).join('')}</tbody></table>`
       :'<div style="color:#94a3b8;padding:16px;text-align:center">Este ítem no tiene OC en tránsito. Importa el Reporte Almacen.xlsx si aún no lo has hecho.</div>'}
     </div>
     <div style="padding:0 20px 18px;display:flex;gap:8px">
+      ${volverRk?`<button class="btn br" onclick="verReqItems('${volverRk}')">◂ Volver al requerimiento</button>`:''}
       <button class="btn br" onclick="verFichaExistencia('${cod}')">📋 Ver ficha completa</button>
       <button class="btn br" onclick="cerrarFicha()">Cerrar</button>
     </div>`;
@@ -1996,6 +2006,11 @@ function renderReqItemTable(){
     const falta=Math.max(0,(r.cant||0)-obraEfectiva);
     const ei=estadoItem(r);
     const enRevision=(r.estado||'').toLowerCase().includes('revisi');
+    // Mismo criterio que el check "Importación" del modal de requerimiento (verReqItems): lo que
+    // Almacén marcó a mano manda; si no lo tocó, se usa la sugerencia por antecedente de OC 0002.
+    const importManual=(getRecord(key)||{}).importacion;
+    const isImport=importManual!=null?importManual:!!SKU_IMPORT_COD[r.cod];
+    const primaryOc=(oc.ocs||[])[0];
     let pickCell='—',pedCell='—';
     // Mientras nadie haya repartido nada en el modal (ni PENDING ni CONFIRMED para este ítem),
     // se deja en "—" — mostrar 0 a Picking / todo a Pedido por defecto daba la falsa impresión
@@ -2031,6 +2046,7 @@ function renderReqItemTable(){
       <td><span style="font-size:10px;font-weight:700;color:#0891b2;background:#e0f2fe;padding:2px 7px;border-radius:5px">${r.idproy||'—'}</span></td>
       <td style="white-space:normal;max-width:180px;font-size:11px" title="${esc(r.proy)}">${r.proy||'—'}</td>
       <td><span class="pill" style="background:${ei.bg};color:${ei.c};white-space:nowrap">${ei.t}</span></td>
+      <td style="text-align:center">${isImport?`<span class="pill" onclick="showImportacionPopup(event,'${primaryOc||''}')" style="cursor:pointer;background:#fce7f3;color:#be185d;font-weight:700;white-space:nowrap" title="Clic para ver fechas de embarque">🌐 Importación 🔍</span>`:'<span style="color:#cbd5e1">—</span>'}</td>
       <td class="mono">${r.cod||'—'}</td>
       <td style="white-space:normal;max-width:240px">${r.prod||'—'}</td>
       <td class="num" style="font-weight:700">${(r.cant||0).toLocaleString('es-PE')}</td>
@@ -2055,7 +2071,7 @@ function renderReqItemTable(){
         :'<input type="text" value="'+esc(ob.guia)+'" placeholder="—" style="width:78px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="setGuia(\''+key+'\',this.value)">'}</td>
       <td class="num" style="background:#fffbeb;font-weight:700;color:${falta>0?'#dc2626':'#16a34a'}">${falta}</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="25" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
+  }).join('')||'<tr><td colspan="26" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
   const tot=f.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqItemInfo').textContent=tot?`Mostrando ${reqItemPage*sz+1}–${Math.min((reqItemPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} ítems`:'Sin resultados';
   const pagEl=document.getElementById('reqItemPag');
@@ -2136,12 +2152,17 @@ async function exportarReq(){
           pick=0;ped=r.cant||0;
         }
       }
+      const importManual=(getRecord(key)||{}).importacion;
+      const isImport=importManual!=null?importManual:!!SKU_IMPORT_COD[r.cod];
+      const primaryOc=(oc.ocs||[])[0];
+      const om=(primaryOc&&OCMETA_LIVE[primaryOc])||{};
       return{
         'Fecha':r.fecha||'','N° Req.':r.req||'','Responsable':r.resp||'','Id Proyecto':r.idproy||'','Proyecto':r.proy||'','Familia':r.fam||'',
-        'Estado':ei.t,'Código':r.cod||'','Descripción':r.prod||'','Cant.':r.cant||0,'Unidad':r.unid||'',
+        'Estado':ei.t,'Importación':isImport?'Sí':'No','Código':r.cod||'','Descripción':r.prod||'','Cant.':r.cant||0,'Unidad':r.unid||'',
         'Cant. a Picking':pick,'Cant. a Pedido':ped,
         'N° Pedido':pedidoForItem(key)||'','F. Pedido':fpedidoForItem(key)||'','Resp. Pedido':respPedidoForItem(key)||'',
         'N° OC':(oc.ocs||[]).join(', '),'F. Emisión':oc.foc||'','F. Aprobación':oc.fapro||'','F. Entrega':oc.fent||'',
+        'Entrega Proveedor':om.fEntregaProv||'','Zarpe':om.fZarpe||'','ETA Estimada':om.eta||'',
         'Cant. Recepcionada':oc.cantRec||0,'F. Recepción':oc.frecep||'','Guía Proveedor':(oc.guiasProv||[]).join(', '),
         'En Obra':obraEfectiva,'N° Guía':salidaExcel?(salidaExcel.guias.join(', ')||''):(ob.guia||''),'Falta':falta
       };
@@ -2356,14 +2377,16 @@ function enviarWhatsAppReq(rk){
   const aPick=[],aPed=[];
   items.forEach(function(i){
     const l=(i.estado||'').toLowerCase();
+    const key=i.req+'|'+i.cod;
+    const importManual=(getRecord(key)||{}).importacion;
+    const isImport=importManual!=null?importManual:!!SKU_IMPORT_COD[i.cod];
     if(l.includes('revisi')){
-      const key=i.req+'|'+i.cod;
       const pick=getDecision(key,AUTO_MAP[key]||0);
       const ped=Math.max(0,(i.cant||0)-pick);
       if(pick>0)aPick.push({it:i,n:pick});
-      if(ped>0)aPed.push({it:i,n:ped});
+      if(ped>0)aPed.push({it:i,n:ped,isImport:isImport});
     }else if(l.includes('pedido')){
-      aPed.push({it:i,n:i.cant||0});
+      aPed.push({it:i,n:i.cant||0,isImport:isImport});
     }else{
       aPick.push({it:i,n:i.cant||0});
     }
@@ -2384,7 +2407,7 @@ function enviarWhatsAppReq(rk){
   else L.push('— Ningún ítem se atiende con stock.');
   L.push('');
   L.push('*Pasa a PEDIDO (proceso de compra):*');
-  if(aPed.length)aPed.forEach(function(x,i){L.push((i+1)+'. '+x.it.cod+' — '+x.it.prod+' — *'+x.n+'* '+(x.it.unid||''));});
+  if(aPed.length)aPed.forEach(function(x,i){L.push((i+1)+'. '+x.it.cod+' — '+x.it.prod+' — *'+x.n+'* '+(x.it.unid||'')+(x.isImport?' _(IMPORTACIÓN — mayor tiempo de espera)_':''));});
   else L.push('— Ningún ítem pasa a compra.');
   L.push('');
   L.push('_Almacén — FRIOPACKING S.A._');
@@ -2501,7 +2524,8 @@ function verReqItems(rk){
           const comprometidoOtros=totalTrans>0?transitoComprometidoOtros(r.cod,key):0;
           const misComprometido=(getRecord(key)||{}).transito||0;
           const disponibleTrans=Math.max(0,totalTrans-comprometidoOtros);
-          const transCell=totalTrans<=0?'<span style="color:#cbd5e1">—</span>':fmtq(totalTrans);
+          const transCell=totalTrans<=0?'<span style="color:#cbd5e1">—</span>'
+            :`<span onclick="verDetalleTransito('${r.cod}','${rk}')" style="cursor:pointer;text-decoration:underline dotted;color:#b45309" title="Clic para ver a qué OC/pedido pertenece este tránsito, con fechas de entrega proveedor, zarpe y ETA">${fmtq(totalTrans)} 🔍</span>`;
           const dispCell=totalTrans<=0?'<span style="color:#cbd5e1">—</span>'
             :(comprometidoOtros>0
               ?`<span onclick="showTransitoReservaPopup(event,'${r.cod}','${key}')" style="cursor:pointer;text-decoration:underline dotted;color:#0d9488" title="Clic para ver en qué requerimiento(s) ya está reservado">${fmtq(disponibleTrans)} 🔒</span>`
@@ -2627,6 +2651,83 @@ function showTransitoReservaPopup(evt,cod,excludeKey){
   if(top+120>window.innerHeight)top=r.top-130;
   d.style.top=top+'px';d.style.left=left+'px';
   setTimeout(function(){document.addEventListener('click',function h(){var p=document.getElementById('_trans_popup');if(p)p.remove();document.removeEventListener('click',h);});},50);
+}
+// Ventana emergente pequeña (mismo patrón que showTransitoReservaPopup) con las 3 fechas de
+// embarque de la OC — solo se llama desde el badge "🌐 Importación" de la vista "Por ítem",
+// para no llenar la tabla de columnas "— pendiente" en los ítems que no son importación.
+function showImportacionPopup(evt,oc){
+  evt.stopPropagation();
+  var old=document.getElementById('_import_popup');if(old)old.remove();
+  var om=(oc&&OCMETA_LIVE[oc])||{};
+  var d=document.createElement('div');
+  d.id='_import_popup';
+  d.style.cssText='position:fixed;z-index:9999;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);padding:10px 14px;min-width:220px;max-width:300px';
+  var fila=function(icono,etiqueta,val){
+    return '<div style="font-size:12px;padding:3px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:10px"><span style="color:#64748b">'+icono+' '+etiqueta+'</span><span style="font-weight:600;'+(val?'color:#0f4c4c':'color:#f59e0b')+'">'+(val||'— pendiente')+'</span></div>';
+  };
+  var html='<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Embarque'+(oc?' — OC '+oc:'')+'</div>';
+  if(!oc){
+    html+='<div style="font-size:12px;color:#94a3b8">Este ítem no tiene OC vinculada todavía.</div>';
+  }else{
+    html+=fila('📦','Entrega Proveedor',om.fEntregaProv)+fila('⚓','Zarpe',om.fZarpe)+fila('🚢','ETA Estimada',om.eta);
+  }
+  html+='<div style="text-align:right;margin-top:6px"><span onclick="document.getElementById(\'_import_popup\').remove()" style="font-size:10px;color:#94a3b8;cursor:pointer">✕ cerrar</span></div>';
+  d.innerHTML=html;
+  document.body.appendChild(d);
+  var r=evt.target.getBoundingClientRect();
+  var top=r.bottom+6;var left=r.left;
+  if(left+300>window.innerWidth)left=window.innerWidth-310;
+  if(top+140>window.innerHeight)top=r.top-150;
+  d.style.top=top+'px';d.style.left=left+'px';
+  setTimeout(function(){document.addEventListener('click',function h(){var p=document.getElementById('_import_popup');if(p)p.remove();document.removeEventListener('click',h);});},50);
+}
+// Modal grande (mismo patrón que verDetalleTransito) con el resumen de todos los SKU marcados
+// como Importación dentro de lo que esté filtrado en ese momento en la vista "Por ítem" — se
+// abre desde el encabezado "Importación 📋" de esa tabla.
+function showImportacionResumen(){
+  const base=window._reqFil||[];
+  const rows=base.filter(function(r){
+    const key=r.req+'|'+r.cod;
+    const importManual=(getRecord(key)||{}).importacion;
+    return importManual!=null?importManual:!!SKU_IMPORT_COD[r.cod];
+  }).map(function(r){
+    const key=r.req+'|'+r.cod;
+    const oc=REQCOD_OC[key]||{};
+    const primaryOc=(oc.ocs||[])[0];
+    const om=(primaryOc&&OCMETA_LIVE[primaryOc])||{};
+    return{r:r,oc:oc,primaryOc:primaryOc,om:om};
+  });
+  const th='text-align:left;padding:5px 8px;color:#fff;background:#0f172a;font-size:10px;white-space:nowrap;position:sticky;top:0';
+  const td='padding:4px 8px;border-top:1px solid #e2e8f0;font-size:11px;white-space:nowrap';
+  const pend='<span style="color:#f59e0b">— pendiente</span>';
+  document.getElementById('fichaBody').innerHTML=`
+    <div style="background:#be185d;color:#fff;padding:16px 20px">
+      <div style="font-size:15px;font-weight:800">🌐 Resumen de Importación</div>
+      <div style="margin-top:8px;font-size:12px">${rows.length} SKU marcado(s) como importación, según los filtros actuales de la tabla</div>
+    </div>
+    <div style="padding:12px 16px;overflow-x:auto">
+      ${rows.length?`<table style="width:100%;border-collapse:collapse">
+        <thead><tr><th style="${th}">N° Req.</th><th style="${th}">Responsable</th><th style="${th}">Proyecto</th><th style="${th}">Código</th><th style="${th}">Descripción</th><th style="${th};text-align:right">Cant.</th><th style="${th}">N° OC</th><th style="${th}">📦 Entrega Prov.</th><th style="${th}">⚓ Zarpe</th><th style="${th}">🚢 ETA Estimada</th></tr></thead>
+        <tbody>${rows.map(function(x){
+          return `<tr>
+          <td style="${td};font-family:ui-monospace,monospace">${x.r.req||'—'}</td>
+          <td style="${td}">${x.r.resp||'—'}</td>
+          <td style="${td}">${x.r.proy||'—'}</td>
+          <td style="${td};font-family:ui-monospace,monospace">${x.r.cod||'—'}</td>
+          <td style="${td};white-space:normal;max-width:260px">${x.r.prod||'—'}</td>
+          <td style="${td};text-align:right">${fmtq(x.r.cant)} ${x.r.unid||''}</td>
+          <td style="${td};font-family:ui-monospace,monospace">${x.primaryOc||'— (sin OC)'}</td>
+          <td style="${td}">${x.om.fEntregaProv||pend}</td>
+          <td style="${td}">${x.om.fZarpe||pend}</td>
+          <td style="${td}">${x.om.eta||pend}</td>
+        </tr>`;}).join('')}</tbody></table>`
+      :'<div style="color:#94a3b8;padding:16px;text-align:center">No hay ítems marcados como Importación con los filtros actuales.</div>'}
+    </div>
+    <div style="padding:0 20px 18px;display:flex;gap:8px">
+      <button class="btn br" onclick="cerrarFicha()">Cerrar</button>
+    </div>`;
+  fichaSize('min(96vw,1300px)');
+  document.getElementById('fichaBg').style.display='flex';
 }
 function setImportacion(key,checked){
   const prev=getRecord(key)||{};
