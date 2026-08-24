@@ -769,6 +769,13 @@ const SUPABASE_URL = 'https://gxjwhubmwsizrxbmavlz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_535ifADM-ulajDIt8GXKbg_PnJ4wWNm';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// La gente inicia sesión solo con su usuario (ej. "CCHECA", igual que en NISIRA) — Supabase
+// exige internamente un formato de correo, así que se completa acá, sin que se note en pantalla.
+function usuarioAEmail(input){
+  const u = (input||'').trim().toLowerCase();
+  return u.includes('@') ? u : u + '@friopacking.pe';
+}
+
 // Sesión de Supabase (persistida por supabase-js en localStorage) + el perfil
 // (public.profiles) de quien inició sesión — se valida tipo='interno' y activo=true
 // antes de dejar pasar a Compras.
@@ -803,20 +810,20 @@ function closeAuthOverlay(){
 function renderAuthLogin(){
   document.getElementById('authModalContent').innerHTML = `
     <h3 style="margin:0 0 6px;font-size:18px;color:var(--text);">Acceso Compras</h3>
-    <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Ingresa con tu cuenta de Friopacking.</p>
-    <input type="text" id="authEmail" placeholder="Tu correo">
-    <input type="password" id="authPass" placeholder="Clave">
+    <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Ingresa con tu usuario de Friopacking.</p>
+    <input type="text" id="authEmail" placeholder="Usuario (ej. CCHECA)" autocomplete="username">
+    <input type="password" id="authPass" placeholder="Clave" autocomplete="current-password">
     <div id="authError" style="color:var(--red);font-size:12.5px;margin-bottom:10px;display:none;"></div>
     <button class="tbtn importar" style="width:100%;justify-content:center;" onclick="confirmarLogin()">Ingresar</button>
   `;
 }
 async function confirmarLogin(){
-  const email = (document.getElementById('authEmail').value||'').trim();
+  const email = usuarioAEmail(document.getElementById('authEmail').value);
   const pass = document.getElementById('authPass').value;
   const err = document.getElementById('authError');
   err.style.display='none';
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if(error){ err.textContent='Correo o clave incorrectos.'; err.style.display='block'; return; }
+  if(error){ err.textContent='Usuario o clave incorrectos.'; err.style.display='block'; return; }
   if(!(await cargarPerfilCompras(data.user.id))){
     err.textContent='Esta cuenta no tiene acceso a Compras.';
     err.style.display='block';

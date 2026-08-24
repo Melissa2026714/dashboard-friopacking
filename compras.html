@@ -356,8 +356,8 @@ body.dark .g-rank-card{background:#111b2b!important}
   <div style="background:#fff;border-radius:14px;padding:34px 38px;width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.45)">
     <div style="font-size:26px;margin-bottom:10px">🔒</div>
     <h2 style="font-size:16px;margin:0 0 4px;color:#0f172a">Acceso Compras</h2>
-    <p style="font-size:12px;color:#64748b;margin:0 0 22px">Ingresa con tu cuenta de Friopacking.</p>
-    <input type="text" id="authGateEmail" placeholder="Tu correo" autocomplete="username"
+    <p style="font-size:12px;color:#64748b;margin:0 0 22px">Ingresa con tu usuario de Friopacking.</p>
+    <input type="text" id="authGateEmail" placeholder="Usuario (ej. CCHECA)" autocomplete="username"
       style="width:100%;box-sizing:border-box;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:8px;font-family:'Inter',sans-serif"
       onkeydown="if(event.key==='Enter')document.getElementById('authGatePass').focus()">
     <input type="password" id="authGatePass" placeholder="Clave" autocomplete="current-password"
@@ -371,6 +371,12 @@ body.dark .g-rank-card{background:#111b2b!important}
 const SUPABASE_URL = 'https://gxjwhubmwsizrxbmavlz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_535ifADM-ulajDIt8GXKbg_PnJ4wWNm';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// La gente inicia sesión solo con su usuario (ej. "CCHECA", igual que en NISIRA) — Supabase
+// exige internamente un formato de correo, así que se completa acá, sin que se note en pantalla.
+function usuarioAEmail(input){
+  const u = (input||'').trim().toLowerCase();
+  return u.includes('@') ? u : u + '@friopacking.pe';
+}
 let sesionPerfil = null; // fila de public.profiles de quien inició sesión
 async function authGateCheck(){
   const { data:{ session } } = await sb.auth.getSession();
@@ -384,12 +390,12 @@ async function authGateCheck(){
   }
 }
 async function authGateLogin(){
-  const email = (document.getElementById('authGateEmail').value||'').trim();
+  const email = usuarioAEmail(document.getElementById('authGateEmail').value);
   const pass = document.getElementById('authGatePass').value;
   const err = document.getElementById('authGateErr');
   err.textContent='';
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if(error){ err.textContent='Correo o clave incorrectos.'; return; }
+  if(error){ err.textContent='Usuario o clave incorrectos.'; return; }
   const { data:prof, error:perr } = await sb.from('profiles').select('*').eq('id', data.user.id).single();
   if(perr || !prof || prof.tipo!=='interno' || prof.activo===false){
     err.textContent='Esta cuenta no tiene acceso a Compras.';
