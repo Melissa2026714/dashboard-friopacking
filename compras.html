@@ -419,6 +419,7 @@ function continuarLuegoDeLogin(prof,esLoginFresco){
   if(esLoginFresco)registrarAuditoria('login','profiles',prof.id,{usuario:prof.nombre});
   cargarSupervisoresSB();
   cargarOcP4P5SB();
+  cargarSinocProjMetaSB();
   if(prof.debe_cambiar_clave){
     document.getElementById('authGate').style.display='none';
     abrirCambiarClave(true);
@@ -493,6 +494,20 @@ async function bulkUpsertSB(table,rows,onConflict,mapper,batchSize){
   }
   return true;
 }
+// sinoc no tiene ninguna columna que sea única por fila (ver mapeo) — en vez de upsert
+// se reemplaza la tabla entera en cada import, seguro porque nadie edita sinoc a mano.
+async function replaceAllSB(table,rows,mapper,batchSize){
+  const {error:delErr}=await sb.from(table).delete().gte('id',0);
+  if(delErr){console.warn('No se pudo limpiar '+table+' (Supabase):',delErr);return false;}
+  const mapped=rows.map(mapper);
+  batchSize=batchSize||500;
+  for(let i=0;i<mapped.length;i+=batchSize){
+    const chunk=mapped.slice(i,i+batchSize);
+    const {error}=await sb.from(table).insert(chunk);
+    if(error){console.warn('No se pudo guardar en '+table+' (Supabase):',error);return false;}
+  }
+  return true;
+}
 async function cargarOcP4P5SB(){
   try{
     const [ocRows,p4Rows,p5Rows]=await Promise.all([fetchAllSB('oc'),fetchAllSB('p4'),fetchAllSB('p5reqs')]);
@@ -502,6 +517,73 @@ async function cargarOcP4P5SB(){
     try{fixOcEstados();}catch(e){}
     try{refreshAllPages();}catch(e){}
   }catch(e){console.warn('No se pudo cargar oc/p4/p5reqs de Supabase:',e);}
+}
+
+// ── sinoc / proj / ocMeta / cotMeta: mismo motivo que oc/p4/p5reqs ────────────────
+function sinocFromSB(r){
+  return {ped:r.ped,fecha:r.fecha,respPed:r.resp_ped,resp:r.resp,idproy:r.idproy,proy:r.proy,
+    cod:r.cod,prod:r.prod,cant:r.cant,unid:r.unid,req:r.req,freq:r.freq,estado:r.estado,
+    parcial:r.parcial,obs:r.obs};
+}
+function sinocToSB(r){
+  return {ped:r.ped??null,fecha:r.fecha??null,resp_ped:r.respPed??null,resp:r.resp??null,
+    idproy:r.idproy??null,proy:r.proy??null,cod:r.cod??null,prod:r.prod??null,cant:r.cant??null,
+    unid:r.unid??null,req:r.req??null,freq:r.freq??null,estado:r.estado??null,
+    parcial:r.parcial===true,obs:r.obs??null};
+}
+function projFromSB(r){
+  return {nombre:r.nombre,prys:r.prys||[],estado:r.estado,supervisor:r.supervisor,asistente:r.asistente,
+    zona:r.zona,distrito:r.distrito,depto:r.depto,inicio:r.inicio,fin:r.fin,gps:r.gps,
+    lat:r.lat,lon:r.lon,gps_exact:r.gps_exact};
+}
+function projToSB(r){
+  return {nombre:r.nombre,prys:r.prys??[],estado:r.estado??null,supervisor:r.supervisor??null,
+    asistente:r.asistente??null,zona:r.zona??null,distrito:r.distrito??null,depto:r.depto??null,
+    inicio:r.inicio??null,fin:r.fin??null,gps:r.gps??null,lat:r.lat??null,lon:r.lon??null,
+    gps_exact:r.gps_exact===true};
+}
+function ocMetaToSB(oc,v){
+  return {oc:oc,reg:v.reg??null,correo:v.correo??null,fcorreo:v.fcorreo??null,
+    compras:v.compras??null,fcompras:v.fcompras??null,almacen:v.almacen??null,falmacen:v.falmacen??null,
+    fent_manual:v.fentManual??null,f_entrega_prov:v.fEntregaProv??null,f_zarpe:v.fZarpe??null,eta:v.eta??null};
+}
+// Fire-and-forget (igual que registrarAuditoria): un check/fecha manual no debe quedar
+// esperando la red — se guarda local al instante y se sincroniza con Supabase por detrás.
+function syncOcMetaSB(oc){
+  const v=(D.ocMeta&&D.ocMeta[oc])||{};
+  sb.from('oc_meta').upsert(ocMetaToSB(oc,v),{onConflict:'oc'}).then(function(r){
+    if(r.error)console.warn('No se pudo guardar oc_meta en Supabase:',r.error);
+  });
+}
+function syncCotMetaSB(key){
+  const row={ped_cod:key,en_cotizacion:!!(D.cotMeta&&D.cotMeta[key]),fecha:(D.cotMetaFecha&&D.cotMetaFecha[key])||null};
+  sb.from('cot_meta').upsert(row,{onConflict:'ped_cod'}).then(function(r){
+    if(r.error)console.warn('No se pudo guardar cot_meta en Supabase:',r.error);
+  });
+}
+async function cargarSinocProjMetaSB(){
+  try{
+    const [sinocRows,projRows,ocMetaRows,cotMetaRows]=await Promise.all([
+      fetchAllSB('sinoc'),fetchAllSB('proj'),fetchAllSB('oc_meta'),fetchAllSB('cot_meta')
+    ]);
+    if(sinocRows.length)D.sinoc=sinocRows.map(sinocFromSB);
+    if(projRows.length)D.proj=projRows.map(projFromSB);
+    if(ocMetaRows.length){
+      const om={};
+      ocMetaRows.forEach(function(r){
+        om[r.oc]={reg:r.reg,correo:r.correo,fcorreo:r.fcorreo,compras:r.compras,fcompras:r.fcompras,
+          almacen:r.almacen,falmacen:r.falmacen,fentManual:r.fent_manual,fEntregaProv:r.f_entrega_prov,
+          fZarpe:r.f_zarpe,eta:r.eta};
+      });
+      D.ocMeta=om;
+    }
+    if(cotMetaRows.length){
+      const cm={},cmf={};
+      cotMetaRows.forEach(function(r){cm[r.ped_cod]=r.en_cotizacion;cmf[r.ped_cod]=r.fecha||'';});
+      D.cotMeta=cm;D.cotMetaFecha=cmf;
+    }
+    try{refreshAllPages();}catch(e){}
+  }catch(e){console.warn('No se pudo cargar sinoc/proj/ocMeta/cotMeta de Supabase:',e);}
 }
 async function authGateCheck(){
   const { data:{ session } } = await sb.auth.getSession();
@@ -1824,6 +1906,7 @@ function toggleReg(cb,oc){
   D.ocMeta[oc].reg=cb.checked;
   if(!cb.checked){D.ocMeta[oc].compras=false;D.ocMeta[oc].fcompras='';D.ocMeta[oc].almacen=false;D.ocMeta[oc].falmacen='';}
   saveLocal();
+  syncOcMetaSB(oc);
   renderP2Table();
 }
 function toggleRegCheck(cb,oc,campo,fcampo,elId){
@@ -1833,6 +1916,7 @@ function toggleRegCheck(cb,oc,campo,fcampo,elId){
   const el=document.getElementById(elId);
   if(el)el.textContent=D.ocMeta[oc][fcampo]||'—';
   saveLocal();
+  syncOcMetaSB(oc);
 }
 function editRegFecha(cell,oc,campo,fcampo){
   if(!D.ocMeta)D.ocMeta={};
@@ -1858,6 +1942,7 @@ function editRegFecha(cell,oc,campo,fcampo){
   const row=cell.closest('tr');
   if(row){const cb=row.querySelector('input[type=checkbox][onchange*="\''+campo+'\'"]');if(cb)cb.checked=!!D.ocMeta[oc][campo];}
   saveLocal();
+  syncOcMetaSB(oc);
 }
 function toggleCorreo(cb,oc){
   if(!D.ocMeta)D.ocMeta={};
@@ -1875,6 +1960,7 @@ function toggleCorreo(cb,oc){
   const elRow=cb.closest('tr').querySelector('[id^="fcorreo_"]');
   if(elRow)elRow.textContent=D.ocMeta[oc].fcorreo||'—';
   saveLocal();
+  syncOcMetaSB(oc);
   // Al marcar "correo enviado", abrir por defecto el WhatsApp informativo al supervisor
   if(cb.checked)enviarWhatsAppOC(oc);
 }
@@ -1902,6 +1988,7 @@ function editFCorreo(cell,oc){
   const row=cell.closest('tr');
   if(row){const cb=row.querySelector('input[type=checkbox][onchange^="toggleCorreo"]');if(cb)cb.checked=!!D.ocMeta[oc].correo;}
   saveLocal();
+  syncOcMetaSB(oc);
 }
 // F. Entrega manual: el Maestro trae la fecha pactada original (r.fent), pero el proveedor a
 // veces la mueve — esto permite corregirla por OC sin perder de vista cuál era la del Maestro
@@ -1925,6 +2012,7 @@ function editFEntrega(cell,oc,fentDefault){
     D.ocMeta[oc].fentManual=String(dd).padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+yy;
   }
   saveLocal();
+  syncOcMetaSB(oc);
   renderP2Table();
   renderP4Table();
 }
@@ -1957,6 +2045,7 @@ function editOcMetaFecha(cell,oc,campo){
     D.ocMeta[oc][campo]=String(dd).padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+yy;
   }
   saveLocal();
+  syncOcMetaSB(oc);
   renderP2Table();
   renderP4Table();
 }
@@ -1984,6 +2073,7 @@ function toggleCotiz(key,checked){
   D.cotMeta[key]=checked;
   D.cotMetaFecha[key]=checked?_hoy():'';
   saveLocal();
+  syncCotMetaSB(key);
 }
 function enviarCorreoOC(oc){
   var items=SKUS[oc]||SKUS_P4[oc]||[];
@@ -4225,7 +4315,8 @@ function saveLocal(){
   if(!D.oc.length&&!D.p4.length&&!D.proj.length)return false;
   // Excluir D.consultas (aparte, muy grande) y D.oc/p4/p5reqs (Fase 2: ya viven en
   // tablas propias de Supabase, no en el blob compartido — ver cargarOcP4P5SB).
-  const {consultas:_omit,oc:_omitOc,p4:_omitP4,p5reqs:_omitP5,...Dsin}=D;
+  const {consultas:_omit,oc:_omitOc,p4:_omitP4,p5reqs:_omitP5,sinoc:_omitSinoc,proj:_omitProj,
+    ocMeta:_omitOcMeta,cotMeta:_omitCotMeta,cotMetaFecha:_omitCotMetaFecha,...Dsin}=D;
   const payload=JSON.stringify({D:Dsin,SKUS,SKUS_P4,ts:Date.now()});
   try{localStorage.setItem(LS_KEY,payload);}catch(e){console.warn('localStorage lleno, solo GitHub:',e);}
   return payload;
@@ -4253,27 +4344,11 @@ async function loadGitHub(){
     if(!r.ok)return false;
     const s=await r.json();
     if(!s||!s.D)return false;
-    // oc/p4/p5reqs salieron de esta protección: Fase 2 los migró a tablas propias
-    // de Supabase (cargarOcP4P5SB), ya no viven en este blob compartido.
-    const PROTECTED_KEYS=['proj','sinoc'];
-    const ghCounts={};
-    PROTECTED_KEYS.forEach(function(k){ghCounts[k]=(s.D&&s.D[k])?s.D[k].length:0;});
-    const ghAllEmpty=PROTECTED_KEYS.every(function(k){return ghCounts[k]===0;});
-    if(ghAllEmpty){console.warn('[FP] GitHub devolvió datos vacíos — no se cargan.');return false;}
-    try{
-      const localRaw=localStorage.getItem(LS_KEY);
-      if(localRaw){
-        const localS=JSON.parse(localRaw);
-        // Estas secciones pueden bajar de forma legítima — solo protegemos si quedaron en cero.
-        PROTECTED_KEYS.forEach(function(k){
-          const locN=(localS&&localS.D&&localS.D[k])?localS.D[k].length:0;
-          if(ghCounts[k]===0&&locN>0){
-            console.warn('[FP] GitHub trae "'+k+'" vacío, se conserva la copia local ('+locN+').');
-            s.D[k]=localS.D[k];
-          }
-        });
-      }
-    }catch(e2){}
+    // oc/p4/p5reqs/sinoc/proj/ocMeta/cotMeta salieron de este blob: Fase 2 los migró a
+    // tablas propias de Supabase (cargarOcP4P5SB, cargarSinocProjMetaSB). Ya no queda
+    // ningún campo grande aquí que valga la pena proteger por conteo — solo se valida
+    // que la nube no haya devuelto un D vacío/corrupto.
+    if(Object.keys(s.D).length===0){console.warn('[FP] GitHub devolvió datos vacíos — no se cargan.');return false;}
     Object.assign(D,s.D);
     if(s.SKUS)Object.assign(SKUS,s.SKUS);
     if(s.SKUS_P4)Object.assign(SKUS_P4,s.SKUS_P4);
@@ -4394,25 +4469,16 @@ async function saveGitHub(payload){
       const rCheck=await fetchTO(GH_RAW+'?t='+Date.now());
       if(rCheck.ok){
         const remote=await rCheck.json();
-        const warnings=[];
-        // oc/p4 ya no viven aquí (Fase 2: Supabase) — solo proj/sinoc siguen en el blob.
-        // Pueden bajar de forma legítima — solo avisamos si tu versión las deja en cero.
-        ['proj','sinoc'].forEach(function(k){
-          const locN=(localData.D&&localData.D[k])?localData.D[k].length:0;
-          const remN=(remote.D&&remote.D[k])?remote.D[k].length:0;
-          if(remN>0&&locN===0)warnings.push('• '+k+': tu versión lo deja VACÍO pero la nube tiene '+remN);
-        });
-        if(warnings.length){
-          const ok=await askConfirmVisual('⚠️ ADVERTENCIA: vas a subir datos que podrían borrar información:\n\n'+warnings.join('\n')+'\n\nEsto probablemente borrará información más reciente que otra persona ya guardó.\n\n¿Seguro que quieres continuar de todos modos?');
-          if(!ok) return false;
-        }
+        // oc/p4/p5reqs/sinoc/proj ya no viven aquí (Fase 2: Supabase) — ya no queda
+        // ningún campo grande que valga la pena advertir por conteo antes de subir.
         // Anti-pisado: conservar claves que la nube tiene y esta pestaña no conoce
         // (ej. almacenValidado/almacenPicking creados por Almacén después de abrir esta pestaña).
-        // oc/p4/p5reqs quedan excluidos a propósito: ya viven en Supabase (Fase 2) y no
-        // deben reinyectarse desde el blob viejo de la nube.
+        // oc/p4/p5reqs/sinoc/proj/ocMeta/cotMeta/cotMetaFecha quedan excluidos a propósito:
+        // ya viven en Supabase (Fase 2) y no deben reinyectarse desde el blob viejo de la nube.
+        const _MIGRADOS_SB=['oc','p4','p5reqs','sinoc','proj','ocMeta','cotMeta','cotMetaFecha'];
         let cambiado=false;
         Object.keys(remote.D||{}).forEach(function(k){
-          if(k==='oc'||k==='p4'||k==='p5reqs')return;
+          if(_MIGRADOS_SB.indexOf(k)!==-1)return;
           if(localData.D[k]===undefined){localData.D[k]=remote.D[k];cambiado=true;}
         });
         // Anti-pisado: fusionar supervisores y proveedores en vez de reemplazar la
@@ -4425,21 +4491,9 @@ async function saveGitHub(payload){
           localData.D.proveedores=mergeProveedores(remote.D.proveedores,localData.D.proveedores);
           cambiado=true;
         }
-        // Anti-pisado: fusionar marcas manuales de Regularización (ocMeta) y
-        // Cotización (cotMeta) en vez de reemplazarlas — ver bug "se perdieron
-        // las marcas manuales" (2026-07-31).
-        if(remote.D&&remote.D.ocMeta){
-          localData.D.ocMeta=mergeOcMeta(remote.D.ocMeta,localData.D.ocMeta);
-          cambiado=true;
-        }
-        if(remote.D&&remote.D.cotMeta){
-          localData.D.cotMeta=mergeCotMeta(remote.D.cotMeta,localData.D.cotMeta);
-          cambiado=true;
-        }
-        if(remote.D&&remote.D.cotMetaFecha){
-          localData.D.cotMetaFecha=mergeCotMetaFecha(remote.D.cotMetaFecha,localData.D.cotMetaFecha);
-          cambiado=true;
-        }
+        // ocMeta/cotMeta/cotMetaFecha ya no se fusionan aquí: Fase 2 los migró a Supabase
+        // (ver _MIGRADOS_SB arriba) — mergeOcMeta/mergeCotMeta/mergeCotMetaFecha siguen
+        // existiendo solo para archivoMeta, que todavía vive en este blob.
         // Igual anti-pisado para los motivos/fechas de Archivar en Sin OC — Cotización
         if(remote.D&&remote.D.archivoMeta){
           localData.D.archivoMeta=mergeOcMeta(remote.D.archivoMeta,localData.D.archivoMeta);
@@ -6252,11 +6306,13 @@ async function importMaestro(wb){
   refreshAllPages();
   saveLocal();
 
-  // Fase 2: oc y p5reqs viven en Supabase (una fila por registro) en vez del
+  // Fase 2: oc/p5reqs/sinoc/proj viven en Supabase (una fila por registro) en vez del
   // blob compartido — se sube en paralelo mientras la persona ya ve los datos en pantalla.
   Promise.all([
     bulkUpsertSB('oc',ocData,'oc',ocToSB),
-    bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB)
+    bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB),
+    replaceAllSB('sinoc',sinOcData,sinocToSB),
+    bulkUpsertSB('proj',projData,'nombre',projToSB)
   ]).then(function(rs){
     if(rs.some(function(ok){return !ok;}))showSavedLabel('⚠️ MAESTRO no se guardó completo en Supabase — revisa tu conexión e importa de nuevo','#dc2626');
   });

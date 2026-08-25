@@ -63,7 +63,8 @@ function saveLocal(){
   if(!D.oc.length&&!D.p4.length&&!D.proj.length)return false;
   // Excluir D.consultas (aparte, muy grande) y D.oc/p4/p5reqs (Fase 2: ya viven en
   // tablas propias de Supabase, no en el blob compartido).
-  const {consultas:_omit,oc:_omitOc,p4:_omitP4,p5reqs:_omitP5,...Dsin}=D;
+  const {consultas:_omit,oc:_omitOc,p4:_omitP4,p5reqs:_omitP5,sinoc:_omitSinoc,proj:_omitProj,
+    ocMeta:_omitOcMeta,cotMeta:_omitCotMeta,cotMetaFecha:_omitCotMetaFecha,...Dsin}=D;
   const payload=JSON.stringify({D:Dsin,SKUS,ts:Date.now()});
   try{localStorage.setItem(LS_KEY,payload);}catch(e){console.warn('localStorage lleno, solo GitHub:',e);}
   return payload;
@@ -156,6 +157,32 @@ async function bulkUpsertSB(table,rows,onConflict,mapper,batchSize){
   }
   return true;
 }
+// sinoc no tiene ninguna columna única por fila — se reemplaza la tabla entera en
+// cada import en vez de hacer upsert (seguro: nadie edita sinoc a mano).
+async function replaceAllSB(table,rows,mapper,batchSize){
+  const {error:delErr}=await sb.from(table).delete().gte('id',0);
+  if(delErr){console.warn('No se pudo limpiar '+table+' (Supabase):',delErr);return false;}
+  const mapped=rows.map(mapper);
+  batchSize=batchSize||500;
+  for(let i=0;i<mapped.length;i+=batchSize){
+    const chunk=mapped.slice(i,i+batchSize);
+    const {error}=await sb.from(table).insert(chunk);
+    if(error){console.warn('No se pudo guardar en '+table+' (Supabase):',error);return false;}
+  }
+  return true;
+}
+function sinocToSB(r){
+  return {ped:r.ped??null,fecha:r.fecha??null,resp_ped:r.respPed??null,resp:r.resp??null,
+    idproy:r.idproy??null,proy:r.proy??null,cod:r.cod??null,prod:r.prod??null,cant:r.cant??null,
+    unid:r.unid??null,req:r.req??null,freq:r.freq??null,estado:r.estado??null,
+    parcial:r.parcial===true,obs:r.obs??null};
+}
+function projToSB(r){
+  return {nombre:r.nombre,prys:r.prys??[],estado:r.estado??null,supervisor:r.supervisor??null,
+    asistente:r.asistente??null,zona:r.zona??null,distrito:r.distrito??null,depto:r.depto??null,
+    inicio:r.inicio??null,fin:r.fin??null,gps:r.gps??null,lat:r.lat??null,lon:r.lon??null,
+    gps_exact:r.gps_exact===true};
+}
 
 // ── Subir a GitHub (solo quién tenga el token) ────────────────────────────────
 async function saveGitHub(payload){
@@ -168,23 +195,16 @@ async function saveGitHub(payload){
       const rCheck=await fetchTO(GH_RAW+'?t='+Date.now());
       if(rCheck.ok){
         const remote=await rCheck.json();
-        const warnings=[];
-        // oc/p4 ya no viven aquí (Fase 2: Supabase) — solo proj/sinoc siguen en el blob.
-        ['proj','sinoc'].forEach(function(k){
-          const locN=(localData.D&&localData.D[k])?localData.D[k].length:0;
-          const remN=(remote.D&&remote.D[k])?remote.D[k].length:0;
-          if(remN>0&&locN===0)warnings.push('• '+k+': tu versión lo deja VACÍO pero la nube tiene '+remN);
-        });
-        if(warnings.length){
-          const ok=await askConfirmVisual('⚠️ ADVERTENCIA: vas a subir datos que podrían borrar información:\n\n'+warnings.join('\n')+'\n\nEsto probablemente borrará información más reciente que otra persona ya guardó.\n\n¿Seguro que quieres continuar de todos modos?');
-          if(!ok) return false;
-        }
+        // oc/p4/p5reqs/sinoc/proj ya no viven aquí (Fase 2: Supabase) — ya no queda
+        // ningún campo grande que valga la pena advertir por conteo antes de subir.
         // Anti-pisado: conservar claves que la nube tiene y esta pestaña no conoce
         // (ej. almacenValidado/almacenPicking creados por Almacén después de abrir esta pestaña).
-        // oc/p4/p5reqs quedan excluidos a propósito: ya viven en Supabase (Fase 2).
+        // oc/p4/p5reqs/sinoc/proj/ocMeta/cotMeta/cotMetaFecha quedan excluidos a propósito:
+        // ya viven en Supabase (Fase 2).
+        const _MIGRADOS_SB=['oc','p4','p5reqs','sinoc','proj','ocMeta','cotMeta','cotMetaFecha'];
         let cambiado=false;
         Object.keys(remote.D||{}).forEach(function(k){
-          if(k==='oc'||k==='p4'||k==='p5reqs')return;
+          if(_MIGRADOS_SB.indexOf(k)!==-1)return;
           if(localData.D[k]===undefined){localData.D[k]=remote.D[k];cambiado=true;}
         });
         // Anti-pisado: fusionar supervisores y proveedores en vez de reemplazar la
@@ -197,17 +217,8 @@ async function saveGitHub(payload){
           localData.D.proveedores=mergeProveedores(remote.D.proveedores,localData.D.proveedores);
           cambiado=true;
         }
-        // Anti-pisado: fusionar marcas manuales de Regularización (ocMeta) y
-        // Cotización (cotMeta) en vez de reemplazarlas — ver bug "se perdieron
-        // las marcas manuales" (2026-07-31).
-        if(remote.D&&remote.D.ocMeta){
-          localData.D.ocMeta=mergeOcMeta(remote.D.ocMeta,localData.D.ocMeta);
-          cambiado=true;
-        }
-        if(remote.D&&remote.D.cotMeta){
-          localData.D.cotMeta=mergeCotMeta(remote.D.cotMeta,localData.D.cotMeta);
-          cambiado=true;
-        }
+        // ocMeta/cotMeta ya no se fusionan aquí: Fase 2 los migró a Supabase (ver
+        // _MIGRADOS_SB arriba). mergeOcMeta sigue existiendo solo para archivoMeta.
         // Igual anti-pisado para los motivos/fechas de Archivar en Sin OC — Cotización
         if(remote.D&&remote.D.archivoMeta){
           localData.D.archivoMeta=mergeOcMeta(remote.D.archivoMeta,localData.D.archivoMeta);
@@ -926,7 +937,9 @@ async function importMaestro(wb){
   // Fase 2: oc y p5reqs viven en Supabase (una fila por registro) en vez del blob compartido.
   const okSB=await Promise.all([
     bulkUpsertSB('oc',ocData,'oc',ocToSB),
-    bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB)
+    bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB),
+    replaceAllSB('sinoc',sinOcData,sinocToSB),
+    bulkUpsertSB('proj',projData,'nombre',projToSB)
   ]);
   if(okSB.some(function(ok){return !ok;}))alert('⚠️ Parte del MAESTRO no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.');
 
