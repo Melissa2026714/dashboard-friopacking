@@ -251,8 +251,45 @@ async function cerrarSesionApp(){
   sesionPerfil = null;
   location.reload();
 }
+function abrirCambiarClave(){
+  document.getElementById('changePassNew').value='';
+  document.getElementById('changePassNew2').value='';
+  document.getElementById('changePassErr').textContent='';
+  document.getElementById('changePassModal').style.display='flex';
+}
+function cerrarCambiarClave(){
+  document.getElementById('changePassModal').style.display='none';
+}
+async function confirmarCambiarClave(){
+  const p1=document.getElementById('changePassNew').value;
+  const p2=document.getElementById('changePassNew2').value;
+  const err=document.getElementById('changePassErr');
+  err.textContent='';
+  if(!p1||p1.length<6){ err.textContent='Mínimo 6 caracteres.'; return; }
+  if(p1!==p2){ err.textContent='Las claves no coinciden.'; return; }
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  if(error){ err.textContent='No se pudo cambiar: '+error.message; return; }
+  cerrarCambiarClave();
+  alert('✅ Clave actualizada correctamente.');
+}
 authGateCheck();
 </script>
+
+<!-- Modal "Cambiar mi clave" — disponible para cualquiera ya logueado. -->
+<div id="changePassModal" style="display:none;position:fixed;inset:0;z-index:999998;background:rgba(15,23,42,.6);align-items:center;justify-content:center;font-family:'Inter',sans-serif">
+  <div style="background:#fff;border-radius:14px;padding:30px 34px;width:320px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="font-size:24px;margin-bottom:8px">🔐</div>
+    <h3 style="font-size:15px;margin:0 0 4px;color:#0f172a">Cambiar mi clave</h3>
+    <p style="font-size:11.5px;color:#64748b;margin:0 0 18px">Mínimo 6 caracteres.</p>
+    <input type="password" id="changePassNew" placeholder="Nueva clave"
+      style="width:100%;box-sizing:border-box;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 11px;font-size:13px;margin-bottom:8px;font-family:'Inter',sans-serif">
+    <input type="password" id="changePassNew2" placeholder="Confirmar clave"
+      style="width:100%;box-sizing:border-box;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 11px;font-size:13px;margin-bottom:8px;font-family:'Inter',sans-serif">
+    <div id="changePassErr" style="color:#dc2626;font-size:11px;min-height:16px;margin-bottom:6px;font-family:'Inter',sans-serif"></div>
+    <button onclick="confirmarCambiarClave()" style="width:100%;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;font-family:'Inter',sans-serif">Guardar</button>
+    <button onclick="cerrarCambiarClave()" style="width:100%;background:transparent;color:#94a3b8;border:none;padding:6px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif">Cancelar</button>
+  </div>
+</div>
 
 <nav class="nb">
   <a class="back" href="plataforma.html" title="Volver al Inicio de la Plataforma LOGÍSTICA">◀ INICIO</a>
@@ -275,6 +312,7 @@ authGateCheck();
     <button class="btn" id="saveBtnAlm" onclick="guardarTodo()" title="Guardar y sincronizar Existencias, Picking y Códigos con todos" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
     <span id="lastSyncLbl" style="font-size:10px;font-weight:600;white-space:nowrap;color:#0ea5e9"></span>
     <button class="btn br" onclick="setupGHToken()" title="Configurar el token de GitHub de Almacén (propio, distinto al de Compras)">🔑</button>
+    <button class="btn br" onclick="abrirCambiarClave()" title="Cambiar mi clave">🔐</button>
     <button class="btn br" onclick="cerrarSesionApp()" title="Cerrar sesión">🚪</button>
     <button class="btn br" onclick="location.reload()">↻</button>
   </div>
