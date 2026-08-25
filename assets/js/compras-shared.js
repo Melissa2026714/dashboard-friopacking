@@ -61,8 +61,9 @@ function askConfirmVisual(mensaje){
 
 function saveLocal(){
   if(!D.oc.length&&!D.p4.length&&!D.proj.length)return false;
-  // Excluir D.consultas del payload — es muy grande y se importa por separado
-  const {consultas:_omit,...Dsin}=D;
+  // Excluir D.consultas (aparte, muy grande) y D.oc/p4/p5reqs (Fase 2: ya viven en
+  // tablas propias de Supabase, no en el blob compartido).
+  const {consultas:_omit,oc:_omitOc,p4:_omitP4,p5reqs:_omitP5,...Dsin}=D;
   const payload=JSON.stringify({D:Dsin,SKUS,ts:Date.now()});
   try{localStorage.setItem(LS_KEY,payload);}catch(e){console.warn('localStorage lleno, solo GitHub:',e);}
   return payload;
@@ -122,6 +123,40 @@ function mergeProveedores(remoteList,localList){
   return Object.values(merged);
 }
 
+// ── oc / p4 / p5reqs: Fase 2, migrados de data.json a tablas propias en Supabase ──
+// (mismo motivo que supervisores/proveedores). Este módulo solo escribe (el import
+// centralizado de plataforma.html) — la lectura vive en compras.html/inventario.html.
+function ocToSB(r){
+  // ?? (no ||): cantRec/cantPend/ingreso/tc/punit/montoSoles suelen ser 0 legítimamente
+  // (nada recibido aún, tipo de cambio raro, etc.) — con || esos ceros se volvían null.
+  return {oc:r.oc,foc:r.foc??null,fapro:r.fapro??null,fent:r.fent??null,frec:r.frec??null,fsal:r.fsal??null,
+    fingreso:r.fingreso??null,fpedido:r.fpedido??null,resp:r.resp??null,estado:r.estado??null,prov:r.prov??null,
+    ruc:r.ruc??null,proy:r.proy??null,idproy:r.idproy??null,req:r.req??null,prod:r.prod??null,cod:r.cod??null,
+    unid:r.unid??null,ucomp:r.ucomp??null,n_items:r.nItems??null,cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,
+    cant_pend:r.cantPend??null,ingreso:r.ingreso??null,moneda:r.moneda??null,tc:r.tc??null,monto_soles:r.montoSoles??null,
+    punit:r.punit??null,ped:r.ped??null,peds:r.peds??null,reqs:r.reqs??null,obs:r.obs??null};
+}
+function p4ToSB(r){
+  return {oc:r.oc,foc:r.foc??null,fapro:r.fapro??null,fent:r.fent??null,frec:r.frec??null,fpedido:r.fpedido??null,
+    resp_ped:r.respPed??null,estado:r.estado??null,prov:r.prov??null,ucomp:r.ucomp??null,prod:r.prod??null,
+    cod:r.cod??null,unid:r.unid??null,n_items:r.nItems??null,cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,
+    cant_pend:r.cantPend??null,ped:r.ped??null};
+}
+function p5ToSB(r){
+  return {req:r.req,cod:r.cod,fecha:r.fecha??null,resp:r.resp??null,idproy:r.idproy??null,proy:r.proy??null,
+    prod:r.prod??null,cant:r.cant??null,unid:r.unid??null,freq:r.freq??null,estado:r.estado??null};
+}
+async function bulkUpsertSB(table,rows,onConflict,mapper,batchSize){
+  const mapped=rows.map(mapper);
+  batchSize=batchSize||500;
+  for(let i=0;i<mapped.length;i+=batchSize){
+    const chunk=mapped.slice(i,i+batchSize);
+    const {error}=await sb.from(table).upsert(chunk,{onConflict});
+    if(error){console.warn('No se pudo guardar en '+table+' (Supabase):',error);return false;}
+  }
+  return true;
+}
+
 // ── Subir a GitHub (solo quién tenga el token) ────────────────────────────────
 async function saveGitHub(payload){
   const token=localStorage.getItem(GH_TOKEN_KEY);
@@ -133,14 +168,9 @@ async function saveGitHub(payload){
       const rCheck=await fetchTO(GH_RAW+'?t='+Date.now());
       if(rCheck.ok){
         const remote=await rCheck.json();
-        const locOc=(localData.D&&localData.D.oc)?localData.D.oc.length:0;
-        const remOc=(remote.D&&remote.D.oc)?remote.D.oc.length:0;
         const warnings=[];
-        // OC es acumulativo: bajar es señal de estar subiendo una versión vieja.
-        if(remOc>0&&locOc<remOc)warnings.push('• oc: tienes '+locOc+' vs '+remOc+' que ya está en la nube');
-        // Las demás secciones pueden bajar de forma legítima (ej. p5reqs al
-        // resolverse requerimientos) — solo avisamos si tu versión las deja en cero.
-        ['p4','p5reqs','proj','sinoc'].forEach(function(k){
+        // oc/p4 ya no viven aquí (Fase 2: Supabase) — solo proj/sinoc siguen en el blob.
+        ['proj','sinoc'].forEach(function(k){
           const locN=(localData.D&&localData.D[k])?localData.D[k].length:0;
           const remN=(remote.D&&remote.D[k])?remote.D[k].length:0;
           if(remN>0&&locN===0)warnings.push('• '+k+': tu versión lo deja VACÍO pero la nube tiene '+remN);
@@ -150,9 +180,11 @@ async function saveGitHub(payload){
           if(!ok) return false;
         }
         // Anti-pisado: conservar claves que la nube tiene y esta pestaña no conoce
-        // (ej. almacenValidado/almacenPicking creados por Almacén después de abrir esta pestaña)
+        // (ej. almacenValidado/almacenPicking creados por Almacén después de abrir esta pestaña).
+        // oc/p4/p5reqs quedan excluidos a propósito: ya viven en Supabase (Fase 2).
         let cambiado=false;
         Object.keys(remote.D||{}).forEach(function(k){
+          if(k==='oc'||k==='p4'||k==='p5reqs')return;
           if(localData.D[k]===undefined){localData.D[k]=remote.D[k];cambiado=true;}
         });
         // Anti-pisado: fusionar supervisores y proveedores en vez de reemplazar la
@@ -481,7 +513,7 @@ function dateObj(ds){
 // IMPORT MAESTRO
 // ══════════════════════════════════════════════════════════════════════════════
 
-function importMaestro(wb){
+async function importMaestro(wb){
   const t0=performance.now();
 
   // ── 1. Read Reporte Maestro sheet ──────────────────────────────────────────
@@ -891,6 +923,13 @@ function importMaestro(wb){
   try{fixOcEstados();}catch(e){}
   saveLocal();
 
+  // Fase 2: oc y p5reqs viven en Supabase (una fila por registro) en vez del blob compartido.
+  const okSB=await Promise.all([
+    bulkUpsertSB('oc',ocData,'oc',ocToSB),
+    bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB)
+  ]);
+  if(okSB.some(function(ok){return !ok;}))alert('⚠️ Parte del MAESTRO no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.');
+
   const t1=performance.now();
   const msg=`✅ MAESTRO importado (${Math.round(t1-t0)}ms)\n\n` +
     `• ${ocData.length} OC (Pág. OC Pendientes)\n` +
@@ -901,7 +940,7 @@ function importMaestro(wb){
   alert(msg);
 }
 
-function importPedidoSinReq(wb){
+async function importPedidoSinReq(wb){
   const t0=performance.now();
   const ws=wb.Sheets[wb.SheetNames[0]];
   const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
@@ -995,6 +1034,10 @@ function importPedidoSinReq(wb){
   D.p4=p4Data;
   try{fixOcEstados();}catch(e){}
   saveLocal();
+
+  // Fase 2: p4 vive en Supabase (una fila por registro) en vez del blob compartido.
+  const okSB=await bulkUpsertSB('p4',p4Data,'oc',p4ToSB);
+  if(!okSB)alert('⚠️ PedidoSinReq no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.');
 
   const t1=performance.now();
   alert(`✅ PedidoSinReq importado (${Math.round(t1-t0)}ms)\n\n• ${p4Data.length} OC Compras Directas`);
