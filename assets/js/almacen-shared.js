@@ -32,7 +32,6 @@ let REQCOD_OC = {}, SINOC_BY_REQCOD = {}, OC_BY_NUM = {};
 
 const GH_REPO='Melissa2026714/dashboard-friopacking';
 const GH_FILE='data.json';
-const GH_RAW='https://raw.githubusercontent.com/'+GH_REPO+'/main/'+GH_FILE;
 const GH_API='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_FILE;
 const GH_TOKEN_KEY='fp_gh_token_almacen';
 const GH_FILE_EXIST='almacen_existencias.json';
@@ -533,13 +532,15 @@ async function guardarImportado(){
     REQ_ALM_DIRTY=false;
   }
   if(TRANS_DIRTY){
+    // OJO: el contenido de data.json se lee del propio meta.content de la Contents API,
+    // NUNCA de raw.githubusercontent.com — ese CDN cachea varios minutos y si Compras
+    // acababa de guardar data.json segundos antes, esto leía una copia vieja y la
+    // reescribía encima, borrando el import recién hecho (bug detectado 2026-08-25).
     const check=await fetchTO(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
     if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
     const meta=await check.json();
     const sha=meta.sha;
-    const remoteRaw=await fetchTO(GH_RAW+'?t='+Date.now(),{},60000);
-    if(!remoteRaw.ok)throw new Error('No se pudo leer el contenido actual de data.json');
-    const remote=await remoteRaw.json();
+    const remote=JSON.parse(decodeURIComponent(escape(atob(meta.content.replace(/\n/g,'')))));
     if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
     // Solo se toca almacenTransito — todo lo demás de remote.D (picking, códigos,
     // OCs de Compras, etc.) se sube exactamente como estaba en la nube.
