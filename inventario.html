@@ -229,6 +229,7 @@ function continuarLuegoDeLogin(prof,esLoginFresco){
   if(esLoginFresco)registrarAuditoria('login','profiles',prof.id,{usuario:prof.nombre});
   cargarSupervisoresSB();
   cargarProjOcMetaCotMetaSB();
+  cargarTransitoSB();
   if(prof.debe_cambiar_clave){
     document.getElementById('authGate').style.display='none';
     abrirCambiarClave(true);
@@ -289,6 +290,49 @@ async function cargarProjOcMetaCotMetaSB(){
     try{render();}catch(e){}
     try{renderReq();}catch(e){}
   }catch(e){console.warn('No se pudo cargar proj/ocMeta/cotMeta de Supabase:',e);}
+}
+// almacenTransito: a diferencia de proj/ocMeta/cotMeta, este SÍ lo escribe Almacén (no solo
+// lo lee) — ver replaceAllSB/guardarTodo más abajo. Vive en dos tablas (t=en tránsito,
+// r=reservas/sin OC) en vez del objeto único que era D.almacenTransito.
+async function replaceAllSB(table,rows,mapper,batchSize){
+  const {error:delErr}=await sb.from(table).delete().gte('id',0);
+  if(delErr){console.warn('No se pudo limpiar '+table+' (Supabase):',delErr);return false;}
+  const mapped=rows.map(mapper);
+  batchSize=batchSize||500;
+  for(let i=0;i<mapped.length;i+=batchSize){
+    const chunk=mapped.slice(i,i+batchSize);
+    const {error}=await sb.from(table).insert(chunk);
+    if(error){console.warn('No se pudo guardar en '+table+' (Supabase):',error);return false;}
+  }
+  return true;
+}
+function transTToSB(r){
+  return {fuente:r.fuente??null,oc:r.oc??null,ped:r.ped??null,ref:r.ref??null,cod:r.cod??null,
+    prod:r.prod??null,unid:r.unid??null,resp:r.resp??null,proy:r.proy??null,idproy:r.idproy??null,
+    cant:r.cant??null,cant_rec:r.cantRec??null,fped:r.fped??null,foc:r.foc??null,fapro:r.fapro??null,
+    fent:r.fent??null,resp_ped:r.respPed??null,ucomp:r.ucomp??null,prov:r.prov??null,
+    estado_ped:r.estadoPed??null,estado_oc:r.estadoOC??null,cant_pend:r.cantPend??null};
+}
+function transRToSB(r){
+  return {req:r.req,cod:r.cod,fecha:r.fecha??null,freq:r.freq??null,resp:r.resp??null,
+    idproy:r.idproy??null,proy:r.proy??null,prod:r.prod??null,cant:r.cant??null,unid:r.unid??null,
+    fam:r.fam??null,estado:r.estado??null};
+}
+function transTFromSB(r){
+  return {fuente:r.fuente,oc:r.oc,ped:r.ped,ref:r.ref,cod:r.cod,prod:r.prod,unid:r.unid,resp:r.resp,
+    proy:r.proy,idproy:r.idproy,cant:r.cant,cantRec:r.cant_rec,fped:r.fped,foc:r.foc,fapro:r.fapro,
+    fent:r.fent,respPed:r.resp_ped,ucomp:r.ucomp,prov:r.prov,estadoPed:r.estado_ped,
+    estadoOC:r.estado_oc,cantPend:r.cant_pend};
+}
+async function cargarTransitoSB(){
+  try{
+    const [tRows,rRows]=await Promise.all([fetchAllSB('almacen_transito_t'),fetchAllSB('almacen_transito_r')]);
+    if(tRows.length||rRows.length){
+      setTransito(tRows.map(transTFromSB),rRows,false,Date.now());
+      applyTransitoADatos();
+      try{render();}catch(e){}
+    }
+  }catch(e){console.warn('No se pudo cargar Tránsito/Reservas de Supabase:',e);}
 }
 async function authGateCheck(){
   const { data:{ session } } = await sb.auth.getSession();
@@ -4229,16 +4273,29 @@ async function guardarTodo(){
     }
 
     let colisionesCod=[];
-    if(hayPicking||hayCodigos||hayTransito){
+    // Fase 2: Tránsito/Reservas ya vive en Supabase (almacen_transito_t/r), no en data.json —
+    // se guarda independiente, ya sin necesidad de leer/escribir el blob compartido, lo que
+    // elimina justo la carrera "última escritura gana" que causó los incidentes de hoy.
+    if(hayTransito){
+      const okT=await replaceAllSB('almacen_transito_t',TRANS,transTToSB);
+      const okR=await replaceAllSB('almacen_transito_r',RESV,transRToSB);
+      if(!okT||!okR)throw new Error('No se pudo guardar Tránsito/Reservas en Supabase.');
+      partes.push('Tránsito/Reservas ('+TRANS.length+' + '+RESV.length+' líneas)');
+      TRANS_DIRTY=false;
+    }
+    if(hayPicking||hayCodigos){
       const check=await fetchTO(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
       if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
       const meta=await check.json();
       const sha=meta.sha;
-      const remoteRaw=await fetchTO(GH_RAW+'?t='+Date.now(),{},60000);
-      if(!remoteRaw.ok)throw new Error('No se pudo leer el contenido actual de data.json');
-      const remote=await remoteRaw.json();
+      // OJO: el contenido se lee del propio meta.content de la Contents API, NUNCA de
+      // raw.githubusercontent.com — ese CDN cachea varios minutos y si otra pestaña
+      // (Compras u otro guardado de Almacén) acababa de guardar segundos antes, esto leía
+      // una copia vieja y la reescribía encima (bug detectado 2026-08-25).
+      const remote=JSON.parse(decodeURIComponent(escape(atob(meta.content.replace(/\n/g,'')))));
       if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
       delete remote.D.almacenExistencias; // limpieza: ya vive en su propio archivo, no en data.json
+      delete remote.D.almacenTransito; // Fase 2: ya vive en Supabase, se purga la clave vieja si quedaba
 
       if(hayPicking)remote.D.almacenPicking={...(remote.D.almacenPicking||{}),...PENDING};
       if(hayCodigos){
@@ -4248,19 +4305,16 @@ async function guardarTodo(){
         const nuevosCod=PENDING_COD.filter(c=>!remoteCods.has(c.cod));
         remote.D.almacenCodigos=remoteCodigos.concat(nuevosCod);
       }
-      if(hayTransito)remote.D.almacenTransito={t:TRANS,r:RESV,ts:(TRANS_META&&TRANS_META.ts)||Date.now()};
 
       const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
       if(hayPicking)partes.push('Picking ('+Object.keys(PENDING).length+' cambios)');
       if(hayCodigos)partes.push('Códigos ('+PENDING_COD.length+' nuevos)');
-      if(hayTransito)partes.push('Tránsito/Reservas ('+TRANS.length+' + '+RESV.length+' líneas)');
       const body={message:'almacen: guardar '+partes.join(' + ')+' — '+new Date().toISOString(),content,sha};
       const res=await fetchTO(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)},90000);
       if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
 
       if(hayPicking){CONFIRMED=remote.D.almacenPicking;PENDING={};localStorage.removeItem('fp_almacen_picking_pending');}
       if(hayCodigos){CONFIRMED_COD=remote.D.almacenCodigos;PENDING_COD=colisionesCod;savePendingCodigos();}
-      if(hayTransito){TRANS_DIRTY=false;}
     }
     if(hayExistenciasEfectivo){EXISTENCIAS_DIRTY=false;}
 

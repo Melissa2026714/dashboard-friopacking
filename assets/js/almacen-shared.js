@@ -502,9 +502,37 @@ function procesarArchivo(wb){
   return partes;
 }
 
-// Sube Existencias / Requerimientos / Tránsito (dentro de data.json) — cada uno
-// solo si hubo import nuevo de ese tipo. NO toca Picking ni Códigos (eso vive
-// solo en inventario.html, con sus propias decisiones manuales de UI).
+// almacenTransito: Fase 2, migrado de data.json a dos tablas propias en Supabase
+// (mismo motivo que oc/p4/p5reqs/sinoc en compras-shared.js). t no tiene columna única
+// por fila (oc+cod se repite) -> "borrar todo + insertar"; r sí (req+cod único).
+async function replaceAllSB(table,rows,mapper,batchSize){
+  const {error:delErr}=await sb.from(table).delete().gte('id',0);
+  if(delErr){console.warn('No se pudo limpiar '+table+' (Supabase):',delErr);return false;}
+  const mapped=rows.map(mapper);
+  batchSize=batchSize||500;
+  for(let i=0;i<mapped.length;i+=batchSize){
+    const chunk=mapped.slice(i,i+batchSize);
+    const {error}=await sb.from(table).insert(chunk);
+    if(error){console.warn('No se pudo guardar en '+table+' (Supabase):',error);return false;}
+  }
+  return true;
+}
+function transTToSB(r){
+  return {fuente:r.fuente??null,oc:r.oc??null,ped:r.ped??null,ref:r.ref??null,cod:r.cod??null,
+    prod:r.prod??null,unid:r.unid??null,resp:r.resp??null,proy:r.proy??null,idproy:r.idproy??null,
+    cant:r.cant??null,cant_rec:r.cantRec??null,fped:r.fped??null,foc:r.foc??null,fapro:r.fapro??null,
+    fent:r.fent??null,resp_ped:r.respPed??null,ucomp:r.ucomp??null,prov:r.prov??null,
+    estado_ped:r.estadoPed??null,estado_oc:r.estadoOC??null,cant_pend:r.cantPend??null};
+}
+function transRToSB(r){
+  return {req:r.req,cod:r.cod,fecha:r.fecha??null,freq:r.freq??null,resp:r.resp??null,
+    idproy:r.idproy??null,proy:r.proy??null,prod:r.prod??null,cant:r.cant??null,unid:r.unid??null,
+    fam:r.fam??null,estado:r.estado??null};
+}
+
+// Sube Existencias / Requerimientos / Tránsito — cada uno solo si hubo import nuevo de ese
+// tipo. NO toca Picking ni Códigos (eso vive solo en inventario.html, con sus propias
+// decisiones manuales de UI).
 async function guardarImportado(){
   const token=(localStorage.getItem(GH_TOKEN_KEY)||'').trim();
   if(!token) throw new Error('Falta configurar el Token de GitHub de Almacén.');
@@ -532,23 +560,14 @@ async function guardarImportado(){
     REQ_ALM_DIRTY=false;
   }
   if(TRANS_DIRTY){
-    // OJO: el contenido de data.json se lee del propio meta.content de la Contents API,
-    // NUNCA de raw.githubusercontent.com — ese CDN cachea varios minutos y si Compras
-    // acababa de guardar data.json segundos antes, esto leía una copia vieja y la
-    // reescribía encima, borrando el import recién hecho (bug detectado 2026-08-25).
-    const check=await fetchTO(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
-    if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
-    const meta=await check.json();
-    const sha=meta.sha;
-    const remote=JSON.parse(decodeURIComponent(escape(atob(meta.content.replace(/\n/g,'')))));
-    if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
-    // Solo se toca almacenTransito — todo lo demás de remote.D (picking, códigos,
-    // OCs de Compras, etc.) se sube exactamente como estaba en la nube.
-    remote.D.almacenTransito={t:TRANS,r:RESV,ts:(TRANS_META&&TRANS_META.ts)||Date.now()};
-    const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
-    const body={message:'almacen: guardar Tránsito/Reservas ('+TRANS.length+' + '+RESV.length+' líneas) — '+new Date().toISOString(),content,sha};
-    const res=await fetchTO(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)},90000);
-    if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
+    // Fase 2: Tránsito/Reservas ya vive en Supabase (almacen_transito_t/r), no en data.json.
+    // Ya no hace falta leer/escribir el blob compartido para esto — se elimina justo la
+    // carrera "última escritura gana" que causó el bug del 2026-08-25 (esta misma sección
+    // leía data.json vía el CDN cacheado de raw.githubusercontent.com y pisaba guardados
+    // recientes de Compras).
+    const okT=await replaceAllSB('almacen_transito_t',TRANS,transTToSB);
+    const okR=await replaceAllSB('almacen_transito_r',RESV,transRToSB);
+    if(!okT||!okR)throw new Error('No se pudo guardar Tránsito/Reservas en Supabase.');
     partes.push('Tránsito/Reservas ('+TRANS.length+' + '+RESV.length+' líneas)');
     TRANS_DIRTY=false;
   }
