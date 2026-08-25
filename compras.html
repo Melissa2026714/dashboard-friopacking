@@ -402,12 +402,21 @@ function aplicarRestriccionesRol(){
     nbr.prepend(b);
   }
 }
+// Registro de auditoria — quien hizo que y cuando (pedido de TI). Falla en silencio: un
+// error de red al auditar no debe bloquear el uso real de la app.
+async function registrarAuditoria(accion,tabla,registroId,detalle){
+  if(!sesionPerfil)return;
+  try{
+    await sb.from('audit_log').insert({ user_id:sesionPerfil.id, accion:accion, tabla:tabla||null, registro_id:registroId||null, detalle:detalle||null });
+  }catch(e){ console.warn('No se pudo registrar auditoría:',e); }
+}
 // Si el perfil trae debe_cambiar_clave=true (clave asignada por un admin, sin estrenar), se
 // exige cambiarla antes de dejar pasar — no se hace aplicarRestriccionesRol() ni se oculta el
 // authGate hasta que la persona ponga una clave propia.
 let _cambioObligatorio=false;
-function continuarLuegoDeLogin(prof){
+function continuarLuegoDeLogin(prof,esLoginFresco){
   sesionPerfil = prof;
+  if(esLoginFresco)registrarAuditoria('login','profiles',prof.id,{usuario:prof.nombre});
   if(prof.debe_cambiar_clave){
     document.getElementById('authGate').style.display='none';
     abrirCambiarClave(true);
@@ -421,7 +430,7 @@ async function authGateCheck(){
   if(session){
     const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
     if(!error && data && data.tipo==='interno' && data.activo!==false){
-      continuarLuegoDeLogin(data);
+      continuarLuegoDeLogin(data,false);
       return;
     }
   }
@@ -439,7 +448,7 @@ async function authGateLogin(){
     await sb.auth.signOut();
     return;
   }
-  continuarLuegoDeLogin(prof);
+  continuarLuegoDeLogin(prof,true);
 }
 async function cerrarSesionApp(){
   await sb.auth.signOut();
@@ -4430,6 +4439,7 @@ async function manualSave(){
     setTimeout(()=>{btn.innerHTML=(_consultasDirty?'💾 GUARDAR DATA':'💾 GUARDAR');btn.style.background='#16a34a';},2500);
   }
   if(ok)showSavedLabel('☁ '+new Date().toLocaleString('es-PE')+(subeData?' · DATA':' · info'),'#0ea5e9');
+  registrarAuditoria('guardar_compras','data.json',null,{ok:ok,subeConsultas:!!subeData});
 }
 
 // ── Configurar token (solo admin) ─────────────────────────────────────────────

@@ -217,9 +217,16 @@ function aplicarRestriccionesRol(){
     nbr.prepend(b);
   }
 }
+async function registrarAuditoria(accion,tabla,registroId,detalle){
+  if(!sesionPerfil)return;
+  try{
+    await sb.from('audit_log').insert({ user_id:sesionPerfil.id, accion:accion, tabla:tabla||null, registro_id:registroId||null, detalle:detalle||null });
+  }catch(e){ console.warn('No se pudo registrar auditoría:',e); }
+}
 let _cambioObligatorio=false;
-function continuarLuegoDeLogin(prof){
+function continuarLuegoDeLogin(prof,esLoginFresco){
   sesionPerfil = prof;
+  if(esLoginFresco)registrarAuditoria('login','profiles',prof.id,{usuario:prof.nombre});
   if(prof.debe_cambiar_clave){
     document.getElementById('authGate').style.display='none';
     abrirCambiarClave(true);
@@ -233,7 +240,7 @@ async function authGateCheck(){
   if(session){
     const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
     if(!error && data && data.tipo==='interno' && data.activo!==false){
-      continuarLuegoDeLogin(data);
+      continuarLuegoDeLogin(data,false);
       return;
     }
   }
@@ -251,7 +258,7 @@ async function authGateLogin(){
     await sb.auth.signOut();
     return;
   }
-  continuarLuegoDeLogin(prof);
+  continuarLuegoDeLogin(prof,true);
 }
 async function cerrarSesionApp(){
   await sb.auth.signOut();
@@ -4213,6 +4220,7 @@ async function guardarTodo(){
     renderCod();
     render();
     updateHomeCounters();
+    registrarAuditoria('guardar_almacen','data.json',null,{partes:partes});
   }catch(e){
     console.error(e);
     document.querySelectorAll('.saveLblEl,.codSaveLblEl').forEach(l=>l.textContent='⚠ Error al guardar: '+e.message);

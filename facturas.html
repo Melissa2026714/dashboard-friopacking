@@ -770,6 +770,7 @@ async function saveFacturasSection(sectionKey, sectionValue){
   if(sha) body.sha = sha;
   const res = await fetchTO(GH_API_FACTURAS, {method:'PUT', headers:{Authorization:'token '+token, Accept:'application/vnd.github.v3+json', 'Content-Type':'application/json'}, body:JSON.stringify(body)}, 60000);
   if(!res.ok) throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
+  registrarAuditoria('guardar_facturas','facturas_piloto.json',sectionKey,null);
 }
 async function saveOrders(orders){
   await saveFacturasSection('ordenes', { updatedAt: new Date().toISOString(), orders });
@@ -834,11 +835,18 @@ async function cargarPerfilCompras(userId){
   comprasPerfil = data;
   return true;
 }
+async function registrarAuditoria(accion,tabla,registroId,detalle){
+  if(!comprasPerfil)return;
+  try{
+    await sb.from('audit_log').insert({ user_id:comprasPerfil.id, accion:accion, tabla:tabla||null, registro_id:registroId||null, detalle:detalle||null });
+  }catch(e){ console.warn('No se pudo registrar auditoría:',e); }
+}
 let _cambioObligatorio=false;
-function continuarLuegoDeLogin(){
+function continuarLuegoDeLogin(esLoginFresco){
   comprasSesionActiva = true;
   closeAuthOverlay();
   goTo('compras');
+  if(esLoginFresco)registrarAuditoria('login','profiles',comprasPerfil.id,{usuario:comprasPerfil.nombre});
   if(comprasPerfil && comprasPerfil.debe_cambiar_clave){
     abrirCambiarClave(true);
     return;
@@ -852,7 +860,7 @@ async function gateCompras(){
   }
   const { data:{ session } } = await sb.auth.getSession();
   if(session && await cargarPerfilCompras(session.user.id)){
-    continuarLuegoDeLogin();
+    continuarLuegoDeLogin(false);
     return;
   }
   document.getElementById('authOverlay').classList.add('active');
@@ -884,7 +892,7 @@ async function confirmarLogin(){
     await sb.auth.signOut();
     return;
   }
-  continuarLuegoDeLogin();
+  continuarLuegoDeLogin(true);
 }
 async function cerrarSesionCompras(){
   await sb.auth.signOut();
