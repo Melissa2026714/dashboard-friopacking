@@ -18,6 +18,7 @@
      ExcelJS sí soporta escribir relleno de celdas, fuentes y anchos, así que se usa solo para
      el botón "Exportar" de Requerimientos, que necesita salir con formato. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -169,6 +170,90 @@ tr:hover td{background:#f8fafc}
 </head>
 <body>
 
+<!-- Puerta de acceso (Supabase Auth) — mismo criterio que compras.html/facturas.html: cubre
+     toda la app hasta iniciar sesión con una cuenta interna válida (profiles.tipo='interno'). -->
+<div id="authGate" style="position:fixed;inset:0;z-index:999999;background:#0b1120;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif">
+  <div style="background:#fff;border-radius:14px;padding:34px 38px;width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.45)">
+    <div style="font-size:26px;margin-bottom:10px">🔒</div>
+    <h2 style="font-size:16px;margin:0 0 4px;color:#0f172a">Acceso Almacén</h2>
+    <p style="font-size:12px;color:#64748b;margin:0 0 22px">Ingresa con tu usuario de Friopacking.</p>
+    <input type="text" id="authGateEmail" placeholder="Usuario (ej. CCHECA)" autocomplete="username"
+      style="width:100%;box-sizing:border-box;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:8px;font-family:'Inter',sans-serif"
+      onkeydown="if(event.key==='Enter')document.getElementById('authGatePass').focus()">
+    <input type="password" id="authGatePass" placeholder="Clave" autocomplete="current-password"
+      style="width:100%;box-sizing:border-box;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:8px;font-family:'Inter',sans-serif"
+      onkeydown="if(event.key==='Enter')authGateLogin()">
+    <div id="authGateErr" style="color:#dc2626;font-size:11.5px;min-height:16px;margin-bottom:8px;font-family:'Inter',sans-serif"></div>
+    <button onclick="authGateLogin()" style="width:100%;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">Ingresar</button>
+  </div>
+</div>
+<script>
+const SUPABASE_URL = 'https://gxjwhubmwsizrxbmavlz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_535ifADM-ulajDIt8GXKbg_PnJ4wWNm';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+function usuarioAEmail(input){
+  const u = (input||'').trim().toLowerCase();
+  return u.includes('@') ? u : u + '@friopacking.pe';
+}
+let sesionPerfil = null; // fila de public.profiles de quien inició sesión
+function puedeEditar(){
+  return !!sesionPerfil && (sesionPerfil.rol==='administrador' || sesionPerfil.rol==='editor');
+}
+function aplicarRestriccionesRol(){
+  const saveBtn=document.getElementById('saveBtnAlm');
+  const badgeExistente=document.getElementById('rolBadge');
+  if(puedeEditar()){
+    if(saveBtn)saveBtn.style.display='';
+    if(badgeExistente)badgeExistente.remove();
+    return;
+  }
+  if(saveBtn)saveBtn.style.display='none';
+  const nbr=document.querySelector('.nbr');
+  if(nbr && !badgeExistente){
+    const b=document.createElement('span');
+    b.id='rolBadge';
+    b.textContent='👁 Solo lectura';
+    b.style.cssText='background:#334155;color:#cbd5e1;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600';
+    nbr.prepend(b);
+  }
+}
+async function authGateCheck(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session){
+    const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+    if(!error && data && data.tipo==='interno' && data.activo!==false){
+      sesionPerfil = data;
+      document.getElementById('authGate').style.display='none';
+      aplicarRestriccionesRol();
+      return;
+    }
+  }
+}
+async function authGateLogin(){
+  const email = usuarioAEmail(document.getElementById('authGateEmail').value);
+  const pass = document.getElementById('authGatePass').value;
+  const err = document.getElementById('authGateErr');
+  err.textContent='';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ err.textContent='Usuario o clave incorrectos.'; return; }
+  const { data:prof, error:perr } = await sb.from('profiles').select('*').eq('id', data.user.id).single();
+  if(perr || !prof || prof.tipo!=='interno' || prof.activo===false){
+    err.textContent='Esta cuenta no tiene acceso a Almacén.';
+    await sb.auth.signOut();
+    return;
+  }
+  sesionPerfil = prof;
+  document.getElementById('authGate').style.display='none';
+  aplicarRestriccionesRol();
+}
+async function cerrarSesionApp(){
+  await sb.auth.signOut();
+  sesionPerfil = null;
+  location.reload();
+}
+authGateCheck();
+</script>
+
 <nav class="nb">
   <a class="back" href="plataforma.html" title="Volver al Inicio de la Plataforma LOGÍSTICA">◀ INICIO</a>
   <div class="tabs">
@@ -190,6 +275,7 @@ tr:hover td{background:#f8fafc}
     <button class="btn" id="saveBtnAlm" onclick="guardarTodo()" title="Guardar y sincronizar Existencias, Picking y Códigos con todos" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
     <span id="lastSyncLbl" style="font-size:10px;font-weight:600;white-space:nowrap;color:#0ea5e9"></span>
     <button class="btn br" onclick="setupGHToken()" title="Configurar el token de GitHub de Almacén (propio, distinto al de Compras)">🔑</button>
+    <button class="btn br" onclick="cerrarSesionApp()" title="Cerrar sesión">🚪</button>
     <button class="btn br" onclick="location.reload()">↻</button>
   </div>
 </nav>
@@ -808,6 +894,10 @@ function fetchTO(url,opts,ms){
   ]);
 }
 function setupGHToken(){
+  if(!puedeEditar()){
+    alert('Tu cuenta es de solo lectura (Visor) — no puede configurar el token de GitHub.');
+    return;
+  }
   const cur=localStorage.getItem(GH_TOKEN_KEY)||'';
   const t=prompt('Ingresa el Token de GitHub de Almacén\n(propio de este módulo, no el de Compras — se guarda solo en este navegador):',cur);
   if(t!==null){
@@ -3961,6 +4051,10 @@ async function guardarCodigos(){
    se sube en un commit aparte. Picking/Códigos/Tránsito siguen en un solo commit a data.json,
    igual que antes. Nunca reescribe oc/p4/p5reqs/etc. */
 async function guardarTodo(){
+  if(!puedeEditar()){
+    alert('Tu cuenta es de solo lectura (Visor) — no puede guardar ni compartir cambios con el resto del equipo.');
+    return;
+  }
   const hayExistencias=EXISTENCIAS_DIRTY;
   const hayPicking=Object.keys(PENDING).length>0;
   const hayCodigos=PENDING_COD.length>0;
