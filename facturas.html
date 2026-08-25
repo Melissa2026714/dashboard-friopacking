@@ -695,6 +695,10 @@ function getGHTokenFacturas(){
   return clean;
 }
 function setupGHTokenFacturas(){
+  if(!puedeEditar()){
+    alert('Tu cuenta es de solo lectura (Visor) — no puede configurar el token de GitHub.');
+    return;
+  }
   const cur = localStorage.getItem(GH_TOKEN_KEY_FACTURAS) || '';
   const t = prompt('Ingresa el Token de GitHub de Facturas\n(propio de este módulo, no el de Compras/Almacén — se guarda solo en este navegador):', cur);
   if(t !== null){
@@ -726,6 +730,9 @@ async function loadFacturasRemote(){
 // vuelta — así Maestro+Pedido, Pedido Sin Req y Proveedores se pueden importar por separado
 // sin que uno pise lo que subió el otro.
 async function saveFacturasSection(sectionKey, sectionValue){
+  if(!puedeEditar()){
+    throw new Error('Tu cuenta es de solo lectura (Visor) — no puede guardar cambios.');
+  }
   const token = getGHTokenFacturas();
   if(!token){
     if(confirm('Para guardar (compartido con todo el equipo de Compras y el piloto de proveedores) necesitas un Token de GitHub.\n¿Configurarlo ahora?')) setupGHTokenFacturas();
@@ -781,6 +788,26 @@ function usuarioAEmail(input){
 // antes de dejar pasar a Compras.
 let comprasSesionActiva = false;
 let comprasPerfil = null;
+// Rol 'administrador' y 'editor' pueden guardar/compartir cambios; 'visor' solo mira.
+function puedeEditar(){
+  return !!comprasPerfil && (comprasPerfil.rol==='administrador' || comprasPerfil.rol==='editor');
+}
+// Ajuste visual — no reemplaza el bloqueo real (vive en saveFacturasSection()/setupGHTokenFacturas()).
+function aplicarRestriccionesRol(){
+  const badgeExistente=document.getElementById('rolBadge');
+  if(puedeEditar()){
+    if(badgeExistente)badgeExistente.remove();
+    return;
+  }
+  const nbr=document.querySelector('.topbar-right');
+  if(nbr && !badgeExistente){
+    const b=document.createElement('span');
+    b.id='rolBadge';
+    b.textContent='👁 Solo lectura';
+    b.style.cssText='background:#334155;color:#cbd5e1;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600';
+    nbr.prepend(b);
+  }
+}
 async function cargarPerfilCompras(userId){
   const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
   if(error || !data || data.tipo !== 'interno' || data.activo === false){
@@ -799,6 +826,7 @@ async function gateCompras(){
   if(session && await cargarPerfilCompras(session.user.id)){
     comprasSesionActiva = true;
     goTo('compras');
+    aplicarRestriccionesRol();
     return;
   }
   document.getElementById('authOverlay').classList.add('active');
@@ -833,6 +861,7 @@ async function confirmarLogin(){
   comprasSesionActiva = true;
   closeAuthOverlay();
   goTo('compras');
+  aplicarRestriccionesRol();
 }
 async function cerrarSesionCompras(){
   await sb.auth.signOut();

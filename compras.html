@@ -378,6 +378,30 @@ function usuarioAEmail(input){
   return u.includes('@') ? u : u + '@friopacking.pe';
 }
 let sesionPerfil = null; // fila de public.profiles de quien inició sesión
+// Rol 'administrador' y 'editor' pueden guardar/compartir cambios; 'visor' solo mira.
+function puedeEditar(){
+  return !!sesionPerfil && (sesionPerfil.rol==='administrador' || sesionPerfil.rol==='editor');
+}
+// Ajustes visuales según el rol — no reemplaza el bloqueo real (eso vive en manualSave()/
+// setupGHToken()), es para que un Visor vea de entrada que está en modo solo lectura.
+function aplicarRestriccionesRol(){
+  const saveBtn=document.getElementById('saveBtn');
+  const badgeExistente=document.getElementById('rolBadge');
+  if(puedeEditar()){
+    if(saveBtn)saveBtn.style.display='';
+    if(badgeExistente)badgeExistente.remove();
+    return;
+  }
+  if(saveBtn)saveBtn.style.display='none';
+  const nbr=document.querySelector('.nbr');
+  if(nbr && !badgeExistente){
+    const b=document.createElement('span');
+    b.id='rolBadge';
+    b.textContent='👁 Solo lectura';
+    b.style.cssText='background:#334155;color:#cbd5e1;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600';
+    nbr.prepend(b);
+  }
+}
 async function authGateCheck(){
   const { data:{ session } } = await sb.auth.getSession();
   if(session){
@@ -385,6 +409,7 @@ async function authGateCheck(){
     if(!error && data && data.tipo==='interno' && data.activo!==false){
       sesionPerfil = data;
       document.getElementById('authGate').style.display='none';
+      aplicarRestriccionesRol();
       return;
     }
   }
@@ -404,6 +429,7 @@ async function authGateLogin(){
   }
   sesionPerfil = prof;
   document.getElementById('authGate').style.display='none';
+  aplicarRestriccionesRol();
 }
 async function cerrarSesionApp(){
   await sb.auth.signOut();
@@ -4307,6 +4333,10 @@ async function saveConsultasGitHub(token){
 
 // ── Botón GUARDAR ─────────────────────────────────────────────────────────────
 async function manualSave(){
+  if(!puedeEditar()){
+    alert('Tu cuenta es de solo lectura (Visor) — no puede guardar ni compartir cambios con el resto del equipo.');
+    return;
+  }
   if(_staleClient){
     alert('⚠️ Esta pestaña tiene una versión antigua del sistema (quedó abierta desde antes de la última actualización).\n\nPara evitar borrar información reciente de otros usuarios, recarga la página (Ctrl+F5) antes de guardar.');
     return;
@@ -4341,6 +4371,10 @@ async function manualSave(){
 
 // ── Configurar token (solo admin) ─────────────────────────────────────────────
 function setupGHToken(){
+  if(!puedeEditar()){
+    alert('Tu cuenta es de solo lectura (Visor) — no puede configurar el token de GitHub.');
+    return;
+  }
   const cur=localStorage.getItem(GH_TOKEN_KEY)||'';
   const t=prompt('Ingresa tu GitHub Personal Access Token\n(se guarda solo en este navegador):',cur);
   if(t!==null){
