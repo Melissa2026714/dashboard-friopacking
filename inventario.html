@@ -230,6 +230,7 @@ function continuarLuegoDeLogin(prof,esLoginFresco){
   cargarSupervisoresSB();
   cargarProjOcMetaCotMetaSB();
   cargarTransitoSB();
+  cargarAlmacenChicosSB();
   if(prof.debe_cambiar_clave){
     document.getElementById('authGate').style.display='none';
     abrirCambiarClave(true);
@@ -333,6 +334,113 @@ async function cargarTransitoSB(){
       try{render();}catch(e){}
     }
   }catch(e){console.warn('No se pudo cargar Tránsito/Reservas de Supabase:',e);}
+}
+
+// ── Los 8 dominios chicos de Almacén: mismo motivo que almacenTransito (cortar la carrera
+// "última escritura gana"), aunque aquí el peso es chico — lo importante es el riesgo. ──
+function codigoToSB(c){
+  return {cod:c.cod,descripcion:c.desc??null,nom:c.nom??null,cat:c.cat??null,subgrupo:c.subgrupo??null,
+    marca:c.marca??null,um:c.um??null,prov:c.prov??null,doc:c.doc??null,moneda:c.moneda??null,
+    precio:c.precio??null,nota:c.nota??null,origen:c.origen??null,
+    duplicados_verificados:c.duplicadosVerificados??null,fecha:c.fecha??null,
+    cotizacion_path:c.cotizacionPath??null,cotizacion_nombre:c.cotizacionNombre??null};
+}
+function codigoFromSB(r){
+  return {cod:r.cod,desc:r.descripcion,nom:r.nom,cat:r.cat,subgrupo:r.subgrupo,marca:r.marca,um:r.um,
+    prov:r.prov,doc:r.doc,moneda:r.moneda,precio:r.precio,nota:r.nota,origen:r.origen,
+    duplicadosVerificados:r.duplicados_verificados,fecha:r.fecha,
+    cotizacionPath:r.cotizacion_path,cotizacionNombre:r.cotizacion_nombre};
+}
+// Picking se puede guardar desde 2 botones (guardarDecisiones y guardarTodo) — helper
+// compartido para no duplicar la lógica de upsert en los dos.
+async function guardarPickingSB(){
+  const keys=Object.keys(PENDING);
+  if(!keys.length)return {ok:true,n:0};
+  const rows=keys.map(function(k){
+    const idx=k.indexOf('|'),req=k.slice(0,idx),cod=k.slice(idx+1);
+    const raw=PENDING[k];const v=(typeof raw==='number')?{picking:raw}:raw;
+    return {req:req,cod:cod,picking:v.picking??null,completado:v.completado??null,
+      responsable:v.responsable??null,fecha_hora:v.fechaHora??null,foto_path:v.fotoPath??null,
+      transito:v.transito??null,importacion:v.importacion??null};
+  });
+  const {error}=await sb.from('almacen_picking').upsert(rows,{onConflict:'req,cod'});
+  if(error)return {ok:false,error:error.message};
+  keys.forEach(function(k){CONFIRMED[k]=PENDING[k];});
+  PENDING={};
+  localStorage.removeItem('fp_almacen_picking_pending');
+  return {ok:true,n:keys.length};
+}
+// Códigos también se guarda desde 2 botones (guardarCodigos y guardarTodo) — igual, helper
+// compartido. No usa upsert: si el código ya existe en Supabase se considera colisión (se
+// deja pendiente para regenerar), igual que antes con el Set armado desde el blob remoto.
+async function guardarCodigosSB(){
+  if(!PENDING_COD.length)return {ok:true,nuevos:0,colisiones:0};
+  const cods=PENDING_COD.map(function(c){return c.cod;});
+  const {data:existentes,error:errSel}=await sb.from('almacen_codigos').select('cod').in('cod',cods);
+  if(errSel)return {ok:false,error:errSel.message};
+  const existSet=new Set((existentes||[]).map(function(r){return r.cod;}));
+  const colisiones=PENDING_COD.filter(function(c){return existSet.has(c.cod);});
+  const nuevos=PENDING_COD.filter(function(c){return !existSet.has(c.cod);});
+  if(nuevos.length){
+    const {error}=await sb.from('almacen_codigos').insert(nuevos.map(codigoToSB));
+    if(error)return {ok:false,error:error.message};
+  }
+  CONFIRMED_COD=CONFIRMED_COD.concat(nuevos);
+  PENDING_COD=colisiones;
+  savePendingCodigos();
+  return {ok:true,nuevos:nuevos.length,colisiones:colisiones.length};
+}
+async function cargarAlmacenChicosSB(){
+  try{
+    const [pk,val,asig,rev,revD,desp,obra,cod]=await Promise.all([
+      fetchAllSB('almacen_picking'),fetchAllSB('almacen_validado'),fetchAllSB('almacen_asignado'),
+      fetchAllSB('almacen_revisores'),fetchAllSB('almacen_revisores_despacho'),
+      fetchAllSB('almacen_despacho'),fetchAllSB('obra_meta'),fetchAllSB('almacen_codigos')
+    ]);
+    if(pk.length){
+      const m={};
+      pk.forEach(function(r){
+        m[r.req+'|'+r.cod]={picking:r.picking,completado:r.completado,responsable:r.responsable,
+          fechaHora:r.fecha_hora,fotoPath:r.foto_path,transito:r.transito,importacion:r.importacion};
+      });
+      CONFIRMED=m;
+    }
+    if(val.length){
+      const m={};
+      val.forEach(function(r){if(r.validado)m[r.req]=r.fecha_hora;});
+      CONFIRMED_VAL=m;
+    }
+    if(asig.length){
+      const m={};
+      asig.forEach(function(r){m[r.req]=r.responsable;});
+      CONFIRMED_ASIG=m;
+    }
+    if(rev.length){
+      const m={};
+      rev.forEach(function(r){(m[r.req]=m[r.req]||[]).push({nombre:r.nombre,fecha:r.fecha});});
+      CONFIRMED_REVISORES=m;
+    }
+    if(revD.length){
+      const m={};
+      revD.forEach(function(r){(m[r.req]=m[r.req]||[]).push({nombre:r.nombre,fecha:r.fecha});});
+      CONFIRMED_REVISORES_DESPACHO=m;
+    }
+    if(desp.length){
+      const m={};
+      desp.forEach(function(r){m[r.req]={despachado:r.despachado,guia:r.guia,responsable:r.responsable,fechaHora:r.fecha_hora};});
+      CONFIRMED_DESPACHO=m;
+    }
+    if(obra.length){
+      const m={};
+      obra.forEach(function(r){m[r.req+'|'+r.cod]={obra:r.obra,guia:r.guia};});
+      CONFIRMED_OBRA=m;
+    }
+    if(cod.length)CONFIRMED_COD=cod.map(codigoFromSB);
+    try{render();}catch(e){}
+    try{renderPick();}catch(e){}
+    try{renderCod();}catch(e){}
+    try{updateHomeCounters();}catch(e){}
+  }catch(e){console.warn('No se pudo cargar Picking/Validado/etc. de Supabase:',e);}
 }
 async function authGateCheck(){
   const { data:{ session } } = await sb.auth.getSession();
@@ -3779,72 +3887,86 @@ async function guardarDecisiones(){
   const rdkeys=Object.keys(PENDING_REVISORES_DESPACHO);
   const dkeys=Object.keys(PENDING_DESPACHO);
   if(!keys.length&&!vkeys.length&&!okeys.length&&!akeys.length&&!rkeys.length&&!rdkeys.length&&!dkeys.length){alert('No hay cambios nuevos para guardar.');return;}
-  const token=getGHTokenAlmacen();
-  if(!token){
-    if(confirm('Para guardar decisiones de Picking (compartidas con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
-    return;
-  }
   const lbls=document.querySelectorAll('.saveLblEl');
   lbls.forEach(l=>l.innerHTML='⏳ Guardando…');
+  // Fase 2: Picking/Validado/Obra/Asignado/Revisores/RevisoresDespacho/Despacho ya viven en
+  // Supabase (una tabla por dominio), no en data.json — se elimina la misma carrera
+  // "última escritura gana" que afectó a Tránsito. Ya no hace falta Token de GitHub para esto.
   try{
-    const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
-    if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
-    const meta=await check.json();
-    const sha=meta.sha;
-    const remoteRaw=await fetch(GH_RAW+'?t='+Date.now());
-    if(!remoteRaw.ok)throw new Error('No se pudo leer el contenido actual de data.json');
-    const remote=await remoteRaw.json();
-    if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
-    delete remote.D.almacenExistencias; // limpieza: ya vive en su propio archivo, no en data.json
-    const merged={...(remote.D.almacenPicking||{}),...PENDING};
-    remote.D.almacenPicking=merged;
-    // Validaciones de almacén (check ✔): true → se agrega/actualiza; false → se retira
-    const mergedVal={...(remote.D.almacenValidado||{})};
-    Object.keys(PENDING_VAL).forEach(k=>{if(PENDING_VAL[k])mergedVal[k]=PENDING_VAL[k];else delete mergedVal[k];});
-    remote.D.almacenValidado=mergedVal;
-    const mergedObra={...(remote.D.obraMeta||{}),...PENDING_OBRA};
-    remote.D.obraMeta=mergedObra;
-    // Asignación de revisión: "" (Sin asignar) también se guarda como valor válido, no se retira.
-    const mergedAsig={...(remote.D.almacenAsignado||{}),...PENDING_ASIG};
-    remote.D.almacenAsignado=mergedAsig;
-    // Historial de revisores: se ACUMULA (concatena sobre lo que ya había en la nube para ese
-    // req), nunca se reemplaza — para no perder lo que agregó otra persona mientras tanto.
-    const remoteRevisores=remote.D.almacenRevisores||{};
-    const mergedRevisores={...remoteRevisores};
-    rkeys.forEach(rk=>{ mergedRevisores[rk]=[...(remoteRevisores[rk]||[]), ...PENDING_REVISORES[rk]]; });
-    remote.D.almacenRevisores=mergedRevisores;
-    // Mismo criterio de acumular (no reemplazar) para el revisor del paso de Despacho.
-    const remoteRevisoresDespacho=remote.D.almacenRevisoresDespacho||{};
-    const mergedRevisoresDespacho={...remoteRevisoresDespacho};
-    rdkeys.forEach(rk=>{ mergedRevisoresDespacho[rk]=[...(remoteRevisoresDespacho[rk]||[]), ...PENDING_REVISORES_DESPACHO[rk]]; });
-    remote.D.almacenRevisoresDespacho=mergedRevisoresDespacho;
-    const mergedDespacho={...(remote.D.almacenDespacho||{}),...PENDING_DESPACHO};
-    remote.D.almacenDespacho=mergedDespacho;
-    const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
-    const body={message:'almacen: actualizar decisiones de picking y validaciones '+new Date().toISOString(),content,sha};
-    const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
-    CONFIRMED=merged;
-    PENDING={};
-    localStorage.removeItem('fp_almacen_picking_pending');
-    CONFIRMED_VAL=mergedVal;
-    PENDING_VAL={};
-    localStorage.removeItem('fp_almacen_validado_pending');
-    CONFIRMED_OBRA=mergedObra;
-    PENDING_OBRA={};
-    localStorage.removeItem('fp_almacen_obra_pending');
-    CONFIRMED_ASIG=mergedAsig;
-    PENDING_ASIG={};
-    localStorage.removeItem('fp_almacen_asignado_pending');
-    CONFIRMED_REVISORES=mergedRevisores;
-    PENDING_REVISORES={};
-    localStorage.removeItem('fp_almacen_revisores_pending');
-    CONFIRMED_REVISORES_DESPACHO=mergedRevisoresDespacho;
-    PENDING_REVISORES_DESPACHO={};
-    localStorage.removeItem('fp_almacen_revisores_despacho_pending');
-    CONFIRMED_DESPACHO=mergedDespacho;
-    PENDING_DESPACHO={};
-    localStorage.removeItem('fp_almacen_despacho_pending');
+    const errores=[];
+
+    const resPk=await guardarPickingSB();
+    if(!resPk.ok)errores.push('Picking: '+resPk.error);
+
+    if(vkeys.length){
+      const upserts=[],deletes=[];
+      vkeys.forEach(function(k){
+        if(PENDING_VAL[k])upserts.push({req:k,validado:true,fecha_hora:PENDING_VAL[k]});
+        else deletes.push(k);
+      });
+      let okV=true;
+      if(upserts.length){const {error}=await sb.from('almacen_validado').upsert(upserts,{onConflict:'req'});if(error){errores.push('Validado: '+error.message);okV=false;}}
+      if(okV&&deletes.length){const {error}=await sb.from('almacen_validado').delete().in('req',deletes);if(error){errores.push('Validado: '+error.message);okV=false;}}
+      if(okV){
+        vkeys.forEach(function(k){if(PENDING_VAL[k])CONFIRMED_VAL[k]=PENDING_VAL[k];else delete CONFIRMED_VAL[k];});
+        PENDING_VAL={};localStorage.removeItem('fp_almacen_validado_pending');
+      }
+    }
+
+    if(okeys.length){
+      const rows=okeys.map(function(k){
+        const idx=k.indexOf('|'),req=k.slice(0,idx),cod=k.slice(idx+1);
+        const v=PENDING_OBRA[k]||{};
+        return {req:req,cod:cod,obra:v.obra??null,guia:v.guia??null};
+      });
+      const {error}=await sb.from('obra_meta').upsert(rows,{onConflict:'req,cod'});
+      if(error)errores.push('Obra: '+error.message);
+      else{ okeys.forEach(function(k){CONFIRMED_OBRA[k]=PENDING_OBRA[k];}); PENDING_OBRA={}; localStorage.removeItem('fp_almacen_obra_pending'); }
+    }
+
+    if(akeys.length){
+      // "" (Sin asignar) también se guarda como valor válido, no se retira.
+      const rows=akeys.map(function(k){return {req:k,responsable:PENDING_ASIG[k]??null};});
+      const {error}=await sb.from('almacen_asignado').upsert(rows,{onConflict:'req'});
+      if(error)errores.push('Asignado: '+error.message);
+      else{ akeys.forEach(function(k){CONFIRMED_ASIG[k]=PENDING_ASIG[k];}); PENDING_ASIG={}; localStorage.removeItem('fp_almacen_asignado_pending'); }
+    }
+
+    // Historial de revisores: se ACUMULA — cada entrada nueva es un INSERT (fila propia),
+    // nunca se reemplaza, así que no hace falta leer lo que ya había ni fusionar nada.
+    if(rkeys.length){
+      const rows=[];
+      rkeys.forEach(function(rk){(PENDING_REVISORES[rk]||[]).forEach(function(e){rows.push({req:rk,nombre:e.nombre??null,fecha:e.fecha??null});});});
+      const {error}=await sb.from('almacen_revisores').insert(rows);
+      if(error)errores.push('Revisores: '+error.message);
+      else{
+        rkeys.forEach(function(rk){CONFIRMED_REVISORES[rk]=[...(CONFIRMED_REVISORES[rk]||[]),...PENDING_REVISORES[rk]];});
+        PENDING_REVISORES={};localStorage.removeItem('fp_almacen_revisores_pending');
+      }
+    }
+    if(rdkeys.length){
+      const rows=[];
+      rdkeys.forEach(function(rk){(PENDING_REVISORES_DESPACHO[rk]||[]).forEach(function(e){rows.push({req:rk,nombre:e.nombre??null,fecha:e.fecha??null});});});
+      const {error}=await sb.from('almacen_revisores_despacho').insert(rows);
+      if(error)errores.push('RevisoresDespacho: '+error.message);
+      else{
+        rdkeys.forEach(function(rk){CONFIRMED_REVISORES_DESPACHO[rk]=[...(CONFIRMED_REVISORES_DESPACHO[rk]||[]),...PENDING_REVISORES_DESPACHO[rk]];});
+        PENDING_REVISORES_DESPACHO={};localStorage.removeItem('fp_almacen_revisores_despacho_pending');
+      }
+    }
+
+    if(dkeys.length){
+      const rows=dkeys.map(function(k){const v=PENDING_DESPACHO[k]||{};return {req:k,despachado:v.despachado??null,guia:v.guia??null,responsable:v.responsable??null,fecha_hora:v.fechaHora??null};});
+      const {error}=await sb.from('almacen_despacho').upsert(rows,{onConflict:'req'});
+      if(error)errores.push('Despacho: '+error.message);
+      else{ dkeys.forEach(function(k){CONFIRMED_DESPACHO[k]=PENDING_DESPACHO[k];}); PENDING_DESPACHO={}; localStorage.removeItem('fp_almacen_despacho_pending'); }
+    }
+
+    if(errores.length){
+      document.querySelectorAll('.saveLblEl').forEach(l=>l.textContent='⚠ Error al guardar: '+errores.join(' | '));
+      return false;
+    }
+
     const savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE');
     document.querySelectorAll('.saveLblEl').forEach(l=>l.textContent=savedTxt);
     setLastSync('✔ '+new Date().toLocaleString('es-PE'));
@@ -4179,37 +4301,13 @@ function fichaSize(w){const b=document.getElementById('fichaBox');if(b)b.style.m
 /* Guardar códigos generados en data.json compartido — solo toca D.almacenCodigos */
 async function guardarCodigos(){
   if(!PENDING_COD.length){alert('No hay códigos nuevos para guardar.');return;}
-  const token=getGHTokenAlmacen();
-  if(!token){
-    if(confirm('Para guardar códigos (compartidos con todos) necesitas un Token de GitHub.\n¿Configurarlo ahora?'))setupGHToken();
-    return;
-  }
   const lbls=document.querySelectorAll('.codSaveLblEl');
   lbls.forEach(l=>l.innerHTML='⏳ Guardando…');
   try{
-    const check=await fetch(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
-    if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
-    const meta=await check.json();
-    const sha=meta.sha;
-    const remoteRaw=await fetch(GH_RAW+'?t='+Date.now());
-    if(!remoteRaw.ok)throw new Error('No se pudo leer el contenido actual de data.json');
-    const remote=await remoteRaw.json();
-    if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
-    const remoteCodigos=remote.D.almacenCodigos||[];
-    const remoteCods=new Set(remoteCodigos.map(c=>c.cod));
-    const colisiones=PENDING_COD.filter(c=>remoteCods.has(c.cod));
-    const nuevos=PENDING_COD.filter(c=>!remoteCods.has(c.cod));
-    const merged=remoteCodigos.concat(nuevos);
-    remote.D.almacenCodigos=merged;
-    const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
-    const body={message:'almacen: agregar '+nuevos.length+' código(s) nuevo(s) '+new Date().toISOString(),content,sha};
-    const res=await fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
-    CONFIRMED_COD=merged;
-    PENDING_COD=colisiones; // los que chocaron quedan pendientes para regenerar
-    savePendingCodigos();
+    const res=await guardarCodigosSB();
+    if(!res.ok)throw new Error(res.error);
     let savedTxt='✔ Guardado '+new Date().toLocaleString('es-PE');
-    if(colisiones.length)savedTxt+=` — ⚠ ${colisiones.length} código(s) ya existían y no se subieron, regenéralos`;
+    if(res.colisiones)savedTxt+=` — ⚠ ${res.colisiones} código(s) ya existían y no se subieron, regenéralos`;
     document.querySelectorAll('.codSaveLblEl').forEach(l=>l.textContent=savedTxt);
     setLastSync('✔ '+new Date().toLocaleString('es-PE'));
     renderCod();
@@ -4283,38 +4381,18 @@ async function guardarTodo(){
       partes.push('Tránsito/Reservas ('+TRANS.length+' + '+RESV.length+' líneas)');
       TRANS_DIRTY=false;
     }
-    if(hayPicking||hayCodigos){
-      const check=await fetchTO(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
-      if(!check.ok)throw new Error('No se pudo leer data.json actual (HTTP '+check.status+')');
-      const meta=await check.json();
-      const sha=meta.sha;
-      // OJO: el contenido se lee del propio meta.content de la Contents API, NUNCA de
-      // raw.githubusercontent.com — ese CDN cachea varios minutos y si otra pestaña
-      // (Compras u otro guardado de Almacén) acababa de guardar segundos antes, esto leía
-      // una copia vieja y la reescribía encima (bug detectado 2026-08-25).
-      const remote=JSON.parse(decodeURIComponent(escape(atob(meta.content.replace(/\n/g,'')))));
-      if(!remote.D)throw new Error('data.json remoto no tiene el formato esperado');
-      delete remote.D.almacenExistencias; // limpieza: ya vive en su propio archivo, no en data.json
-      delete remote.D.almacenTransito; // Fase 2: ya vive en Supabase, se purga la clave vieja si quedaba
-
-      if(hayPicking)remote.D.almacenPicking={...(remote.D.almacenPicking||{}),...PENDING};
-      if(hayCodigos){
-        const remoteCodigos=remote.D.almacenCodigos||[];
-        const remoteCods=new Set(remoteCodigos.map(c=>c.cod));
-        colisionesCod=PENDING_COD.filter(c=>remoteCods.has(c.cod));
-        const nuevosCod=PENDING_COD.filter(c=>!remoteCods.has(c.cod));
-        remote.D.almacenCodigos=remoteCodigos.concat(nuevosCod);
-      }
-
-      const content=btoa(unescape(encodeURIComponent(JSON.stringify(remote))));
-      if(hayPicking)partes.push('Picking ('+Object.keys(PENDING).length+' cambios)');
-      if(hayCodigos)partes.push('Códigos ('+PENDING_COD.length+' nuevos)');
-      const body={message:'almacen: guardar '+partes.join(' + ')+' — '+new Date().toISOString(),content,sha};
-      const res=await fetchTO(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)},90000);
-      if(!res.ok)throw new Error('GitHub rechazó la subida (HTTP '+res.status+')');
-
-      if(hayPicking){CONFIRMED=remote.D.almacenPicking;PENDING={};localStorage.removeItem('fp_almacen_picking_pending');}
-      if(hayCodigos){CONFIRMED_COD=remote.D.almacenCodigos;PENDING_COD=colisionesCod;savePendingCodigos();}
+    // Fase 2: Picking y Códigos ya viven en Supabase, no en data.json — mismos helpers que
+    // usan guardarDecisiones()/guardarCodigos(), para no duplicar la lógica de upsert/dedupe.
+    if(hayPicking){
+      const resPk=await guardarPickingSB();
+      if(!resPk.ok)throw new Error('Picking: '+resPk.error);
+      partes.push('Picking ('+resPk.n+' cambios)');
+    }
+    if(hayCodigos){
+      const resCod=await guardarCodigosSB();
+      if(!resCod.ok)throw new Error('Códigos: '+resCod.error);
+      partes.push('Códigos ('+resCod.nuevos+' nuevos)');
+      colisionesCod=new Array(resCod.colisiones).fill(true); // solo se usa .length más abajo
     }
     if(hayExistenciasEfectivo){EXISTENCIAS_DIRTY=false;}
 
