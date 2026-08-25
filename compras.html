@@ -4453,61 +4453,65 @@ async function saveGitHub(payload){
   if(!token)return false;
   try{
     let sha='';
-    // Protección: no sobrescribir la nube perdiendo información sin avisar
-    try{
-      const localData=JSON.parse(payload);
-      // OJO: el contenido se lee del propio meta.content de la Contents API, NUNCA de
-      // raw.githubusercontent.com — ese CDN cachea varios minutos y puede devolver una
-      // copia vieja, resucitando claves ya migradas/purgadas (bug visto primero en el
-      // guardado de Almacén el 2026-08-25 y repetido aquí en Compras).
-      const rCheck=await fetchTO(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
-      if(rCheck.ok){
-        const meta=await rCheck.json();
-        sha=meta.sha||'';
-        const remote=JSON.parse(decodeURIComponent(escape(atob(meta.content.replace(/\n/g,'')))));
-        // oc/p4/p5reqs/sinoc/proj ya no viven aquí (Fase 2: Supabase) — ya no queda
-        // ningún campo grande que valga la pena advertir por conteo antes de subir.
-        // Anti-pisado: conservar claves que la nube tiene y esta pestaña no conoce
-        // (ej. almacenValidado/almacenPicking creados por Almacén después de abrir esta pestaña).
-        // oc/p4/p5reqs/sinoc/proj/ocMeta/cotMeta/cotMetaFecha/supervisores quedan excluidos
-        // a propósito: ya viven en Supabase (Fase 2) y no deben reinyectarse desde el blob
-        // viejo de la nube. OJO: D.proveedores aquí NO es lo mismo que la tabla Supabase
-        // "proveedores" (esa es el directorio con datos bancarios de facturas.html/NEXO) —
-        // este D.proveedores es el directorio liviano nombre/ruc/correo propio de
-        // importProveedores() en esta página, nunca migrado, así que sigue fusionándose.
-        const _MIGRADOS_SB=['oc','p4','p5reqs','sinoc','proj','ocMeta','cotMeta','cotMetaFecha','supervisores'];
-        let cambiado=false;
-        Object.keys(remote.D||{}).forEach(function(k){
-          if(_MIGRADOS_SB.indexOf(k)!==-1)return;
-          if(localData.D[k]===undefined){localData.D[k]=remote.D[k];cambiado=true;}
-        });
-        // Anti-pisado: fusionar proveedores (directorio liviano) en vez de reemplazar la
-        // lista completa (ver bug "última escritura gana", 2026-07-31: quedaron en 0)
-        if(Array.isArray(remote.D&&remote.D.proveedores)){
-          localData.D.proveedores=mergeProveedores(remote.D.proveedores,localData.D.proveedores);
-          cambiado=true;
-        }
-        // ocMeta/cotMeta/cotMetaFecha ya no se fusionan aquí: Fase 2 los migró a Supabase
-        // (ver _MIGRADOS_SB arriba) — mergeOcMeta/mergeCotMeta/mergeCotMetaFecha siguen
-        // existiendo solo para archivoMeta, que todavía vive en este blob.
-        // Igual anti-pisado para los motivos/fechas de Archivar en Sin OC — Cotización
-        if(remote.D&&remote.D.archivoMeta){
-          localData.D.archivoMeta=mergeOcMeta(remote.D.archivoMeta,localData.D.archivoMeta);
-          cambiado=true;
-        }
-        if(cambiado){
-          payload=JSON.stringify(localData);
-          Object.assign(D,localData.D); // mantener también en memoria
-        }
-      }
-    }catch(e2){console.warn('[FP] Chequeo de conflicto antes de guardar falló, se continúa:',e2);}
+    // Protección: no sobrescribir la nube perdiendo información sin avisar. A diferencia de
+    // antes, si este chequeo falla (red, GitHub caído, contenido corrupto) el guardado se
+    // CANCELA en vez de seguir con el payload local tal cual — eso fue justo lo que pasó el
+    // 2026-08-25 (varias veces): el chequeo falló en silencio y una pestaña con estado viejo
+    // en memoria subió una versión incompleta, borrando proveedores/archivoMeta.
+    const localData=JSON.parse(payload);
+    // OJO: el contenido se lee del propio meta.content de la Contents API, NUNCA de
+    // raw.githubusercontent.com — ese CDN cachea varios minutos y puede devolver una
+    // copia vieja, resucitando claves ya migradas/purgadas.
+    const rCheck=await fetchTO(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
+    if(!rCheck.ok)throw new Error('No se pudo leer data.json actual antes de guardar (HTTP '+rCheck.status+')');
+    const meta=await rCheck.json();
+    sha=meta.sha||'';
+    const remote=JSON.parse(decodeURIComponent(escape(atob(meta.content.replace(/\n/g,'')))));
+    // oc/p4/p5reqs/sinoc/proj ya no viven aquí (Fase 2: Supabase) — ya no queda
+    // ningún campo grande que valga la pena advertir por conteo antes de subir.
+    // Anti-pisado: conservar claves que la nube tiene y esta pestaña no conoce
+    // (ej. almacenValidado/almacenPicking creados por Almacén después de abrir esta pestaña).
+    // oc/p4/p5reqs/sinoc/proj/ocMeta/cotMeta/cotMetaFecha/supervisores quedan excluidos
+    // a propósito: ya viven en Supabase (Fase 2) y no deben reinyectarse desde el blob
+    // viejo de la nube. OJO: D.proveedores aquí NO es lo mismo que la tabla Supabase
+    // "proveedores" (esa es el directorio con datos bancarios de facturas.html/NEXO) —
+    // este D.proveedores es el directorio liviano nombre/ruc/correo propio de
+    // importProveedores() en esta página, nunca migrado, así que sigue fusionándose.
+    const _MIGRADOS_SB=['oc','p4','p5reqs','sinoc','proj','ocMeta','cotMeta','cotMetaFecha','supervisores'];
+    let cambiado=false;
+    Object.keys(remote.D||{}).forEach(function(k){
+      if(_MIGRADOS_SB.indexOf(k)!==-1)return;
+      if(localData.D[k]===undefined){localData.D[k]=remote.D[k];cambiado=true;}
+    });
+    // Anti-pisado: fusionar proveedores (directorio liviano) en vez de reemplazar la
+    // lista completa (ver bug "última escritura gana", 2026-07-31: quedaron en 0)
+    if(Array.isArray(remote.D&&remote.D.proveedores)){
+      localData.D.proveedores=mergeProveedores(remote.D.proveedores,localData.D.proveedores);
+      cambiado=true;
+    }
+    // ocMeta/cotMeta/cotMetaFecha ya no se fusionan aquí: Fase 2 los migró a Supabase
+    // (ver _MIGRADOS_SB arriba) — mergeOcMeta/mergeCotMeta/mergeCotMetaFecha siguen
+    // existiendo solo para archivoMeta, que todavía vive en este blob.
+    // Igual anti-pisado para los motivos/fechas de Archivar en Sin OC — Cotización
+    if(remote.D&&remote.D.archivoMeta){
+      localData.D.archivoMeta=mergeOcMeta(remote.D.archivoMeta,localData.D.archivoMeta);
+      cambiado=true;
+    }
+    if(cambiado){
+      payload=JSON.stringify(localData);
+      Object.assign(D,localData.D); // mantener también en memoria
+    }
     // sha ya se obtuvo arriba (junto con el contenido, en la misma llamada a la Contents API)
     const content=btoa(unescape(encodeURIComponent(payload)));
     const body={message:'update '+new Date().toISOString(),content};
     if(sha)body.sha=sha;
     const res=await fetchTO(GH_API,{method:'PUT',headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
     return res.ok;
-  }catch(e){console.warn('GitHub save failed:',e);return false;}
+  }catch(e){
+    console.warn('GitHub save failed:',e);
+    showSavedLabel('⚠️ Guardado cancelado (no se subió nada): '+e.message,'#dc2626');
+    return false;
+  }
 }
 
 // ── Guardar consultas.json en GitHub ─────────────────────────────────────────
