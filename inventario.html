@@ -295,8 +295,11 @@ async function cargarProjOcMetaCotMetaSB(){
 // almacenTransito: a diferencia de proj/ocMeta/cotMeta, este SÍ lo escribe Almacén (no solo
 // lo lee) — ver replaceAllSB/guardarTodo más abajo. Vive en dos tablas (t=en tránsito,
 // r=reservas/sin OC) en vez del objeto único que era D.almacenTransito.
-async function replaceAllSB(table,rows,mapper,batchSize){
-  const {error:delErr}=await sb.from(table).delete().gte('id',0);
+async function replaceAllSB(table,rows,mapper,batchSize,filterCol){
+  // filterCol: columna NOT NULL cualquiera para poder borrar "todo" (PostgREST exige un
+  // WHERE) — 'id' sirve si la tabla tiene bigserial; almacen_transito_r no tiene id propio
+  // (su clave es req+cod), así que ahí hay que pasar 'req' en vez del default.
+  const {error:delErr}=await sb.from(table).delete().not(filterCol||'id','is',null);
   if(delErr){console.warn('No se pudo limpiar '+table+' (Supabase):',delErr);return false;}
   const mapped=rows.map(mapper);
   batchSize=batchSize||500;
@@ -4376,7 +4379,7 @@ async function guardarTodo(){
     // elimina justo la carrera "última escritura gana" que causó los incidentes de hoy.
     if(hayTransito){
       const okT=await replaceAllSB('almacen_transito_t',TRANS,transTToSB);
-      const okR=await replaceAllSB('almacen_transito_r',RESV,transRToSB);
+      const okR=await replaceAllSB('almacen_transito_r',RESV,transRToSB,500,'req');
       if(!okT||!okR)throw new Error('No se pudo guardar Tránsito/Reservas en Supabase.');
       partes.push('Tránsito/Reservas ('+TRANS.length+' + '+RESV.length+' líneas)');
       TRANS_DIRTY=false;

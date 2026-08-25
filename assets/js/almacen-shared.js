@@ -505,8 +505,11 @@ function procesarArchivo(wb){
 // almacenTransito: Fase 2, migrado de data.json a dos tablas propias en Supabase
 // (mismo motivo que oc/p4/p5reqs/sinoc en compras-shared.js). t no tiene columna única
 // por fila (oc+cod se repite) -> "borrar todo + insertar"; r sí (req+cod único).
-async function replaceAllSB(table,rows,mapper,batchSize){
-  const {error:delErr}=await sb.from(table).delete().gte('id',0);
+async function replaceAllSB(table,rows,mapper,batchSize,filterCol){
+  // filterCol: columna NOT NULL cualquiera para poder borrar "todo" (PostgREST exige un
+  // WHERE) — 'id' sirve si la tabla tiene bigserial; almacen_transito_r no tiene id propio
+  // (su clave es req+cod), así que ahí hay que pasar 'req' en vez del default.
+  const {error:delErr}=await sb.from(table).delete().not(filterCol||'id','is',null);
   if(delErr){console.warn('No se pudo limpiar '+table+' (Supabase):',delErr);return false;}
   const mapped=rows.map(mapper);
   batchSize=batchSize||500;
@@ -566,7 +569,7 @@ async function guardarImportado(){
     // leía data.json vía el CDN cacheado de raw.githubusercontent.com y pisaba guardados
     // recientes de Compras).
     const okT=await replaceAllSB('almacen_transito_t',TRANS,transTToSB);
-    const okR=await replaceAllSB('almacen_transito_r',RESV,transRToSB);
+    const okR=await replaceAllSB('almacen_transito_r',RESV,transRToSB,500,'req');
     if(!okT||!okR)throw new Error('No se pudo guardar Tránsito/Reservas en Supabase.');
     partes.push('Tránsito/Reservas ('+TRANS.length+' + '+RESV.length+' líneas)');
     TRANS_DIRTY=false;

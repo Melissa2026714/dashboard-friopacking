@@ -159,8 +159,10 @@ async function bulkUpsertSB(table,rows,onConflict,mapper,batchSize){
 }
 // sinoc no tiene ninguna columna única por fila — se reemplaza la tabla entera en
 // cada import en vez de hacer upsert (seguro: nadie edita sinoc a mano).
-async function replaceAllSB(table,rows,mapper,batchSize){
-  const {error:delErr}=await sb.from(table).delete().gte('id',0);
+async function replaceAllSB(table,rows,mapper,batchSize,filterCol){
+  // filterCol: columna NOT NULL cualquiera para poder borrar "todo" (PostgREST exige un
+  // WHERE) — 'id' sirve si la tabla tiene bigserial; si no, hay que pasar una columna real.
+  const {error:delErr}=await sb.from(table).delete().not(filterCol||'id','is',null);
   if(delErr){console.warn('No se pudo limpiar '+table+' (Supabase):',delErr);return false;}
   const mapped=rows.map(mapper);
   batchSize=batchSize||500;
