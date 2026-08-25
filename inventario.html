@@ -217,14 +217,23 @@ function aplicarRestriccionesRol(){
     nbr.prepend(b);
   }
 }
+let _cambioObligatorio=false;
+function continuarLuegoDeLogin(prof){
+  sesionPerfil = prof;
+  if(prof.debe_cambiar_clave){
+    document.getElementById('authGate').style.display='none';
+    abrirCambiarClave(true);
+    return;
+  }
+  document.getElementById('authGate').style.display='none';
+  aplicarRestriccionesRol();
+}
 async function authGateCheck(){
   const { data:{ session } } = await sb.auth.getSession();
   if(session){
     const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
     if(!error && data && data.tipo==='interno' && data.activo!==false){
-      sesionPerfil = data;
-      document.getElementById('authGate').style.display='none';
-      aplicarRestriccionesRol();
+      continuarLuegoDeLogin(data);
       return;
     }
   }
@@ -242,22 +251,25 @@ async function authGateLogin(){
     await sb.auth.signOut();
     return;
   }
-  sesionPerfil = prof;
-  document.getElementById('authGate').style.display='none';
-  aplicarRestriccionesRol();
+  continuarLuegoDeLogin(prof);
 }
 async function cerrarSesionApp(){
   await sb.auth.signOut();
   sesionPerfil = null;
   location.reload();
 }
-function abrirCambiarClave(){
+function abrirCambiarClave(obligatorio){
+  _cambioObligatorio=!!obligatorio;
   document.getElementById('changePassNew').value='';
   document.getElementById('changePassNew2').value='';
   document.getElementById('changePassErr').textContent='';
+  document.getElementById('changePassTitle').textContent=_cambioObligatorio?'Debes cambiar tu clave':'Cambiar mi clave';
+  document.getElementById('changePassSub').textContent=_cambioObligatorio?'Tu clave fue asignada por un administrador — pon una propia para continuar.':'Mínimo 6 caracteres.';
+  document.getElementById('changePassCancelBtn').style.display=_cambioObligatorio?'none':'';
   document.getElementById('changePassModal').style.display='flex';
 }
 function cerrarCambiarClave(){
+  if(_cambioObligatorio)return;
   document.getElementById('changePassModal').style.display='none';
 }
 async function confirmarCambiarClave(){
@@ -269,8 +281,18 @@ async function confirmarCambiarClave(){
   if(p1!==p2){ err.textContent='Las claves no coinciden.'; return; }
   const { error } = await sb.auth.updateUser({ password: p1 });
   if(error){ err.textContent='No se pudo cambiar: '+error.message; return; }
-  cerrarCambiarClave();
-  alert('✅ Clave actualizada correctamente.');
+  if(sesionPerfil){
+    await sb.from('profiles').update({ debe_cambiar_clave:false }).eq('id', sesionPerfil.id);
+    sesionPerfil.debe_cambiar_clave=false;
+  }
+  const eraObligatorio=_cambioObligatorio;
+  _cambioObligatorio=false;
+  document.getElementById('changePassModal').style.display='none';
+  if(eraObligatorio){
+    aplicarRestriccionesRol();
+  }else{
+    alert('✅ Clave actualizada correctamente.');
+  }
 }
 authGateCheck();
 </script>
@@ -279,15 +301,15 @@ authGateCheck();
 <div id="changePassModal" style="display:none;position:fixed;inset:0;z-index:999998;background:rgba(15,23,42,.6);align-items:center;justify-content:center;font-family:'Inter',sans-serif">
   <div style="background:#fff;border-radius:14px;padding:30px 34px;width:320px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)">
     <div style="font-size:24px;margin-bottom:8px">🔐</div>
-    <h3 style="font-size:15px;margin:0 0 4px;color:#0f172a">Cambiar mi clave</h3>
-    <p style="font-size:11.5px;color:#64748b;margin:0 0 18px">Mínimo 6 caracteres.</p>
+    <h3 id="changePassTitle" style="font-size:15px;margin:0 0 4px;color:#0f172a">Cambiar mi clave</h3>
+    <p id="changePassSub" style="font-size:11.5px;color:#64748b;margin:0 0 18px">Mínimo 6 caracteres.</p>
     <input type="password" id="changePassNew" placeholder="Nueva clave"
       style="width:100%;box-sizing:border-box;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 11px;font-size:13px;margin-bottom:8px;font-family:'Inter',sans-serif">
     <input type="password" id="changePassNew2" placeholder="Confirmar clave"
       style="width:100%;box-sizing:border-box;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 11px;font-size:13px;margin-bottom:8px;font-family:'Inter',sans-serif">
     <div id="changePassErr" style="color:#dc2626;font-size:11px;min-height:16px;margin-bottom:6px;font-family:'Inter',sans-serif"></div>
     <button onclick="confirmarCambiarClave()" style="width:100%;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;font-family:'Inter',sans-serif">Guardar</button>
-    <button onclick="cerrarCambiarClave()" style="width:100%;background:transparent;color:#94a3b8;border:none;padding:6px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif">Cancelar</button>
+    <button id="changePassCancelBtn" onclick="cerrarCambiarClave()" style="width:100%;background:transparent;color:#94a3b8;border:none;padding:6px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif">Cancelar</button>
   </div>
 </div>
 
