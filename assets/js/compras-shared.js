@@ -64,7 +64,8 @@ function saveLocal(){
   // Excluir D.consultas (aparte, muy grande) y D.oc/p4/p5reqs (Fase 2: ya viven en
   // tablas propias de Supabase, no en el blob compartido).
   const {consultas:_omit,oc:_omitOc,p4:_omitP4,p5reqs:_omitP5,sinoc:_omitSinoc,proj:_omitProj,
-    ocMeta:_omitOcMeta,cotMeta:_omitCotMeta,cotMetaFecha:_omitCotMetaFecha,...Dsin}=D;
+    ocMeta:_omitOcMeta,cotMeta:_omitCotMeta,cotMetaFecha:_omitCotMetaFecha,
+    supervisores:_omitSup,...Dsin}=D;
   const payload=JSON.stringify({D:Dsin,SKUS,ts:Date.now()});
   try{localStorage.setItem(LS_KEY,payload);}catch(e){console.warn('localStorage lleno, solo GitHub:',e);}
   return payload;
@@ -91,26 +92,11 @@ function mergeCotMeta(remoteMeta,localMeta){
   Object.keys(localMeta||{}).forEach(function(k){merged[k]=!!merged[k]||!!localMeta[k];});
   return merged;
 }
-// Fusiona el padrón de supervisores por nombre en vez de reemplazar la lista
-// completa — si esta pestaña no tiene el padrón cargado (o lo tiene vacío),
-// se conserva íntegro el de la nube; si trae contactos nuevos o campos que la
-// nube no tiene, se agregan/completan (ver bug "última escritura gana": el
-// 2026-07-31 un guardado con D.supervisores=[] dejó el padrón en 0 contactos
-// y ninguna fusión existente lo restauraba).
-function mergeSupervisores(remoteList,localList){
-  const norm=function(n){return String(n||'').trim().toUpperCase();};
-  const merged={};
-  (remoteList||[]).forEach(function(s){merged[norm(s.nombre)]=Object.assign({},s);});
-  (localList||[]).forEach(function(s){
-    const k=norm(s.nombre);
-    const out=Object.assign({},merged[k]||{});
-    ['nombre','celular','area','proyecto','dni','correo'].forEach(function(f){if(s[f])out[f]=s[f];});
-    merged[k]=out;
-  });
-  return Object.values(merged);
-}
-// Igual que mergeSupervisores pero para el directorio de proveedores (clave: RUC si
-// existe, si no nombre normalizado).
+// mergeSupervisores se eliminó: supervisores ya vive en Supabase (Fase 2), no en este
+// blob — ver _MIGRADOS_SB en saveGitHub.
+// Fusiona el directorio liviano de proveedores (nombre/ruc/correo, propio de
+// importProveedores() en este módulo — NO la tabla Supabase "proveedores" de
+// facturas.html/NEXO) por RUC o nombre normalizado, en vez de reemplazar la lista completa.
 function mergeProveedores(remoteList,localList){
   const key=function(p){return(p.ruc&&String(p.ruc).trim())||_normNombre(p.nombre||'');};
   const merged={};
@@ -191,30 +177,35 @@ async function saveGitHub(payload){
   const token=localStorage.getItem(GH_TOKEN_KEY);
   if(!token)return false;
   try{
+    let sha='';
     // Protección: no sobrescribir la nube perdiendo información sin avisar
     try{
       const localData=JSON.parse(payload);
-      const rCheck=await fetchTO(GH_RAW+'?t='+Date.now());
+      // OJO: el contenido se lee del propio meta.content de la Contents API, NUNCA de
+      // raw.githubusercontent.com — ese CDN cachea varios minutos y puede devolver una
+      // copia vieja, resucitando claves ya migradas/purgadas.
+      const rCheck=await fetchTO(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
       if(rCheck.ok){
-        const remote=await rCheck.json();
+        const meta=await rCheck.json();
+        sha=meta.sha||'';
+        const remote=JSON.parse(decodeURIComponent(escape(atob(meta.content.replace(/\n/g,'')))));
         // oc/p4/p5reqs/sinoc/proj ya no viven aquí (Fase 2: Supabase) — ya no queda
         // ningún campo grande que valga la pena advertir por conteo antes de subir.
         // Anti-pisado: conservar claves que la nube tiene y esta pestaña no conoce
         // (ej. almacenValidado/almacenPicking creados por Almacén después de abrir esta pestaña).
-        // oc/p4/p5reqs/sinoc/proj/ocMeta/cotMeta/cotMetaFecha quedan excluidos a propósito:
-        // ya viven en Supabase (Fase 2).
-        const _MIGRADOS_SB=['oc','p4','p5reqs','sinoc','proj','ocMeta','cotMeta','cotMetaFecha'];
+        // oc/p4/p5reqs/sinoc/proj/ocMeta/cotMeta/cotMetaFecha/supervisores quedan excluidos
+        // a propósito: ya viven en Supabase (Fase 2). OJO: D.proveedores aquí NO es la tabla
+        // Supabase "proveedores" (esa es el directorio con datos bancarios de facturas.html/
+        // NEXO) — es el directorio liviano nombre/ruc/correo propio de importProveedores()
+        // en este módulo, nunca migrado, así que sigue fusionándose.
+        const _MIGRADOS_SB=['oc','p4','p5reqs','sinoc','proj','ocMeta','cotMeta','cotMetaFecha','supervisores'];
         let cambiado=false;
         Object.keys(remote.D||{}).forEach(function(k){
           if(_MIGRADOS_SB.indexOf(k)!==-1)return;
           if(localData.D[k]===undefined){localData.D[k]=remote.D[k];cambiado=true;}
         });
-        // Anti-pisado: fusionar supervisores y proveedores en vez de reemplazar la
+        // Anti-pisado: fusionar proveedores (directorio liviano) en vez de reemplazar la
         // lista completa (ver bug "última escritura gana", 2026-07-31: quedaron en 0)
-        if(Array.isArray(remote.D&&remote.D.supervisores)){
-          localData.D.supervisores=mergeSupervisores(remote.D.supervisores,localData.D.supervisores);
-          cambiado=true;
-        }
         if(Array.isArray(remote.D&&remote.D.proveedores)){
           localData.D.proveedores=mergeProveedores(remote.D.proveedores,localData.D.proveedores);
           cambiado=true;
@@ -232,9 +223,7 @@ async function saveGitHub(payload){
         }
       }
     }catch(e2){console.warn('[FP] Chequeo de conflicto antes de guardar falló, se continúa:',e2);}
-    let sha='';
-    const check=await fetchTO(GH_API,{headers:{Authorization:'token '+token,Accept:'application/vnd.github.v3+json'}});
-    if(check.ok){const meta=await check.json();sha=meta.sha||'';}
+    // sha ya se obtuvo arriba (junto con el contenido, en la misma llamada a la Contents API)
     const content=btoa(unescape(encodeURIComponent(payload)));
     const body={message:'update '+new Date().toISOString(),content};
     if(sha)body.sha=sha;
