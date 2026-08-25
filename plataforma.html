@@ -179,6 +179,16 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// Mismo proyecto/clave que compras.html, facturas.html e inventario.html — al crear el
+// cliente aquí, si la persona ya inició sesión en alguna de esas 3 apps en este mismo
+// navegador, este cliente recoge esa sesión (persistida en localStorage) sin pedir login
+// de nuevo. Sin esto, ComprasShared.importSupervisores no podría escribir en Supabase.
+const SUPABASE_URL = 'https://gxjwhubmwsizrxbmavlz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_535ifADM-ulajDIt8GXKbg_PnJ4wWNm';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</script>
 <script src="assets/js/compras-shared.js"></script>
 <script src="assets/js/almacen-shared.js"></script>
 <script src="assets/js/facturas-shared.js"></script>

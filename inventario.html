@@ -227,6 +227,7 @@ let _cambioObligatorio=false;
 function continuarLuegoDeLogin(prof,esLoginFresco){
   sesionPerfil = prof;
   if(esLoginFresco)registrarAuditoria('login','profiles',prof.id,{usuario:prof.nombre});
+  cargarSupervisoresSB();
   if(prof.debe_cambiar_clave){
     document.getElementById('authGate').style.display='none';
     abrirCambiarClave(true);
@@ -234,6 +235,15 @@ function continuarLuegoDeLogin(prof,esLoginFresco){
   }
   document.getElementById('authGate').style.display='none';
   aplicarRestriccionesRol();
+}
+// Directorio de supervisores (nombre/dni/correo/celular/area/proyecto) — migrado de
+// data.json (bloque compartido) a su propia tabla en Supabase para poder editarlo sin
+// arrastrar el resto del blob. Requiere sesión (RLS solo permite lectura a autenticados).
+async function cargarSupervisoresSB(){
+  try{
+    const {data,error}=await sb.from('supervisores').select('*');
+    if(!error&&data)SUPERVISORES=data;
+  }catch(e){console.warn('No se pudo cargar supervisores de Supabase:',e);}
 }
 async function authGateCheck(){
   const { data:{ session } } = await sb.auth.getSession();
@@ -1595,7 +1605,6 @@ async function cargarLive(){
     CONFIRMED_REVISORES=s.D.almacenRevisores||{};
     CONFIRMED_REVISORES_DESPACHO=s.D.almacenRevisoresDespacho||{};
     OCMETA_LIVE=s.D.ocMeta||{};
-    SUPERVISORES=s.D.supervisores||[];
     CONFIRMED_COD=s.D.almacenCodigos||[];
     PROJ=s.D.proj||[];
     buildIdproyInfo();

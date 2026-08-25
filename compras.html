@@ -417,6 +417,7 @@ let _cambioObligatorio=false;
 function continuarLuegoDeLogin(prof,esLoginFresco){
   sesionPerfil = prof;
   if(esLoginFresco)registrarAuditoria('login','profiles',prof.id,{usuario:prof.nombre});
+  cargarSupervisoresSB();
   if(prof.debe_cambiar_clave){
     document.getElementById('authGate').style.display='none';
     abrirCambiarClave(true);
@@ -424,6 +425,14 @@ function continuarLuegoDeLogin(prof,esLoginFresco){
   }
   document.getElementById('authGate').style.display='none';
   aplicarRestriccionesRol();
+}
+// Directorio de supervisores — migrado de data.json (bloque compartido) a su propia
+// tabla en Supabase. Requiere sesión (RLS solo permite lectura a autenticados).
+async function cargarSupervisoresSB(){
+  try{
+    const {data,error}=await sb.from('supervisores').select('*');
+    if(!error&&data)D.supervisores=data;
+  }catch(e){console.warn('No se pudo cargar supervisores de Supabase:',e);}
 }
 async function authGateCheck(){
   const { data:{ session } } = await sb.auth.getSession();
@@ -3207,8 +3216,15 @@ function agregarCorreoFaltante(nombre){
   var val=(inp&&inp.value||'').trim().toLowerCase();
   if(!val||val.indexOf('@')<0){alert('Ingresa un correo válido para '+nombre+'.');return;}
   var sup=(typeof buscarSupervisor==='function')?buscarSupervisor(nombre):null;
-  if(sup){sup.correo=val;}
-  else{D.supervisores=D.supervisores||[];D.supervisores.push({nombre:nombre,correo:val,celular:'',dni:''});}
+  if(sup){
+    sup.correo=val;
+    sb.from('supervisores').update({correo:val}).eq('nombre',sup.nombre).then(function(r){if(r.error)console.warn('No se pudo guardar correo en Supabase:',r.error);});
+  } else {
+    D.supervisores=D.supervisores||[];
+    var nuevo={nombre:nombre,correo:val,celular:'',dni:''};
+    D.supervisores.push(nuevo);
+    sb.from('supervisores').insert(nuevo).then(function(r){if(r.error)console.warn('No se pudo guardar correo en Supabase:',r.error);});
+  }
   if(!_CC_COT.toLowerCase().includes(val))_CC_COT+=';'+val;
   window._cotFaltantes=(window._cotFaltantes||[]).filter(function(n){return n!==nombre;});
   try{saveLocal();}catch(e){}
@@ -6290,7 +6306,7 @@ function importPedidoSinReq(wb){
 // ══════════════════════════════════════════════════════════════════════════════
 // IMPORT SUPERVISORES (directorio Nombre → DNI / Correo)
 // ══════════════════════════════════════════════════════════════════════════════
-function importSupervisores(wb){
+async function importSupervisores(wb){
   const t0=performance.now();
   const wsName=wb.SheetNames.find(n=>n.toLowerCase().includes('supervisor'))||wb.SheetNames[0];
   const ws=wb.Sheets[wsName];
@@ -6322,8 +6338,9 @@ function importSupervisores(wb){
       if(hProy)s.proyecto=g(r,hProy);
       return s;
     });
-  D.supervisores=supervisores;
-  saveLocal();
+  const {error:upErr}=await sb.from('supervisores').upsert(supervisores,{onConflict:'nombre'});
+  if(upErr){alert('❌ No se pudo guardar el padrón de supervisores en Supabase:\n'+upErr.message);return;}
+  await cargarSupervisoresSB();
   const t1=performance.now();
   const conCorreo=supervisores.filter(s=>s.correo).length;
   const conCel=supervisores.filter(s=>s.celular&&s.celular!=='-').length;

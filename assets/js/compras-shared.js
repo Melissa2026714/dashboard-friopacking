@@ -1004,7 +1004,7 @@ function importPedidoSinReq(wb){
 // IMPORT SUPERVISORES (directorio Nombre → DNI / Correo)
 // ══════════════════════════════════════════════════════════════════════════════
 
-function importSupervisores(wb){
+async function importSupervisores(wb){
   const t0=performance.now();
   const wsName=wb.SheetNames.find(n=>n.toLowerCase().includes('supervisor'))||wb.SheetNames[0];
   const ws=wb.Sheets[wsName];
@@ -1036,8 +1036,11 @@ function importSupervisores(wb){
       if(hProy)s.proyecto=g(r,hProy);
       return s;
     });
+  // Fuente de verdad: tabla supervisores en Supabase (ya no el blob de data.json —
+  // ver bug "última escritura gana" documentado arriba en mergeSupervisores).
+  const {error:upErr}=await sb.from('supervisores').upsert(supervisores,{onConflict:'nombre'});
+  if(upErr){alert('❌ No se pudo guardar el padrón de supervisores en Supabase:\n'+upErr.message);return;}
   D.supervisores=supervisores;
-  saveLocal();
   const t1=performance.now();
   const conCorreo=supervisores.filter(s=>s.correo).length;
   const conCel=supervisores.filter(s=>s.celular&&s.celular!=='-').length;
