@@ -169,7 +169,14 @@ async function bulkUpsertSB(table,rows,onConflict,mapper,batchSize){
   for(let i=0;i<mapped.length;i+=batchSize){
     const chunk=mapped.slice(i,i+batchSize);
     const {error}=await sb.from(table).upsert(chunk,{onConflict});
-    if(error){console.warn('No se pudo guardar en '+table+' (Supabase):',error);return false;}
+    if(error){
+      console.warn('No se pudo guardar en '+table+' (Supabase):',error);
+      // Detalle visible sin abrir la consola — se acumula porque varias tablas se
+      // suben en paralelo (Promise.all) y cualquiera puede fallar.
+      window._sbErrors=(window._sbErrors||[]);
+      window._sbErrors.push(table+': '+(error.message||error.details||JSON.stringify(error)));
+      return false;
+    }
   }
   return true;
 }
@@ -961,6 +968,7 @@ async function importMaestro(wb){
   saveLocal();
 
   // Fase 2: oc y p5reqs viven en Supabase (una fila por registro) en vez del blob compartido.
+  window._sbErrors=[];
   const okSB=await Promise.all([
     bulkUpsertSB('oc',ocData,'oc',ocToSB),
     bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB),
@@ -968,7 +976,7 @@ async function importMaestro(wb){
     bulkUpsertSB('proj',projData,'nombre',projToSB),
     bulkUpsertSB('oc_items',flattenSkus(skusMap),'oc,seq',itemToSB)
   ]);
-  if(okSB.some(function(ok){return !ok;}))alert('⚠️ Parte del MAESTRO no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.');
+  if(okSB.some(function(ok){return !ok;}))alert('⚠️ Parte del MAESTRO no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.\n\n'+(window._sbErrors||[]).join('\n'));
 
   const t1=performance.now();
   const msg=`✅ MAESTRO importado (${Math.round(t1-t0)}ms)\n\n` +
@@ -1076,11 +1084,12 @@ async function importPedidoSinReq(wb){
   saveLocal();
 
   // Fase 2: p4 vive en Supabase (una fila por registro) en vez del blob compartido.
+  window._sbErrors=[];
   const okSB=await Promise.all([
     bulkUpsertSB('p4',p4Data,'oc',p4ToSB),
     bulkUpsertSB('p4_items',flattenSkus(skusMap4),'oc,seq',p4ItemToSB)
   ]);
-  if(okSB.some(function(ok){return !ok;}))alert('⚠️ PedidoSinReq no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.');
+  if(okSB.some(function(ok){return !ok;}))alert('⚠️ PedidoSinReq no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.\n\n'+(window._sbErrors||[]).join('\n'));
 
   const t1=performance.now();
   alert(`✅ PedidoSinReq importado (${Math.round(t1-t0)}ms)\n\n• ${p4Data.length} OC Compras Directas`);

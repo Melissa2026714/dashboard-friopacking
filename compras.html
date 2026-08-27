@@ -553,7 +553,12 @@ async function bulkUpsertSB(table,rows,onConflict,mapper,batchSize){
   for(let i=0;i<mapped.length;i+=batchSize){
     const chunk=mapped.slice(i,i+batchSize);
     const {error}=await sb.from(table).upsert(chunk,{onConflict});
-    if(error){console.warn('No se pudo guardar en '+table+' (Supabase):',error);return false;}
+    if(error){
+      console.warn('No se pudo guardar en '+table+' (Supabase):',error);
+      window._sbErrors=(window._sbErrors||[]);
+      window._sbErrors.push(table+': '+(error.message||error.details||JSON.stringify(error)));
+      return false;
+    }
   }
   return true;
 }
