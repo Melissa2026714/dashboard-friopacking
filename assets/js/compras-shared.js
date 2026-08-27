@@ -141,13 +141,16 @@ function p5ToSB(r){
 // "0 item(s)" en el popup aunque el resumen de la OC ya se viera bien). Cada fila de
 // SKUS[oc]/SKUS_P4[oc] es un movimiento del Maestro sin id propio en el Excel de
 // origen — se usa (oc,cod,req) / (oc,cod,ped) como llave de upsert.
+// seq = posición de cada ítem dentro del array de su OC — (oc,req)/(oc,cod) NO son
+// únicos por sí solos (una OC puede tener varias recepciones parciales del mismo
+// producto/requerimiento), así que seq es la única llave que nunca choca en el upsert.
 function flattenSkus(map){
   const out=[];
-  Object.keys(map||{}).forEach(function(oc){(map[oc]||[]).forEach(function(it){out.push(Object.assign({oc:oc},it));});});
+  Object.keys(map||{}).forEach(function(oc){(map[oc]||[]).forEach(function(it,seq){out.push(Object.assign({oc:oc,seq:seq},it));});});
   return out;
 }
 function itemToSB(r){
-  return {oc:r.oc,cod:r.cod??null,req:r.req||'',prod:r.prod??null,
+  return {oc:r.oc,seq:r.seq,cod:r.cod??null,req:r.req??null,prod:r.prod??null,
     cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,cant_pend:r.cantPend??null,
     foc:r.foc??null,fent:r.fent??null,estado:r.estado??null,ucomp:r.ucomp??null,
     prov:r.prov??null,resp:r.resp??null,idproy:r.idproy??null,proy:r.proy??null,
@@ -155,7 +158,7 @@ function itemToSB(r){
     tc:r.tc??null,unid:r.unid??null};
 }
 function p4ItemToSB(r){
-  return {oc:r.oc,cod:r.cod??null,ped:r.ped||'',prod:r.prod??null,
+  return {oc:r.oc,seq:r.seq,cod:r.cod??null,ped:r.ped??null,prod:r.prod??null,
     cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,cant_pend:r.cantPend??null,
     foc:r.foc??null,fent:r.fent??null,estado:r.estado??null,ucomp:r.ucomp??null,
     prov:r.prov??null,resp:r.resp??null,frec:r.frec??null,unid:r.unid??null};
@@ -963,7 +966,7 @@ async function importMaestro(wb){
     bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB),
     replaceAllSB('sinoc',sinOcData,sinocToSB),
     bulkUpsertSB('proj',projData,'nombre',projToSB),
-    bulkUpsertSB('oc_items',flattenSkus(skusMap),'oc,cod,req',itemToSB)
+    bulkUpsertSB('oc_items',flattenSkus(skusMap),'oc,seq',itemToSB)
   ]);
   if(okSB.some(function(ok){return !ok;}))alert('⚠️ Parte del MAESTRO no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.');
 
@@ -1075,7 +1078,7 @@ async function importPedidoSinReq(wb){
   // Fase 2: p4 vive en Supabase (una fila por registro) en vez del blob compartido.
   const okSB=await Promise.all([
     bulkUpsertSB('p4',p4Data,'oc',p4ToSB),
-    bulkUpsertSB('p4_items',flattenSkus(skusMap4),'oc,cod,ped',p4ItemToSB)
+    bulkUpsertSB('p4_items',flattenSkus(skusMap4),'oc,seq',p4ItemToSB)
   ]);
   if(okSB.some(function(ok){return !ok;}))alert('⚠️ PedidoSinReq no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.');
 

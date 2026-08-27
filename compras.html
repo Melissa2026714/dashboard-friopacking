@@ -21,7 +21,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:13px}
 /* ── NAVBAR ── */
-.nb{background:linear-gradient(135deg,#000A70 0%, #131b63 100%);height:52px;display:flex;align-items:center;padding:0 14px;gap:10px;position:fixed;top:0;left:0;right:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.nb{background:linear-gradient(135deg,#0a1440 0%, #0e1b52 100%);height:52px;display:flex;align-items:center;padding:0 14px;gap:10px;position:fixed;top:0;left:0;right:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .brand-icon{height:34px;width:auto;display:block;flex-shrink:0}
 .brand{display:flex;flex-direction:column;gap:1px}
 .b1{color:#e2e8f0;font-size:12px;font-weight:600;white-space:nowrap}
@@ -495,13 +495,16 @@ function p5ToSB(r){
 // (oc,cod,req) / (oc,cod,ped) como llave de upsert; si dos movimientos comparten esa
 // combinación (ej. dos recepciones parciales del mismo producto/requerimiento), el
 // más reciente pisa al anterior en Supabase, igual que ya pasa con el resumen por OC.
+// seq = posición de cada ítem dentro del array de su OC — (oc,req)/(oc,cod) NO son
+// únicos por sí solos (una OC puede tener varias recepciones parciales del mismo
+// producto/requerimiento), así que seq es la única llave que nunca choca en el upsert.
 function flattenSkus(map){
   const out=[];
-  Object.keys(map||{}).forEach(function(oc){(map[oc]||[]).forEach(function(it){out.push(Object.assign({oc:oc},it));});});
+  Object.keys(map||{}).forEach(function(oc){(map[oc]||[]).forEach(function(it,seq){out.push(Object.assign({oc:oc,seq:seq},it));});});
   return out;
 }
 function itemToSB(r){
-  return {oc:r.oc,cod:r.cod??null,req:r.req||'',prod:r.prod??null,
+  return {oc:r.oc,seq:r.seq,cod:r.cod??null,req:r.req??null,prod:r.prod??null,
     cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,cant_pend:r.cantPend??null,
     foc:r.foc??null,fent:r.fent??null,estado:r.estado??null,ucomp:r.ucomp??null,
     prov:r.prov??null,resp:r.resp??null,idproy:r.idproy??null,proy:r.proy??null,
@@ -509,19 +512,19 @@ function itemToSB(r){
     tc:r.tc??null,unid:r.unid??null};
 }
 function itemFromSB(r){
-  return {cod:r.cod,prod:r.prod,cantOrd:r.cant_ord,cantRec:r.cant_rec,cantPend:r.cant_pend,
+  return {seq:r.seq,cod:r.cod,prod:r.prod,cantOrd:r.cant_ord,cantRec:r.cant_rec,cantPend:r.cant_pend,
     foc:r.foc,fent:r.fent,estado:r.estado,ucomp:r.ucomp,prov:r.prov,resp:r.resp,
     idproy:r.idproy,proy:r.proy,req:r.req,freq:r.freq,frec:r.frec,
     moneda:r.moneda,punit:r.punit,tc:r.tc,unid:r.unid};
 }
 function p4ItemToSB(r){
-  return {oc:r.oc,cod:r.cod??null,ped:r.ped||'',prod:r.prod??null,
+  return {oc:r.oc,seq:r.seq,cod:r.cod??null,ped:r.ped??null,prod:r.prod??null,
     cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,cant_pend:r.cantPend??null,
     foc:r.foc??null,fent:r.fent??null,estado:r.estado??null,ucomp:r.ucomp??null,
     prov:r.prov??null,resp:r.resp??null,frec:r.frec??null,unid:r.unid??null};
 }
 function p4ItemFromSB(r){
-  return {cod:r.cod,prod:r.prod,cantOrd:r.cant_ord,cantRec:r.cant_rec,cantPend:r.cant_pend,
+  return {seq:r.seq,cod:r.cod,prod:r.prod,cantOrd:r.cant_ord,cantRec:r.cant_rec,cantPend:r.cant_pend,
     foc:r.foc,fent:r.fent,estado:r.estado,ucomp:r.ucomp,prov:r.prov,resp:r.resp,
     ped:r.ped,frec:r.frec,unid:r.unid};
 }
@@ -531,11 +534,13 @@ async function cargarItemsSB(){
     if(ocItemRows.length){
       const m={};
       ocItemRows.forEach(function(r){(m[r.oc]=m[r.oc]||[]).push(itemFromSB(r));});
+      Object.keys(m).forEach(function(oc){m[oc].sort(function(a,b){return a.seq-b.seq;});});
       SKUS=m;
     }
     if(p4ItemRows.length){
       const m4={};
       p4ItemRows.forEach(function(r){(m4[r.oc]=m4[r.oc]||[]).push(p4ItemFromSB(r));});
+      Object.keys(m4).forEach(function(oc){m4[oc].sort(function(a,b){return a.seq-b.seq;});});
       SKUS_P4=m4;
     }
     try{fixOcEstados();}catch(e){}
@@ -6370,7 +6375,7 @@ async function importMaestro(wb){
     bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB),
     replaceAllSB('sinoc',sinOcData,sinocToSB),
     bulkUpsertSB('proj',projData,'nombre',projToSB),
-    bulkUpsertSB('oc_items',flattenSkus(skusMap),'oc,cod,req',itemToSB)
+    bulkUpsertSB('oc_items',flattenSkus(skusMap),'oc,seq',itemToSB)
   ]).then(function(rs){
     if(rs.some(function(ok){return !ok;}))showSavedLabel('⚠️ MAESTRO no se guardó completo en Supabase — revisa tu conexión e importa de nuevo','#dc2626');
   });
@@ -6487,7 +6492,7 @@ async function importPedidoSinReq(wb){
   // Fase 2: p4 vive en Supabase (una fila por registro) en vez del blob compartido.
   Promise.all([
     bulkUpsertSB('p4',p4Data,'oc',p4ToSB),
-    bulkUpsertSB('p4_items',flattenSkus(skusMap4),'oc,cod,ped',p4ItemToSB)
+    bulkUpsertSB('p4_items',flattenSkus(skusMap4),'oc,seq',p4ItemToSB)
   ]).then(function(rs){
     if(rs.some(function(ok){return !ok;}))showSavedLabel('⚠️ PedidoSinReq no se guardó completo en Supabase — revisa tu conexión e importa de nuevo','#dc2626');
   });
