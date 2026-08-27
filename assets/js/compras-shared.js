@@ -133,6 +133,33 @@ function p5ToSB(r){
   return {req:r.req,cod:r.cod,fecha:r.fecha??null,resp:r.resp??null,idproy:r.idproy??null,proy:r.proy??null,
     prod:r.prod??null,cant:r.cant??null,unid:r.unid??null,freq:r.freq??null,estado:r.estado??null};
 }
+// ── oc_items / p4_items: detalle de ítems por OC (2026-08-27 — antes SKUS/SKUS_P4
+// solo vivía en data.json de GitHub, y ese blob solo se sube cuando el guardado con
+// token de GitHub tiene éxito; en compras.html se migró a Supabase igual que oc/p4,
+// pero esta copia del importador — la que usa el import centralizado de
+// plataforma.html — no lo tenía, así que las OC importadas por acá seguían saliendo
+// "0 item(s)" en el popup aunque el resumen de la OC ya se viera bien). Cada fila de
+// SKUS[oc]/SKUS_P4[oc] es un movimiento del Maestro sin id propio en el Excel de
+// origen — se usa (oc,cod,req) / (oc,cod,ped) como llave de upsert.
+function flattenSkus(map){
+  const out=[];
+  Object.keys(map||{}).forEach(function(oc){(map[oc]||[]).forEach(function(it){out.push(Object.assign({oc:oc},it));});});
+  return out;
+}
+function itemToSB(r){
+  return {oc:r.oc,cod:r.cod??null,req:r.req||'',prod:r.prod??null,
+    cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,cant_pend:r.cantPend??null,
+    foc:r.foc??null,fent:r.fent??null,estado:r.estado??null,ucomp:r.ucomp??null,
+    prov:r.prov??null,resp:r.resp??null,idproy:r.idproy??null,proy:r.proy??null,
+    freq:r.freq??null,frec:r.frec??null,moneda:r.moneda??null,punit:r.punit??null,
+    tc:r.tc??null,unid:r.unid??null};
+}
+function p4ItemToSB(r){
+  return {oc:r.oc,cod:r.cod??null,ped:r.ped||'',prod:r.prod??null,
+    cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,cant_pend:r.cantPend??null,
+    foc:r.foc??null,fent:r.fent??null,estado:r.estado??null,ucomp:r.ucomp??null,
+    prov:r.prov??null,resp:r.resp??null,frec:r.frec??null,unid:r.unid??null};
+}
 async function bulkUpsertSB(table,rows,onConflict,mapper,batchSize){
   const mapped=rows.map(mapper);
   batchSize=batchSize||500;
@@ -935,7 +962,8 @@ async function importMaestro(wb){
     bulkUpsertSB('oc',ocData,'oc',ocToSB),
     bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB),
     replaceAllSB('sinoc',sinOcData,sinocToSB),
-    bulkUpsertSB('proj',projData,'nombre',projToSB)
+    bulkUpsertSB('proj',projData,'nombre',projToSB),
+    bulkUpsertSB('oc_items',flattenSkus(skusMap),'oc,cod,req',itemToSB)
   ]);
   if(okSB.some(function(ok){return !ok;}))alert('⚠️ Parte del MAESTRO no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.');
 
@@ -1045,8 +1073,11 @@ async function importPedidoSinReq(wb){
   saveLocal();
 
   // Fase 2: p4 vive en Supabase (una fila por registro) en vez del blob compartido.
-  const okSB=await bulkUpsertSB('p4',p4Data,'oc',p4ToSB);
-  if(!okSB)alert('⚠️ PedidoSinReq no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.');
+  const okSB=await Promise.all([
+    bulkUpsertSB('p4',p4Data,'oc',p4ToSB),
+    bulkUpsertSB('p4_items',flattenSkus(skusMap4),'oc,cod,ped',p4ItemToSB)
+  ]);
+  if(okSB.some(function(ok){return !ok;}))alert('⚠️ PedidoSinReq no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.');
 
   const t1=performance.now();
   alert(`✅ PedidoSinReq importado (${Math.round(t1-t0)}ms)\n\n• ${p4Data.length} OC Compras Directas`);
