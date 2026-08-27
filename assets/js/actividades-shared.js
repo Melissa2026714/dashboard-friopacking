@@ -398,11 +398,44 @@ async function saveMisActividades(persona, fecha, fechaTs, entries){
   if(!res.ok){
     let detalle='';
     try{ detalle=(await res.json()).message||''; }catch(e2){}
+    if(res.status===401){
+      localStorage.removeItem(GH_TOKEN_KEY);
+      if(confirm('El Token de GitHub de Actividades ya no es válido (expiró o fue revocado).\n¿Configurar uno nuevo ahora?')) setupGHToken();
+    }
+    throw new Error('GitHub respondió '+res.status+(detalle?': '+detalle:''));
+  }
+  return true;
+}
+
+// Reescribe el archivo completo tal cual se le pasa — para mantenimiento puntual
+// (ej. fusionar días duplicados por un fechaTs inconsistente), no para el guardado
+// normal de una persona (eso sigue siendo saveMisActividades, que fusiona sin pisar).
+async function saveTodasActividades(actividadesArray, mensaje){
+  const token = getToken();
+  if(!token){
+    if(confirm('Para guardar (compartido con todo el equipo) necesitas un Token de GitHub.\n¿Configurarlo ahora?')) setupGHToken();
+    throw new Error('Falta configurar el Token de GitHub de Actividades.');
+  }
+  const check = await fetchTO(GH_API, {headers:{Authorization:'token '+token, Accept:'application/vnd.github.v3+json'}});
+  let sha='';
+  if(check.ok){ const meta = await check.json(); sha = meta.sha || ''; }
+  const payload = JSON.stringify({actividades:actividadesArray, updatedAt:Date.now()});
+  const content = btoa(unescape(encodeURIComponent(payload)));
+  const body = {message:mensaje||'mantenimiento actividades', content};
+  if(sha) body.sha = sha;
+  const res = await fetchTO(GH_API, {method:'PUT', headers:{Authorization:'token '+token, Accept:'application/vnd.github.v3+json', 'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  if(!res.ok){
+    let detalle='';
+    try{ detalle=(await res.json()).message||''; }catch(e2){}
+    if(res.status===401){
+      localStorage.removeItem(GH_TOKEN_KEY);
+      if(confirm('El Token de GitHub de Actividades ya no es válido (expiró o fue revocado).\n¿Configurar uno nuevo ahora?')) setupGHToken();
+    }
     throw new Error('GitHub respondió '+res.status+(detalle?': '+detalle:''));
   }
   return true;
 }
 
 return { loadRemote, setupGHToken, getToken, GH_TOKEN_KEY,
-  EQUIPO, hoyStr, fetchComprasData, fetchFacturasData, detectarAutomaticas, mergeConGuardadoHoy, saveMisActividades };
+  EQUIPO, hoyStr, fetchComprasData, fetchFacturasData, detectarAutomaticas, mergeConGuardadoHoy, saveMisActividades, saveTodasActividades };
 })();

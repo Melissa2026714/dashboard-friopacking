@@ -21,8 +21,8 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:13px}
 /* ── NAVBAR ── */
-.nb{background:#0f172a;height:52px;display:flex;align-items:center;padding:0 14px;gap:10px;position:fixed;top:0;left:0;right:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-.fp{background:#166534;color:#fff;font-weight:800;font-size:13px;width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nb{background:linear-gradient(135deg,#000A70 0%, #131b63 100%);height:52px;display:flex;align-items:center;padding:0 14px;gap:10px;position:fixed;top:0;left:0;right:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.brand-icon{height:34px;width:auto;display:block;flex-shrink:0}
 .brand{display:flex;flex-direction:column;gap:1px}
 .b1{color:#e2e8f0;font-size:12px;font-weight:600;white-space:nowrap}
 .b2{color:#64748b;font-size:10px}
@@ -419,6 +419,7 @@ function continuarLuegoDeLogin(prof,esLoginFresco){
   if(esLoginFresco)registrarAuditoria('login','profiles',prof.id,{usuario:prof.nombre});
   cargarSupervisoresSB();
   cargarOcP4P5SB();
+  cargarItemsSB();
   cargarSinocProjMetaSB();
   if(prof.debe_cambiar_clave){
     document.getElementById('authGate').style.display='none';
@@ -483,6 +484,63 @@ function p4ToSB(r){
 function p5ToSB(r){
   return {req:r.req,cod:r.cod,fecha:r.fecha??null,resp:r.resp??null,idproy:r.idproy??null,proy:r.proy??null,
     prod:r.prod??null,cant:r.cant??null,unid:r.unid??null,freq:r.freq??null,estado:r.estado??null};
+}
+// ── oc_items / p4_items: detalle de ítems por OC (antes SKUS/SKUS_P4 solo vivía en
+// data.json de GitHub, y ese blob solo se sube cuando alguien con token de GitHub hace
+// clic en GUARDAR con éxito — 2026-08-27: quedó 2 días sin subirse mientras el Maestro
+// se seguía importando y subiendo a Supabase, así que las OC nuevas aparecían en la
+// lista ("N SKU") pero el detalle salía "0 item(s)". Se migra a Supabase igual que
+// oc/p4, para que el detalle también viva en vivo). Cada fila de SKUS[oc]/SKUS_P4[oc]
+// es un movimiento del Maestro, sin id propio en el Excel de origen — se usa
+// (oc,cod,req) / (oc,cod,ped) como llave de upsert; si dos movimientos comparten esa
+// combinación (ej. dos recepciones parciales del mismo producto/requerimiento), el
+// más reciente pisa al anterior en Supabase, igual que ya pasa con el resumen por OC.
+function flattenSkus(map){
+  const out=[];
+  Object.keys(map||{}).forEach(function(oc){(map[oc]||[]).forEach(function(it){out.push(Object.assign({oc:oc},it));});});
+  return out;
+}
+function itemToSB(r){
+  return {oc:r.oc,cod:r.cod??null,req:r.req||'',prod:r.prod??null,
+    cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,cant_pend:r.cantPend??null,
+    foc:r.foc??null,fent:r.fent??null,estado:r.estado??null,ucomp:r.ucomp??null,
+    prov:r.prov??null,resp:r.resp??null,idproy:r.idproy??null,proy:r.proy??null,
+    freq:r.freq??null,frec:r.frec??null,moneda:r.moneda??null,punit:r.punit??null,
+    tc:r.tc??null,unid:r.unid??null};
+}
+function itemFromSB(r){
+  return {cod:r.cod,prod:r.prod,cantOrd:r.cant_ord,cantRec:r.cant_rec,cantPend:r.cant_pend,
+    foc:r.foc,fent:r.fent,estado:r.estado,ucomp:r.ucomp,prov:r.prov,resp:r.resp,
+    idproy:r.idproy,proy:r.proy,req:r.req,freq:r.freq,frec:r.frec,
+    moneda:r.moneda,punit:r.punit,tc:r.tc,unid:r.unid};
+}
+function p4ItemToSB(r){
+  return {oc:r.oc,cod:r.cod??null,ped:r.ped||'',prod:r.prod??null,
+    cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,cant_pend:r.cantPend??null,
+    foc:r.foc??null,fent:r.fent??null,estado:r.estado??null,ucomp:r.ucomp??null,
+    prov:r.prov??null,resp:r.resp??null,frec:r.frec??null,unid:r.unid??null};
+}
+function p4ItemFromSB(r){
+  return {cod:r.cod,prod:r.prod,cantOrd:r.cant_ord,cantRec:r.cant_rec,cantPend:r.cant_pend,
+    foc:r.foc,fent:r.fent,estado:r.estado,ucomp:r.ucomp,prov:r.prov,resp:r.resp,
+    ped:r.ped,frec:r.frec,unid:r.unid};
+}
+async function cargarItemsSB(){
+  try{
+    const [ocItemRows,p4ItemRows]=await Promise.all([fetchAllSB('oc_items'),fetchAllSB('p4_items')]);
+    if(ocItemRows.length){
+      const m={};
+      ocItemRows.forEach(function(r){(m[r.oc]=m[r.oc]||[]).push(itemFromSB(r));});
+      SKUS=m;
+    }
+    if(p4ItemRows.length){
+      const m4={};
+      p4ItemRows.forEach(function(r){(m4[r.oc]=m4[r.oc]||[]).push(p4ItemFromSB(r));});
+      SKUS_P4=m4;
+    }
+    try{fixOcEstados();}catch(e){}
+    try{refreshAllPages();}catch(e){}
+  }catch(e){console.warn('No se pudo cargar oc_items/p4_items de Supabase:',e);}
 }
 async function bulkUpsertSB(table,rows,onConflict,mapper,batchSize){
   const mapped=rows.map(mapper);
@@ -674,6 +732,7 @@ authGateCheck();
 </div>
 
 <nav class="nb">
+  <img class="brand-icon" src="assets/img/friopacking-gear.png" alt="Grupo Friopacking">
   <a href="plataforma.html" title="Volver al Inicio de la Plataforma LOGÍSTICA" style="display:flex;align-items:center;gap:6px;background:#1e293b;color:#93c5fd;border:1px solid #334155;padding:6px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;flex-shrink:0">◀ INICIO</a>
   <div class="tabs">
     <button class="tab" onclick="nav('home')">🛒 COMPRAS</button>
@@ -6310,7 +6369,8 @@ async function importMaestro(wb){
     bulkUpsertSB('oc',ocData,'oc',ocToSB),
     bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB),
     replaceAllSB('sinoc',sinOcData,sinocToSB),
-    bulkUpsertSB('proj',projData,'nombre',projToSB)
+    bulkUpsertSB('proj',projData,'nombre',projToSB),
+    bulkUpsertSB('oc_items',flattenSkus(skusMap),'oc,cod,req',itemToSB)
   ]).then(function(rs){
     if(rs.some(function(ok){return !ok;}))showSavedLabel('⚠️ MAESTRO no se guardó completo en Supabase — revisa tu conexión e importa de nuevo','#dc2626');
   });
@@ -6425,8 +6485,11 @@ async function importPedidoSinReq(wb){
   saveLocal();
 
   // Fase 2: p4 vive en Supabase (una fila por registro) en vez del blob compartido.
-  bulkUpsertSB('p4',p4Data,'oc',p4ToSB).then(function(ok){
-    if(!ok)showSavedLabel('⚠️ PedidoSinReq no se guardó completo en Supabase — revisa tu conexión e importa de nuevo','#dc2626');
+  Promise.all([
+    bulkUpsertSB('p4',p4Data,'oc',p4ToSB),
+    bulkUpsertSB('p4_items',flattenSkus(skusMap4),'oc,cod,ped',p4ItemToSB)
+  ]).then(function(rs){
+    if(rs.some(function(ok){return !ok;}))showSavedLabel('⚠️ PedidoSinReq no se guardó completo en Supabase — revisa tu conexión e importa de nuevo','#dc2626');
   });
 
   const t1=performance.now();

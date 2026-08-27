@@ -24,8 +24,7 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
 /* NAVBAR */
 .nb{background:rgba(10,16,30,.9);backdrop-filter:blur(8px);height:56px;display:flex;align-items:center;
   padding:0 18px;gap:12px;position:sticky;top:0;z-index:50;border-bottom:1px solid #1e293b}
-.fp{background:#166534;color:#fff;font-weight:800;font-size:14px;width:36px;height:36px;border-radius:9px;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 18px rgba(22,101,52,.5)}
+.brand-icon{height:34px;width:auto;display:block;flex-shrink:0}
 .brand{display:flex;flex-direction:column;gap:1px}
 .b1{color:#f8fafc;font-size:13px;font-weight:700;letter-spacing:.3px}
 .b2{color:#64748b;font-size:10px;letter-spacing:.5px}
@@ -87,7 +86,7 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
 <body>
 
 <nav class="nb">
-  <div class="fp">FP</div>
+  <img class="brand-icon" src="assets/img/friopacking-gear.png" alt="Grupo Friopacking">
   <div class="brand"><span class="b1">Plataforma LOGÍSTICA</span><span class="b2">FRIOPACKING S.A.</span></div>
   <div class="nbr">
     <button class="nb-imp-btn" onclick="abrirImportar()">📂 Importar</button>
