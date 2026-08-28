@@ -24,7 +24,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;font-size:13px}
 /* NAVBAR */
-.nb{background:linear-gradient(135deg,#000A70 0%, #131b63 100%);height:52px;display:flex;align-items:center;padding:0 14px;gap:10px;position:fixed;top:0;left:0;right:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.nb{background:linear-gradient(135deg,#0a1440 0%, #0e1b52 100%);height:52px;display:flex;align-items:center;padding:0 14px;gap:10px;position:fixed;top:0;left:0;right:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .back{display:flex;align-items:center;gap:6px;background:#1e293b;color:#93c5fd;border:1px solid #334155;padding:6px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;flex-shrink:0}
 .back:hover{background:#334155;color:#fff}
 .brand-icon{height:34px;width:auto;display:block;flex-shrink:0}
@@ -689,7 +689,7 @@ authGateCheck();
         <th style="background:#ecfdf5;color:#065f46" title="N° de pedido generado para este código">N° Pedido</th>
         <th style="background:#ecfdf5;color:#065f46" title="Fecha en la que se generó el pedido">F. Pedido</th>
         <th style="background:#ecfdf5;color:#065f46" title="Quién está a cargo de gestionar la compra de este pedido">Resp. Pedido</th>
-        <th style="background:#fef3c7;color:#92400e">N° OC</th><th style="background:#fef3c7;color:#92400e">F. Emisión</th><th style="background:#fef3c7;color:#92400e">F. Aprobación</th><th style="background:#fef3c7;color:#92400e" title="Fecha de entrega pactada con el proveedor">F. Entrega</th>
+        <th style="background:#fef3c7;color:#92400e">N° OC</th><th style="background:#fef3c7;color:#92400e" title="Usuario de Compras que colocó/emitió la orden de compra">Usuario Compras</th><th style="background:#fef3c7;color:#92400e">F. Emisión</th><th style="background:#fef3c7;color:#92400e">F. Aprobación</th><th style="background:#fef3c7;color:#92400e" title="Fecha de entrega pactada con el proveedor">F. Entrega</th>
         <th class="num" style="background:#e0f2fe;color:#075985" title="Cantidad realmente recepcionada en almacén (columna CantRecepcion del Maestro) — se suma si hubo más de una recepción parcial">Cant. Recepcionada</th>
         <th style="background:#e0f2fe;color:#075985" title="Fecha real en la que se recepcionó el material (columna FechaRecepcion del Maestro) — la más reciente si hubo varias recepciones">F. Recepción</th>
         <th style="background:#e0f2fe;color:#075985" title="N° de guía del proveedor con el que llegó el material (columna CodRecepcion del Maestro)">Guía Proveedor</th>
@@ -1509,7 +1509,8 @@ function parseRequerimientosWorkbook(wb){
       // Pedido EXACTO de esta línea — una OC puede consolidar varios pedidos distintos
       // (ver ocMap[ocNum].peds), así que el N° de Pedido "genérico" de la OC no siempre
       // corresponde al pedido real de este req+código puntual.
-      ped:ped,fped:xfecha(r['FechaPedido']),respPed:xtexto(r['ResponsablePedido'])
+      ped:ped,fped:xfecha(r['FechaPedido']),respPed:xtexto(r['ResponsablePedido']),
+      ucomp:xtexto(r['UsuarioCompras'])
     });
   });
   const oc=Object.values(ocMap);
@@ -1990,6 +1991,70 @@ function renderGenTable(){
   document.getElementById('genPag').innerHTML=h;
 }
 
+const MESES_ABREV=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+// Consumo mensual por SKU = suma de CantidadRequerimiento (P5) agrupada por mes de FechaRequerimiento.
+// Es la misma fuente que ya usa toda la pestaña Requerimientos (no hay salidas de almacén con fecha
+// por mes disponibles para todo el catálogo), por eso la ficha lo rotula "Requerimientos" y no "salidas".
+function monthlyConsumoByCod(cod){
+  const porAnio={};
+  P5.forEach(r=>{
+    if(r.cod!==cod||!r.fecha)return;
+    const p=r.fecha.split('/');
+    if(p.length!==3)return;
+    const mes=+p[1],anio=+p[2];
+    if(!mes||mes<1||mes>12||!anio)return;
+    if(!porAnio[anio])porAnio[anio]=new Array(12).fill(0);
+    porAnio[anio][mes-1]+=(r.cant||0);
+  });
+  return porAnio;
+}
+function miniBarsHTML(titulo,meses,valores,color){
+  const max=Math.max(1,...valores);
+  return `<div>
+    <div style="font-size:10.5px;font-weight:800;color:#64748b;letter-spacing:.02em;margin-bottom:8px">${titulo}</div>
+    <div style="display:flex;align-items:flex-end;gap:4px;height:80px">
+      ${valores.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+        <div style="font-size:9.5px;color:#94a3b8;margin-bottom:2px">${v?fmtq(v):0}</div>
+        <div style="width:100%;max-width:22px;background:${v?color:'#e2e8f0'};border-radius:3px 3px 0 0;height:${v?Math.max(4,Math.round(v/max*54)):3}px"></div>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:4px;margin-top:3px">
+      ${meses.map(m=>`<div style="flex:1;text-align:center;font-size:9.5px;color:#94a3b8">${m}</div>`).join('')}
+    </div>
+  </div>`;
+}
+// Ficha "Consumo por mes / proyección" — mismo criterio de PROY. 3M y PEDIDO SUGERIDO que Piero usa
+// en su análisis por código (SVA): PROM. MENSUAL = consumo(añoAnt. 12m + añoAct. YTD) / (12+mesActual);
+// PROY. 3M = PROM. MENSUAL × 3; PEDIDO SUGERIDO = max(0, PROY. 3M − Stock Disponible).
+function fichaConsumoMensualHTML(d){
+  const porAnio=monthlyConsumoByCod(d.cod);
+  if(!Object.keys(porAnio).length)return '';
+  const hoy=new Date(),anioAct=hoy.getFullYear(),mesAct=hoy.getMonth()+1,anioAnt=anioAct-1;
+  const arrAnt=porAnio[anioAnt]||new Array(12).fill(0);
+  const arrAct=(porAnio[anioAct]||new Array(12).fill(0)).slice(0,mesAct);
+  const sumAnt=arrAnt.reduce((a,b)=>a+b,0),sumAct=arrAct.reduce((a,b)=>a+b,0);
+  const promMensual=(sumAnt+sumAct)/(12+mesAct);
+  const proy3m=promMensual*3;
+  const disp=d.stockDisp!=null?d.stockDisp:(d.stock||0);
+  const pedidoSugerido=Math.round(Math.max(0,proy3m-disp));
+  const estadoPill=pedidoSugerido<=0?'<span class="pill p-ok">OK</span>'
+    :disp<=0?'<span class="pill p-crit">Sin disponible — pedir</span>'
+    :'<span class="pill p-low">Reponer</span>';
+  return `<div style="padding:14px 20px 4px">
+    <div style="font-weight:800;font-size:12px;color:#0f172a;margin-bottom:10px">📈 Consumo por mes y proyección <span style="font-weight:500;color:#94a3b8;font-size:10.5px">(Requerimientos)</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:20px;margin-bottom:14px">
+      ${miniBarsHTML('CONSUMO '+anioAnt+' POR MES',MESES_ABREV,arrAnt,'#f59e0b')}
+      ${miniBarsHTML('CONSUMO '+anioAct+' POR MES (ENE–'+MESES_ABREV[mesAct-1].toUpperCase()+')',MESES_ABREV.slice(0,mesAct),arrAct,'#0d9488')}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:center;background:#f8fafc;border-radius:8px;padding:10px 16px">
+      <div><span style="font-size:10px;color:#64748b;display:block">PROM. MENSUAL</span><b style="font-size:14px">${promMensual.toFixed(1)}</b></div>
+      <div><span style="font-size:10px;color:#64748b;display:block">PROY. 3M</span><b style="font-size:14px">${proy3m.toFixed(1)}</b></div>
+      <div><span style="font-size:10px;color:#64748b;display:block">PEDIDO SUGERIDO</span><b style="font-size:14px">${pedidoSugerido.toLocaleString('es-PE')}</b></div>
+      <div>${estadoPill}</div>
+    </div>
+  </div>`;
+}
+
 /* Ficha de detalle de una existencia (consumo, lead time, EOQ, costos, cobertura…) — reutiliza el modal de Códigos */
 function verFichaExistencia(cod){
   const d=DATA_BY_COD[cod];
@@ -2000,6 +2065,7 @@ function verFichaExistencia(cod){
       <div style="font-size:15px;font-weight:800;margin-top:2px">${d.desc}</div>
       <div style="margin-top:8px">${PILL_GEN[d.estado]||PILL_GEN['SIN DATOS']} <span style="background:rgba(255,255,255,.14);border-radius:14px;padding:3px 11px;font-size:10.5px;margin-left:6px">${d.um}</span></div>
     </div>
+    ${fichaConsumoMensualHTML(d)}
     ${fichaTransHTML(d.cod)}
     <div style="padding:6px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));column-gap:26px;align-content:start">
       <div class="detrow"><span class="dl">Stock ICA / LIMA / TRUJILLO</span><span class="dv">${(d.ica||0).toLocaleString('es-PE')} / ${(d.lima||0).toLocaleString('es-PE')} / ${(d.trujillo||0).toLocaleString('es-PE')}</span></div>
@@ -2152,7 +2218,7 @@ function buildReqCodOC(){
       if(!line.req||!line.cod)return;
       const k=line.req+'|'+line.cod;
       const fentOverride=OCMETA_LIVE[oc]&&OCMETA_LIVE[oc].fentManual;
-      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fapro:line.fapro||'',fent:fentOverride||line.fent||'',compras:0,cantOrd:0,cantRec:0,guiasProv:[],frecep:'',ped:'',fped:'',respPed:''};
+      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fapro:line.fapro||'',fent:fentOverride||line.fent||'',compras:0,cantOrd:0,cantRec:0,guiasProv:[],frecep:'',ped:'',fped:'',respPed:'',ucomp:''};
       else if(REQCOD_OC[k].ocs.indexOf(oc)<0)REQCOD_OC[k].ocs.push(oc);
       REQCOD_OC[k].compras+=(line.cantPend||0);
       REQCOD_OC[k].cantOrd+=(line.cantOrd||0);
@@ -2167,6 +2233,7 @@ function buildReqCodOC(){
       if(!REQCOD_OC[k].ped&&line.ped)REQCOD_OC[k].ped=line.ped;
       if(!REQCOD_OC[k].fped&&line.fped)REQCOD_OC[k].fped=line.fped;
       if(!REQCOD_OC[k].respPed&&line.respPed)REQCOD_OC[k].respPed=line.respPed;
+      if(!REQCOD_OC[k].ucomp&&line.ucomp)REQCOD_OC[k].ucomp=line.ucomp;
     });
   });
 }
@@ -2424,6 +2491,7 @@ function renderReqItemTable(){
       <td style="background:#ecfdf5">${fpedidoForItem(key)||'—'}</td>
       <td style="background:#ecfdf5">${respPedidoForItem(key)||'—'}</td>
       <td style="background:#fffbeb">${(oc.ocs||[]).join(', ')||'—'}</td>
+      <td style="background:#fffbeb">${oc.ucomp||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.foc||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.fapro||'—'}</td>
       <td style="background:#fffbeb;color:#64748b">${oc.fent||'—'}</td>
@@ -2438,7 +2506,7 @@ function renderReqItemTable(){
         :'<input type="text" value="'+esc(ob.guia)+'" placeholder="—" style="width:78px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="setGuia(\''+key+'\',this.value)">'}</td>
       <td class="num" style="background:#fffbeb;font-weight:700;color:${falta>0?'#dc2626':'#16a34a'}">${falta}</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="26" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
+  }).join('')||'<tr><td colspan="27" style="text-align:center;color:#94a3b8;padding:24px">Sin resultados</td></tr>';
   const tot=f.length,pages=Math.max(1,Math.ceil(tot/sz));
   document.getElementById('reqItemInfo').textContent=tot?`Mostrando ${reqItemPage*sz+1}–${Math.min((reqItemPage+1)*sz,tot)} de ${tot.toLocaleString('es-PE')} ítems`:'Sin resultados';
   const pagEl=document.getElementById('reqItemPag');
@@ -2528,7 +2596,7 @@ async function exportarReq(){
         'Estado':ei.t,'Importación':isImport?'Sí':'No','Código':r.cod||'','Descripción':r.prod||'','Cant.':r.cant||0,'Unidad':r.unid||'',
         'Cant. a Picking':pick,'Cant. a Pedido':ped,
         'N° Pedido':pedidoForItem(key)||'','F. Pedido':fpedidoForItem(key)||'','Resp. Pedido':respPedidoForItem(key)||'',
-        'N° OC':(oc.ocs||[]).join(', '),'F. Emisión':oc.foc||'','F. Aprobación':oc.fapro||'','F. Entrega':oc.fent||'',
+        'N° OC':(oc.ocs||[]).join(', '),'Usuario Compras':oc.ucomp||'','F. Emisión':oc.foc||'','F. Aprobación':oc.fapro||'','F. Entrega':oc.fent||'',
         'Entrega Proveedor':om.fEntregaProv||'','Zarpe':om.fZarpe||'','ETA Estimada':om.eta||'',
         'Cant. Recepcionada':oc.cantRec||0,'F. Recepción':oc.frecep||'','Guía Proveedor':(oc.guiasProv||[]).join(', '),
         'En Obra':obraEfectiva,'N° Guía':salidaExcel?(salidaExcel.guias.join(', ')||''):(ob.guia||''),'Falta':falta

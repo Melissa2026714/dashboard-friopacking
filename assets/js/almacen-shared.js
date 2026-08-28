@@ -344,7 +344,8 @@ function parseRequerimientosWorkbook(wb){
       // Pedido EXACTO de esta línea — una OC puede consolidar varios pedidos distintos
       // (ver ocMap[ocNum].peds), así que el N° de Pedido "genérico" de la OC no siempre
       // corresponde al pedido real de este req+código puntual.
-      ped:ped,fped:xfecha(r['FechaPedido']),respPed:xtexto(r['ResponsablePedido'])
+      ped:ped,fped:xfecha(r['FechaPedido']),respPed:xtexto(r['ResponsablePedido']),
+      ucomp:xtexto(r['UsuarioCompras'])
     });
   });
   const oc=Object.values(ocMap);
@@ -439,7 +440,7 @@ function buildReqCodOC(){
     (SKUS_RAW[oc]||[]).forEach(function(line){
       if(!line.req||!line.cod)return;
       const k=line.req+'|'+line.cod;
-      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fapro:line.fapro||'',fent:line.fent||'',compras:0,cantOrd:0,cantRec:0,guiasProv:[],frecep:'',ped:'',fped:'',respPed:''};
+      if(!REQCOD_OC[k])REQCOD_OC[k]={ocs:[oc],foc:line.foc||'',fapro:line.fapro||'',fent:line.fent||'',compras:0,cantOrd:0,cantRec:0,guiasProv:[],frecep:'',ped:'',fped:'',respPed:'',ucomp:''};
       else if(REQCOD_OC[k].ocs.indexOf(oc)<0)REQCOD_OC[k].ocs.push(oc);
       REQCOD_OC[k].compras+=(line.cantPend||0);
       REQCOD_OC[k].cantOrd+=(line.cantOrd||0);
@@ -454,6 +455,7 @@ function buildReqCodOC(){
       if(!REQCOD_OC[k].ped&&line.ped)REQCOD_OC[k].ped=line.ped;
       if(!REQCOD_OC[k].fped&&line.fped)REQCOD_OC[k].fped=line.fped;
       if(!REQCOD_OC[k].respPed&&line.respPed)REQCOD_OC[k].respPed=line.respPed;
+      if(!REQCOD_OC[k].ucomp&&line.ucomp)REQCOD_OC[k].ucomp=line.ucomp;
     });
   });
 }
