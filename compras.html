@@ -1556,7 +1556,10 @@ function instNav(id){
   </div>
   <div class="tw">
     <div class="th"><span class="thtt">Detalle de Compras Directas</span>
-      <div class="thr"><button class="thb" id="p4pgsz" onclick="togglePgsz4()">50/pág</button></div>
+      <div class="thr">
+        <button class="thb" onclick="exportarP4()" title="Exporta a Excel lo que se ve con los filtros actuales (todas las páginas, no solo la visible)" style="background:#0d9488;color:#fff;border-color:#0d9488">⬇ Exportar</button>
+        <button class="thb" id="p4pgsz" onclick="togglePgsz4()">50/pág</button>
+      </div>
     </div>
     <table class="ttbl"><thead><tr>
       <th>OC</th><th>F. OC</th><th>F. APROB.</th><th style="background:#dcfce7;color:#15803d">✉ CORREO</th><th style="background:#dcfce7;color:#15803d">F. CORREO</th><th>F. ENTREGA</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002)">📦 ENTREGA PROVEEDOR</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002)">⚓ ZARPE</th><th style="background:#eff6ff;color:#1d4ed8" title="Dato manual (Camila) — solo aplica a OC de importación (0002); la fecha pactada de F. Entrega no siempre refleja cuándo llega realmente">🚢 ETA ESTIMADA</th><th>ESTADO</th><th>USR. COMP.</th>
@@ -1957,6 +1960,31 @@ function exportarP2(){
   });
   const fecha=new Date().toISOString().slice(0,10);
   escribirExcelCompras(data,`oc_pendientes_${fecha}.xlsx`);
+}
+function exportarP4(){
+  if(typeof ExcelJS==='undefined'){
+    _ldScriptParent('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',exportarP4);
+    return;
+  }
+  if(!p4fil.length){alert('No hay OC que exportar con los filtros actuales.');return;}
+  const data=p4fil.map(function(r){
+    const rm=D.ocMeta[r.oc]||{};
+    const fentOverride=rm.fentManual||'';
+    const fentEff=fentOverride||r.fent;
+    return{
+      'OC':r.oc,'F. OC':r.foc||'','F. Aprob.':r.fapro||'',
+      'Correo':rm.correo?'Sí':'No','F. Correo':rm.fcorreo||'',
+      'F. Entrega':fentEff||'',
+      'Entrega Proveedor':rm.fEntregaProv||'','Zarpe':rm.fZarpe||'','ETA Estimada':rm.eta||'',
+      'Estado':r.estado||'','Usr. Comp.':r.ucomp||'',
+      'Proveedor':r.prov||'','Resp. Pedido':r.respPed||'',
+      'N° Pedido':(r.ped&&r.ped.length?r.ped.join(', '):''),'F. Pedido':r.fpedido||'',
+      'Código':r.cod||'','Descripción':r.prod||'','Unidad':r.unid||'',
+      'Cant. Ord.':r.cantOrd||0,'Cant. Atend.':r.cantRec||0,'Cant. Pend.':r.cantPend||0,'F. Recepción':r.frec||''
+    };
+  });
+  const fecha4=new Date().toISOString().slice(0,10);
+  escribirExcelCompras(data,`compras_directas_${fecha4}.xlsx`,'Compras Directas');
 }
 let _f2RegOnly=false;
 let _regColsHidden=true;
