@@ -410,6 +410,23 @@ async function registrarAuditoria(accion,tabla,registroId,detalle){
     await sb.from('audit_log').insert({ user_id:sesionPerfil.id, accion:accion, tabla:tabla||null, registro_id:registroId||null, detalle:detalle||null });
   }catch(e){ console.warn('No se pudo registrar auditoría:',e); }
 }
+// "Última carga OC" — el badge ☁ de más abajo (showSavedLabel/loadGitHub) mide data.json,
+// que desde Fase 2 ya NO trae oc/p4/p5reqs (viven en Supabase, ver assets/js/compras-shared.js
+// importMaestro/registrarCarga), así que se quedó mostrando una fecha vieja sin relación con
+// las OC. Este badge lee audit_log directo (mismo mecanismo que registrarAuditoria arriba) y
+// se queda con el detalle.ts más reciente de accion='importar_maestro', sin depender de una
+// columna de fecha propia de la tabla.
+async function mostrarUltimaCargaMaestro(){
+  const el=document.getElementById('ultCargaLbl');
+  if(!el)return;
+  try{
+    const {data,error}=await sb.from('audit_log').select('detalle').eq('accion','importar_maestro');
+    if(error||!data)return;
+    let best=null;
+    data.forEach(function(r){const d=r.detalle;if(d&&d.ts&&(!best||d.ts>best.ts))best=d;});
+    if(best)el.textContent='📋 Últ. carga OC (Maestro): '+best.usuario+' — '+new Date(best.ts).toLocaleString('es-PE');
+  }catch(e){ /* se deja el valor anterior si algo falla */ }
+}
 // Si el perfil trae debe_cambiar_clave=true (clave asignada por un admin, sin estrenar), se
 // exige cambiarla antes de dejar pasar — no se hace aplicarRestriccionesRol() ni se oculta el
 // authGate hasta que la persona ponga una clave propia.
@@ -421,6 +438,7 @@ function continuarLuegoDeLogin(prof,esLoginFresco){
   cargarOcP4P5SB();
   cargarItemsSB();
   cargarSinocProjMetaSB();
+  mostrarUltimaCargaMaestro();
   if(prof.debe_cambiar_clave){
     document.getElementById('authGate').style.display='none';
     abrirCambiarClave(true);
@@ -747,6 +765,7 @@ authGateCheck();
   <div class="tabs">
     <button class="tab" onclick="nav('home')">🛒 COMPRAS</button>
     <button class="tab" onclick="nav('p2')">📋 OC Pendientes <span class="tbdg" id="bdg2">—</span></button>
+    <span id="ultCargaLbl" title="Cuándo se cargó por última vez el Reporte Maestro (alimenta OC Pendientes, Sin OC y Proyectos PMO) — no confundir con el ☁ de la derecha, que es de otro archivo" style="font-size:10px;color:#94a3b8;white-space:nowrap;align-self:center;margin-left:4px"></span>
     <button class="tab" onclick="nav('p3')">🔴 Sin OC — Cotización <span class="tbdg" id="bdg3">—</span></button>
     <button class="tab" onclick="nav('p4')">📦 Compras Directas</button>
     <button class="tab" onclick="nav('p6')">🏗️ Proyectos PMO <span class="tbdg" id="bdg6">—</span></button>
@@ -2199,9 +2218,11 @@ function enviarCorreoOC(oc){
 // WhatsApp informativo para el SUPERVISOR: su requerimiento ya tiene OC, estado y fecha estimada.
 // Todo va como texto (sin emojis: WhatsApp los mostraba corruptos), incluido el detalle de ítems.
 // Si su celular está en DB Supervisores abre el chat directo; si no, deja elegir contacto o grupo.
-function enviarWhatsAppOC(oc){
-  var items=SKUS[oc]||SKUS_P4[oc]||[];
-  var row=(D.oc||[]).find(function(o){return o.oc===oc;})||(D.p4||[]).find(function(o){return o.oc===oc;})||{};
+function enviarWhatsAppOC(oc,esP4){
+  var items=esP4?(SKUS_P4[oc]||SKUS[oc]||[]):(SKUS[oc]||SKUS_P4[oc]||[]);
+  var row=esP4
+    ?((D.p4||[]).find(function(o){return o.oc===oc;})||(D.oc||[]).find(function(o){return o.oc===oc;})||{})
+    :((D.oc||[]).find(function(o){return o.oc===oc;})||(D.p4||[]).find(function(o){return o.oc===oc;})||{});
   if(!items.length&&!row.oc){alert('No se encontraron datos para esta OC.');return;}
   var resp=row.resp||row.respPed||(items[0]&&items[0].resp)||'';
   var reqs=(row.reqs&&row.reqs.length)?row.reqs:(row.req?[row.req]:[]);
@@ -2288,8 +2309,8 @@ function configurarGrupoSuply(){
     alert(t.trim()?'✅ Enlace del grupo SUPLY guardado. Usa 💾 GUARDAR para compartirlo con todos.':'Enlace eliminado — se usará el selector de chats.');
   }
 }
-function verCorreoFormateadoOC(oc){
-  var items=SKUS[oc]||SKUS_P4[oc]||[];
+function verCorreoFormateadoOC(oc,esP4){
+  var items=esP4?(SKUS_P4[oc]||SKUS[oc]||[]):(SKUS[oc]||SKUS_P4[oc]||[]);
   if(!items.length){alert('No se encontraron ítems para esta OC.');return;}
   var ocRows=D.oc?D.oc.filter(function(o){return o.oc===oc;}):[];
   items=items.map(function(r){
@@ -5770,7 +5791,7 @@ function renderP4Table(){
     const ocEsc4=r.oc.replace(/'/g,"\\'");
     const ocCell=`<span class="cl" style="cursor:pointer" onclick="openSkuModalP4(this)" data-oc="${r.oc}" data-proy="" data-prov="${r.prov.replace(/"/g,'&quot;')}" title="Ver resumen y ${r.nItems} SKU(s)">${r.oc} <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:3px;margin-left:3px">${r.nItems} SKU</span></span>`;
     return `<tr>
-      <td><div style="display:flex;align-items:center;gap:5px"><button onclick="verCorreoFormateadoOC('${ocEsc4}')" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="Ver correo formateado para proveedor">✉</button><button onclick="enviarWhatsAppOC('${ocEsc4}')" style="background:linear-gradient(135deg,#16a34a,#25d366);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="WhatsApp informativo para el supervisor: su pedido ya tiene OC, estado y fecha estimada">💬</button>${ocCell}</div></td>
+      <td><div style="display:flex;align-items:center;gap:5px"><button onclick="verCorreoFormateadoOC('${ocEsc4}',true)" style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="Ver correo formateado para proveedor">✉</button><button onclick="enviarWhatsAppOC('${ocEsc4}',true)" style="background:linear-gradient(135deg,#16a34a,#25d366);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1;flex-shrink:0" title="WhatsApp informativo para el supervisor: su pedido ya tiene OC, estado y fecha estimada">💬</button>${ocCell}</div></td>
       <td>${r.foc||'—'}</td>
       <td>${r.fapro||'—'}</td>
       <td style="text-align:center;background:#f0fdf4"><input type="checkbox" ${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].correo)?'checked':''} onchange="toggleCorreo(this,'${r.oc}')" style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a"></td>
