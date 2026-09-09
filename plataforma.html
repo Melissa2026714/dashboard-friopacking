@@ -91,6 +91,7 @@ body{font-family:'Inter',sans-serif;color:#e2e8f0;
   <div class="nbr">
     <button class="nb-imp-btn" onclick="abrirImportar()">📂 Importar</button>
     <span class="nb-last-imp" id="lastImportPill"></span>
+    <span class="nb-last-imp" id="lastMaestroPill" title="Última vez que alguien cargó el Reporte Maestro (alimenta OC Pendientes, Sin OC, Proyectos PMO)"></span>
     <span class="dot"></span> En línea
   </div>
 </nav>
@@ -226,6 +227,21 @@ async function syncLastImportFromRemote(){
   }catch(e){ /* sin conexión — se queda con el sello local (sin confirmar), si hay */ }
 }
 syncLastImportFromRemote();
+
+// Pill separada de la de arriba: esa mide data.json (proveedores/notas), no las OC — desde
+// Fase 2 oc/p5reqs/sinoc/proj viven en Supabase y ya no mueven el ts de data.json, así que
+// mostraba una fecha vieja aunque el Maestro se hubiera cargado hace un rato. Esta lee
+// directo de audit_log (ver registrarCarga/ultimaCarga en compras-shared.js), que se escribe
+// justo cuando importMaestro() termina de subir todo a Supabase con éxito.
+async function renderUltimaCargaMaestro(){
+  const el = document.getElementById('lastMaestroPill');
+  if(!el) return;
+  try{
+    const info = await ComprasShared.ultimaCarga('importar_maestro');
+    el.textContent = info ? ('📋 Últ. carga OC (Maestro): '+info.usuario+' — '+new Date(info.ts).toLocaleString('es-PE')) : '';
+  }catch(e){ /* se deja el valor anterior si algo falla */ }
+}
+renderUltimaCargaMaestro();
 function abrirImportar(){ document.getElementById('impOverlay').classList.add('active'); }
 function cerrarImportar(){ document.getElementById('impOverlay').classList.remove('active'); }
 
@@ -332,7 +348,7 @@ async function procesarTodo(){
 
     // ── Compras (data.json) ──────────────────────────────────────────────
     if(wbMaestro || wbPedido){
-      if(wbMaestro){ ComprasShared.importMaestro(wbMaestro); impLogLine('✅ Compras: Reporte Maestro procesado'); }
+      if(wbMaestro){ ComprasShared.importMaestro(wbMaestro).then(renderUltimaCargaMaestro); impLogLine('✅ Compras: Reporte Maestro procesado'); }
       if(wbPedido){ ComprasShared.importPedidoSinReq(wbPedido); impLogLine('✅ Compras: Pedido Sin Req procesado'); }
     }
     const tokenC = ComprasShared.getToken();

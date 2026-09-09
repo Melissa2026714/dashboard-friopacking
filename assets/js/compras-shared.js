@@ -196,6 +196,37 @@ async function replaceAllSB(table,rows,mapper,batchSize,filterCol){
   }
   return true;
 }
+// ── Registro de "última carga" ───────────────────────────────────────────────
+// Igual que registrarAuditoria() en compras.html/inventario.html/facturas.html, pero sin
+// depender de sesionPerfil (este módulo también se usa desde el importador centralizado de
+// plataforma.html, que no mantiene esa variable — hay que resolver la sesión cada vez).
+// El timestamp va embebido en detalle.ts porque desde aquí no sabemos el nombre de la
+// columna de fecha de audit_log de antemano — leer por accion+detalle evita adivinarla.
+async function registrarCarga(accion,detalle){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)return;
+    const {data:prof}=await sb.from('profiles').select('id,nombre').eq('id',session.user.id).single();
+    if(!prof)return;
+    await sb.from('audit_log').insert({user_id:prof.id,accion:accion,tabla:'oc',
+      detalle:Object.assign({usuario:prof.nombre,ts:Date.now()},detalle||{})});
+  }catch(e){console.warn('No se pudo registrar la carga en audit_log:',e);}
+}
+// Última carga registrada para una acción dada (ej. 'importar_maestro'). Recorre las filas
+// de audit_log con ese accion y se queda con el detalle.ts más reciente, en vez de ordenar
+// por una columna de fecha cuyo nombre no conocemos desde este módulo.
+async function ultimaCarga(accion){
+  try{
+    const {data,error}=await sb.from('audit_log').select('detalle').eq('accion',accion);
+    if(error||!data)return null;
+    let best=null;
+    data.forEach(function(r){
+      const d=r.detalle;
+      if(d&&d.ts&&(!best||d.ts>best.ts))best=d;
+    });
+    return best;
+  }catch(e){return null;}
+}
 function sinocToSB(r){
   return {ped:r.ped??null,fecha:r.fecha??null,resp_ped:r.respPed??null,resp:r.resp??null,
     idproy:r.idproy??null,proy:r.proy??null,cod:r.cod??null,prod:r.prod??null,cant:r.cant??null,
@@ -976,7 +1007,11 @@ async function importMaestro(wb){
     bulkUpsertSB('proj',projData,'nombre',projToSB),
     bulkUpsertSB('oc_items',flattenSkus(skusMap),'oc,seq',itemToSB)
   ]);
-  if(okSB.some(function(ok){return !ok;}))alert('⚠️ Parte del MAESTRO no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.\n\n'+(window._sbErrors||[]).join('\n'));
+  if(okSB.some(function(ok){return !ok;})){
+    alert('⚠️ Parte del MAESTRO no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.\n\n'+(window._sbErrors||[]).join('\n'));
+  }else{
+    registrarCarga('importar_maestro',{ocCount:ocData.length,sinOcCount:sinOcData.length,p5Count:p5Data.length,projCount:projData.length});
+  }
 
   const t1=performance.now();
   const msg=`✅ MAESTRO importado (${Math.round(t1-t0)}ms)\n\n` +
@@ -1089,7 +1124,11 @@ async function importPedidoSinReq(wb){
     bulkUpsertSB('p4',p4Data,'oc',p4ToSB),
     bulkUpsertSB('p4_items',flattenSkus(skusMap4),'oc,seq',p4ItemToSB)
   ]);
-  if(okSB.some(function(ok){return !ok;}))alert('⚠️ PedidoSinReq no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.\n\n'+(window._sbErrors||[]).join('\n'));
+  if(okSB.some(function(ok){return !ok;})){
+    alert('⚠️ PedidoSinReq no se pudo guardar en Supabase — revisa tu conexión e importa de nuevo.\n\n'+(window._sbErrors||[]).join('\n'));
+  }else{
+    registrarCarga('importar_pedido_sin_req',{p4Count:p4Data.length});
+  }
 
   const t1=performance.now();
   alert(`✅ PedidoSinReq importado (${Math.round(t1-t0)}ms)\n\n• ${p4Data.length} OC Compras Directas`);
@@ -1247,6 +1286,7 @@ return {
   saveLocal,
   getD,
   getToken,
+  ultimaCarga,
   GH_TOKEN_KEY
 };
 })();
