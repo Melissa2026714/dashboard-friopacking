@@ -51,6 +51,17 @@ def _detectar_oc_folder():
 
 OC_FOLDER = _detectar_oc_folder()
 
+# Carpetas donde Melissa guarda cotizaciones y facturas, nombrando el archivo con la OC
+# a la que pertenecen (ej. "0001-0011557 Factura Proveedor X.pdf") para poder ubicarlas
+# automáticamente al armar la solicitud de pago.
+def _detectar_carpeta(nombre):
+    Desktop = Path.home() / "Desktop"
+    c = Desktop / "Melissa - FrioPacking 2026" / nombre
+    return str(c) if c.exists() else None
+
+COT_FOLDER  = _detectar_carpeta("COTIZACIONES")
+FACT_FOLDER = _detectar_carpeta("FACTURA")
+
 def _buscar_pdf_oc(numero_oc):
     """Busca el PDF de la OC en OC_FOLDER. numero_oc ej: '0001-0011557'"""
     if not OC_FOLDER or not numero_oc:
@@ -66,6 +77,27 @@ def _buscar_pdf_oc(numero_oc):
         if num_limpio.lower() in fl or solo_num in fl or ultimo in fl:
             return os.path.join(OC_FOLDER, fname)
     return None
+
+def _buscar_archivos_oc(carpeta, numero_oc, max_files=5):
+    """Busca todos los archivos de una carpeta (cotización o factura) cuyo nombre
+    contenga el número de OC. Acepta PDF, Excel e imágenes (facturas escaneadas)."""
+    if not carpeta or not numero_oc:
+        return []
+    partes     = numero_oc.split('-')
+    num_limpio = numero_oc.replace('-', ' ').strip()
+    solo_num   = partes[-1]
+    ultimo     = solo_num.lstrip('0') or '0'
+    exts = ('.pdf', '.xlsx', '.xls', '.jpg', '.jpeg', '.png', '.docx')
+    encontrados = []
+    for fname in os.listdir(carpeta):
+        fl = fname.lower()
+        if not fl.endswith(exts):
+            continue
+        if num_limpio.lower() in fl or solo_num in fl or ultimo in fl:
+            encontrados.append(os.path.join(carpeta, fname))
+            if len(encontrados) >= max_files:
+                break
+    return encontrados
 
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -106,6 +138,7 @@ def send_oc():
     html_body = data.get('htmlBody', '')
     auto_send = data.get('autoSend', False)
     modality  = data.get('modality', '')
+    incluir_doc = data.get('incluirFacturaCot', False)
 
     # Extraer número de OC del asunto: "Orden de Compra Nº 0001-0011557 — ..."
     match_oc = re.search(r'(\d{4}-\d{7})', subject)
@@ -144,6 +177,17 @@ def send_oc():
                         print(f'[SEND-OC] 📎 OC adjuntada: {os.path.basename(pdf_oc)}', flush=True)
                     else:
                         print(f'[SEND-OC] ⚠️  No se encontró PDF para OC {numero_oc}', flush=True)
+                    # Adjuntar cotización y factura si el dashboard lo pidió (solicitud de pago),
+                    # buscando por número de OC en las carpetas COTIZACIONES y FACTURA.
+                    if incluir_doc:
+                        for carpeta, etiqueta in ((COT_FOLDER, 'Cotización'), (FACT_FOLDER, 'Factura')):
+                            archivos = _buscar_archivos_oc(carpeta, numero_oc)
+                            if archivos:
+                                for fp in archivos:
+                                    mail.Attachments.Add(fp)
+                                    print(f'[SEND-OC] 📎 {etiqueta} adjuntada: {os.path.basename(fp)}', flush=True)
+                            else:
+                                print(f'[SEND-OC] ⚠️  No se encontró {etiqueta} para OC {numero_oc} en {carpeta or "(carpeta no detectada)"}', flush=True)
                     # Adjuntar CARTILLA SSOMA si es entrega en Lurín
                     # Detecta por modality (versión nueva del dashboard) O por contenido del cuerpo (versión online)
                     es_lurin = (str(modality or '').lower() == 'planta') or ('lurín' in html_body.lower()) or ('lurin' in html_body.lower())
@@ -258,6 +302,8 @@ if __name__ == '__main__':
     print('=' * 60)
     print(f'  Vigilando descargas : {DOWNLOADS}')
     print(f'  Carpeta OCs         : {OC_FOLDER or "*** NO DETECTADA ***"}')
+    print(f'  Carpeta Cotizaciones: {COT_FOLDER or "*** NO DETECTADA ***"}')
+    print(f'  Carpeta Facturas    : {FACT_FOLDER or "*** NO DETECTADA ***"}')
     if SP_LOCAL:
         print(f'  Destino SharePoint  : {SP_LOCAL}')
     else:

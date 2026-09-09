@@ -2727,6 +2727,7 @@ function verCorreoSolicitudPago(oc){
   h+='<div class="form-row"><div class="fcol"><label>Concepto</label><textarea id="pago-concepto" oninput="actualizarPago()">'+(proy||idproy?('Compra de materiales — '+[idproy,proy].filter(Boolean).join(' — ')):'')+'</textarea></div></div>';
   h+='<label class="chk-pend"><input type="checkbox" id="pago-pendiente" onchange="actualizarPago()"> El proveedor aún no emite la factura: por política, primero requiere el comprobante de pago para emitirla.</label>';
   h+='<div class="cc-info"><b>Para:</b> '+TO_PAGO+'<br><b>CC (precargado automáticamente):</b> '+CC_PAGO.replace(/;/g,' &nbsp;·&nbsp; ')+'</div>';
+  h+='<div class="cc-info" style="background:#fef3c7;border-color:#fde68a;color:#92400e">📎 <b>Adjuntos automáticos:</b> se buscan por el número de OC ('+oc+') en tus carpetas de <b>Órdenes de Compra</b>, <b>COTIZACIONES</b> y <b>FACTURA</b>. Para que se adjunten, nombra esos archivos incluyendo el número de OC. Si falta alguno (ej. factura pendiente), revisa los adjuntos antes de enviar.</div>';
   h+='</div>';
   h+='<div class="mail-wrap"><div id="contenido-correo" style="padding:24px">';
   h+='<div class="logo">FRIOPACKING S.A.</div>';
@@ -2792,12 +2793,12 @@ function verCorreoSolicitudPago(oc){
   h+='  }';
   h+='  fetch(_MAILER_URL+"/ping",{method:"GET",signal:AbortSignal.timeout(1500)})';
   h+='    .then(function(){';
-  h+='      return fetch(_MAILER_URL+"/send-cot",{method:"POST",headers:{"Content-Type":"application/json"},';
-  h+='        body:JSON.stringify({to:_to,cc:_cc,bcc:"",subject:_asunto,htmlBody:fullHtml})});';
+  h+='      return fetch(_MAILER_URL+"/send-oc",{method:"POST",headers:{"Content-Type":"application/json"},';
+  h+='        body:JSON.stringify({to:_to,cc:_cc,subject:_asunto,htmlBody:fullHtml,autoSend:false,modality:"",incluirFacturaCot:true})});';
   h+='    })';
   h+='    .then(function(r){return r.json();})';
   h+='    .then(function(d){';
-  h+='      if(d.ok){showToast("✅ Correo abierto en Outlook — revisa y presiona Enviar");}';
+  h+='      if(d.ok){showToast("✅ Correo abierto en Outlook con OC/cotización/factura adjuntas — revisa y presiona Enviar");}';
   h+='      else{tryGraphThenClipboard();}';
   h+='    })';
   h+='    .catch(function(){tryGraphThenClipboard();});';
