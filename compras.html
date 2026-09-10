@@ -777,6 +777,7 @@ authGateCheck();
          a la Plataforma LOGÍSTICA (plataforma.html), que alimenta a Compras + Almacén +
          Facturas a la vez — ver assets/js/compras-shared.js. -->
     <button class="btn" id="saveBtn" onclick="manualSave()" title="Guardar y sincronizar con todos los usuarios" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
+    <button class="btn" onclick="abrirOCUrgente()" title="Enviar el correo de una OC recién creada en Nisira que aún no aparece en el dashboard" style="background:#d97706;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">⚡ OC Urgente</button>
     <button id="spLoginBtn" onclick="spLogin()" title="Iniciar sesión para subir a SharePoint" style="display:none;background:#0078d4;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">☁ SP</button>
     <button class="btn" onclick="setupGHToken()" title="Configurar token GitHub (solo admin)" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer">🔑</button>
     <button class="btn" onclick="abrirCambiarClave()" title="Cambiar mi clave" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer">🔐</button>
@@ -2309,25 +2310,89 @@ function configurarGrupoSuply(){
     alert(t.trim()?'✅ Enlace del grupo SUPLY guardado. Usa 💾 GUARDAR para compartirlo con todos.':'Enlace eliminado — se usará el selector de chats.');
   }
 }
-function verCorreoFormateadoOC(oc,esP4){
-  var items=esP4?(SKUS_P4[oc]||SKUS[oc]||[]):(SKUS[oc]||SKUS_P4[oc]||[]);
-  if(!items.length){alert('No se encontraron ítems para esta OC.');return;}
+// ── OC urgente ───────────────────────────────────────────────────────────────
+// Para una OC recién creada en Nisira que todavía no aparece en el dashboard (la carga del
+// Reporte Maestro es manual, no en tiempo real — ver Plataforma LOGÍSTICA). Pide los datos
+// mínimos a mano y arma el mismo correo de siempre (CC precargado, modalidad, adjuntar OC/
+// factura/comprobante buscando por N° de OC en las carpetas locales) sin esperar la carga.
+function abrirOCUrgente(){
+  cerrarOCUrgente();
+  var dlProv=(D.proveedores||[]).map(function(p){return '<option value="'+String(p.nombre||'').replace(/"/g,'&quot;')+'">';}).join('');
+  var dlSup=(D.supervisores||[]).map(function(s){return '<option value="'+String(s.nombre||'').replace(/"/g,'&quot;')+'">';}).join('');
+  var lbl='font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;display:block;margin:10px 0 4px';
+  var inp='width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:inherit;box-sizing:border-box';
+  var ov=document.createElement('div');
+  ov.id='ocu-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.onclick=function(e){if(e.target===ov)cerrarOCUrgente();};
+  ov.innerHTML=
+    '<div style="background:#fff;border-radius:14px;max-width:480px;width:100%;padding:24px 26px;font-family:Inter,Arial,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.35);max-height:90vh;overflow:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between">'
+    +'<h3 style="margin:0;font-size:16px;color:#0f172a">⚡ OC urgente (aún no cargada)</h3>'
+    +'<button onclick="cerrarOCUrgente()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#64748b">✕</button></div>'
+    +'<p style="font-size:12px;color:#64748b;margin:6px 0 4px;line-height:1.5">Para una OC que acabas de crear en Nisira y todavía no aparece aquí. Arma el correo con el mismo CC/modalidad de siempre y adjunta automáticamente la OC/factura/comprobante buscando por N° de OC en tus carpetas — sin tabla de ítems, el detalle va en el PDF adjunto.</p>'
+    +'<label style="'+lbl+'">N° de OC *</label><input id="ocu-numero" style="'+inp+'" placeholder="Ej: 0001-0012075">'
+    +'<label style="'+lbl+'">Proveedor *</label><input id="ocu-prov" list="ocu-dl-prov" style="'+inp+'" placeholder="Nombre del proveedor" oninput="ocuAutocompletarRuc()"><datalist id="ocu-dl-prov">'+dlProv+'</datalist>'
+    +'<label style="'+lbl+'">RUC <span style="text-transform:none;font-weight:400">(opcional — mejora la búsqueda del correo/CC)</span></label><input id="ocu-ruc" style="'+inp+'" placeholder="20XXXXXXXXX">'
+    +'<div style="display:flex;gap:10px">'
+    +'<div style="flex:1"><label style="'+lbl+'">ID Proyecto</label><input id="ocu-idproy" style="'+inp+'"></div>'
+    +'<div style="flex:2"><label style="'+lbl+'">Proyecto</label><input id="ocu-proy" style="'+inp+'"></div></div>'
+    +'<label style="'+lbl+'">Responsable <span style="text-transform:none;font-weight:400">(opcional — se copia a su supervisor)</span></label><input id="ocu-resp" list="ocu-dl-sup" style="'+inp+'"><datalist id="ocu-dl-sup">'+dlSup+'</datalist>'
+    +'<button onclick="generarOCUrgente()" style="margin-top:18px;width:100%;padding:11px;background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Generar correo →</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){var el=document.getElementById('ocu-numero');if(el)el.focus();},50);
+}
+function cerrarOCUrgente(){
+  var ov=document.getElementById('ocu-overlay');
+  if(ov)ov.remove();
+}
+function ocuAutocompletarRuc(){
+  var nombre=(document.getElementById('ocu-prov')||{value:''}).value.trim();
+  var rucEl=document.getElementById('ocu-ruc');
+  if(!nombre||!rucEl||rucEl.value.trim())return;
+  var match=(D.proveedores||[]).find(function(p){return p.nombre&&p.nombre.trim().toLowerCase()===nombre.toLowerCase();});
+  if(match&&match.ruc)rucEl.value=match.ruc;
+}
+function generarOCUrgente(){
+  var oc=(document.getElementById('ocu-numero').value||'').trim();
+  var prov=(document.getElementById('ocu-prov').value||'').trim();
+  if(!oc||!prov){alert('Completa al menos el N° de OC y el Proveedor.');return;}
+  var manualDatos={
+    prov:prov,
+    ruc:(document.getElementById('ocu-ruc').value||'').trim(),
+    idproy:(document.getElementById('ocu-idproy').value||'').trim(),
+    proy:(document.getElementById('ocu-proy').value||'').trim(),
+    resp:(document.getElementById('ocu-resp').value||'').trim()
+  };
+  cerrarOCUrgente();
+  verCorreoFormateadoOC(oc,false,manualDatos);
+}
+function verCorreoFormateadoOC(oc,esP4,manualDatos){
+  // manualDatos (OC urgente, ver abrirOCUrgente): la OC todavía no llegó en la carga del
+  // Reporte Maestro, así que no hay ítems ni fila en D.oc — se arma el mismo correo con los
+  // datos escritos a mano (proveedor/RUC/proyecto/responsable) y sin tabla de ítems, ya que
+  // el detalle completo va en el PDF de la OC que se adjunta igual que siempre.
+  var esUrgente=!!manualDatos;
+  var items=esUrgente?[]:(esP4?(SKUS_P4[oc]||SKUS[oc]||[]):(SKUS[oc]||SKUS_P4[oc]||[]));
+  if(!esUrgente&&!items.length){alert('No se encontraron ítems para esta OC.');return;}
   var ocRows=D.oc?D.oc.filter(function(o){return o.oc===oc;}):[];
   items=items.map(function(r){
     if(r.unid)return r;
     var match=ocRows.find(function(o){return o.cod===r.cod;})||ocRows[0];
     return Object.assign({},r,{unid:match?(match.unid||''):''});
   });
-  var prov=items[0].prov||'';
-  var idproy=items[0].idproy||'';
-  var proy=items[0].proy||'';
-  var foc=items[0].foc||'';
-  var provSup=buscarProveedor(ocRows[0]&&ocRows[0].ruc,prov);
-  var emailProv=(ocRows[0]&&ocRows[0].emailProv)||(provSup&&provSup.correo)||'';
+  var it0=esUrgente?manualDatos:(items[0]||{});
+  var prov=it0.prov||'';
+  var idproy=it0.idproy||'';
+  var proy=it0.proy||'';
+  var foc=it0.foc||'';
+  var provSup=buscarProveedor(esUrgente?manualDatos.ruc:(ocRows[0]&&ocRows[0].ruc),prov);
+  var emailProv=esUrgente?((provSup&&provSup.correo)||''):((ocRows[0]&&ocRows[0].emailProv)||(provSup&&provSup.correo)||'');
   var asunto='Orden de Compra N° '+oc+' — FRIOPACKING S.A. // '+prov+(idproy?' // '+idproy:'')+(proy?' // '+proy:'');
   var CC_OC='msihuairo@friopacking.pe;ccheca@friopacking.pe;mlujan@friopacking.pe;plinares@friopacking.pe;jaltamirano@friopacking.pe;jpomez@friopacking.pe;kalbujar@grupofriopacking.pe;jcenteno@friopacking.pe;mcondori@grupofriopacking.pe';
   // Agregar automáticamente al responsable de la OC si está en la base de Supervisores
-  var respSup=buscarSupervisor(items[0].resp);
+  var respSup=buscarSupervisor(it0.resp);
   if(respSup&&respSup.correo&&!CC_OC.toLowerCase().includes(respSup.correo)){
     CC_OC+=';'+respSup.correo;
   }
@@ -2350,17 +2415,21 @@ function verCorreoFormateadoOC(oc,esP4){
   waLines.push('');
   waLines.push('*Proveedor:* '+prov);
   if(foc)waLines.push('*Fecha OC:* '+foc);
-  if(items[0].fent)waLines.push('*Fecha Entrega:* '+items[0].fent);
+  if(it0.fent)waLines.push('*Fecha Entrega:* '+it0.fent);
   if(idproy||proy)waLines.push('*Proyecto:* '+(idproy?idproy+(proy?' — ':''):'')+(proy||''));
-  if(items[0].resp)waLines.push('*Responsable:* '+items[0].resp);
+  if(it0.resp)waLines.push('*Responsable:* '+it0.resp);
   waLines.push('');
-  waLines.push('*Detalle ('+items.length+' ítem'+(items.length===1?'':'s')+'):*');
-  var waMax=Math.min(items.length,60);
-  for(var wi=0;wi<waMax;wi++){
-    var _it=items[wi];
-    waLines.push((wi+1)+'. '+_it.cod+' — '+_it.prod+' — *'+_it.cantOrd+'* '+(_it.unid||''));
+  if(items.length){
+    waLines.push('*Detalle ('+items.length+' ítem'+(items.length===1?'':'s')+'):*');
+    var waMax=Math.min(items.length,60);
+    for(var wi=0;wi<waMax;wi++){
+      var _it=items[wi];
+      waLines.push((wi+1)+'. '+_it.cod+' — '+_it.prod+' — *'+_it.cantOrd+'* '+(_it.unid||''));
+    }
+    if(items.length>waMax)waLines.push('… y '+(items.length-waMax)+' ítem(s) más (ver detalle en el correo).');
+  }else{
+    waLines.push('_Ver detalle completo en la Orden de Compra adjunta._');
   }
-  if(items.length>waMax)waLines.push('… y '+(items.length-waMax)+' ítem(s) más (ver detalle en el correo).');
   waLines.push('');
   waLines.push('_Agradecemos confirmar la recepción de esta Orden de Compra._');
   var waText=waLines.join('\n');
@@ -2434,7 +2503,7 @@ function verCorreoFormateadoOC(oc,esP4){
   h+='<div style="margin-left:auto;display:flex;gap:8px">';
   h+='<button class="btn-s btn-img" onclick="copiarImagen()">&#128247; Copiar imagen</button>';
   h+='<button class="btn-s btn-wa" onclick="abrirWhatsApp()" title="Enviar por WhatsApp — al abrirse, elige el contacto o grupo de destino">&#128172; WhatsApp</button>';
-  if(waNum)h+='<button class="btn-s btn-wa" onclick="abrirWhatsApp(_waNum)" title="Enviar al WhatsApp del responsable ('+String(items[0].resp||'').replace(/"/g,'&quot;')+')">&#128172; WhatsApp Supervisor</button>';
+  if(waNum)h+='<button class="btn-s btn-wa" onclick="abrirWhatsApp(_waNum)" title="Enviar al WhatsApp del responsable ('+String(it0.resp||'').replace(/"/g,'&quot;')+')">&#128172; WhatsApp Supervisor</button>';
   h+='<button class="btn-s btn-ml" id="btn-outlook" disabled onclick="abrirOutlook()">&#9993; Abrir Outlook</button>';
   h+='<button class="btn-s btn-pdf" onclick="window.print()">&#128424; Guardar PDF</button>';
   h+='</div></div>';
@@ -2476,15 +2545,17 @@ function verCorreoFormateadoOC(oc,esP4){
     :'';
   var tablaHtmlBody=_proyHdr
     +'<p style="margin:12px 0 4px;font-size:12px;font-weight:700;color:#0369a1">Orden de Compra N° '+oc+'</p>'
-    +'<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-bottom:8px">'
-    +'<thead><tr style="background:#e0f2fe">'
-    +'<th style="'+_thStyle+';text-align:center;width:30px">#</th>'
-    +'<th style="'+_thStyle+';text-align:left;white-space:nowrap">Código</th>'
-    +'<th style="'+_thStyle+';text-align:left;min-width:240px">Descripción del Artículo</th>'
-    +'<th style="'+_thStyle+';text-align:center;width:50px">Cant.</th>'
-    +'<th style="'+_thStyle+';text-align:center;width:60px">Unidad</th>'
-    +'</tr></thead>'
-    +'<tbody>'+tablaRows+'</tbody></table>';
+    +(items.length
+      ? ('<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-bottom:8px">'
+        +'<thead><tr style="background:#e0f2fe">'
+        +'<th style="'+_thStyle+';text-align:center;width:30px">#</th>'
+        +'<th style="'+_thStyle+';text-align:left;white-space:nowrap">Código</th>'
+        +'<th style="'+_thStyle+';text-align:left;min-width:240px">Descripción del Artículo</th>'
+        +'<th style="'+_thStyle+';text-align:center;width:50px">Cant.</th>'
+        +'<th style="'+_thStyle+';text-align:center;width:60px">Unidad</th>'
+        +'</tr></thead>'
+        +'<tbody>'+tablaRows+'</tbody></table>')
+      : '<p style="background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:10px 14px;color:#92400e;font-size:13px;font-family:Calibri,Arial,sans-serif"><strong>📎 El detalle completo de los artículos se encuentra en la Orden de Compra adjunta.</strong></p>');
   h+='<div class="body-txt" id="mail-body"><p style="color:#94a3b8;font-style:italic">Seleccione una modalidad de entrega para ver el cuerpo del correo.</p></div>';
   h+='</div></div></div>';
   // Script
