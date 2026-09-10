@@ -61,6 +61,7 @@ def _detectar_carpeta(nombre):
 
 COT_FOLDER  = _detectar_carpeta("COTIZACIONES")
 FACT_FOLDER = _detectar_carpeta("FACTURA")
+COMP_FOLDER = _detectar_carpeta("COMPROBANTES DE PAGO")
 
 def _buscar_pdf_oc(numero_oc):
     """Busca el PDF de la OC en OC_FOLDER. numero_oc ej: '0001-0011557'"""
@@ -139,6 +140,7 @@ def send_oc():
     auto_send = data.get('autoSend', False)
     modality  = data.get('modality', '')
     incluir_doc = data.get('incluirFacturaCot', False)
+    incluir_factura = data.get('incluirFactura', False)
 
     # Extraer número de OC del asunto: "Orden de Compra Nº 0001-0011557 — ..."
     match_oc = re.search(r'(\d{4}-\d{7})', subject)
@@ -177,17 +179,26 @@ def send_oc():
                         print(f'[SEND-OC] 📎 OC adjuntada: {os.path.basename(pdf_oc)}', flush=True)
                     else:
                         print(f'[SEND-OC] ⚠️  No se encontró PDF para OC {numero_oc}', flush=True)
-                    # Adjuntar cotización y factura si el dashboard lo pidió (solicitud de pago),
-                    # buscando por número de OC en las carpetas COTIZACIONES y FACTURA.
+                    # Adjuntar cotización, factura y/o comprobante de pago si el dashboard lo
+                    # pidió, buscando por número de OC en las carpetas COTIZACIONES, FACTURA y
+                    # COMPROBANTES DE PAGO. La solicitud de pago pide las tres (incluirFacturaCot);
+                    # el correo de OC al proveedor solo pide factura y comprobante, por si ya
+                    # existen (ej. regularización con el proveedor) — la cotización es información
+                    # interna y no debe llegar al proveedor.
                     if incluir_doc:
-                        for carpeta, etiqueta in ((COT_FOLDER, 'Cotización'), (FACT_FOLDER, 'Factura')):
-                            archivos = _buscar_archivos_oc(carpeta, numero_oc)
-                            if archivos:
-                                for fp in archivos:
-                                    mail.Attachments.Add(fp)
-                                    print(f'[SEND-OC] 📎 {etiqueta} adjuntada: {os.path.basename(fp)}', flush=True)
-                            else:
-                                print(f'[SEND-OC] ⚠️  No se encontró {etiqueta} para OC {numero_oc} en {carpeta or "(carpeta no detectada)"}', flush=True)
+                        carpetas_chk = ((COT_FOLDER, 'Cotización'), (FACT_FOLDER, 'Factura'), (COMP_FOLDER, 'Comprobante de pago'))
+                    elif incluir_factura:
+                        carpetas_chk = ((FACT_FOLDER, 'Factura'), (COMP_FOLDER, 'Comprobante de pago'))
+                    else:
+                        carpetas_chk = ()
+                    for carpeta, etiqueta in carpetas_chk:
+                        archivos = _buscar_archivos_oc(carpeta, numero_oc)
+                        if archivos:
+                            for fp in archivos:
+                                mail.Attachments.Add(fp)
+                                print(f'[SEND-OC] 📎 {etiqueta} adjuntada: {os.path.basename(fp)}', flush=True)
+                        else:
+                            print(f'[SEND-OC] ⚠️  No se encontró {etiqueta} para OC {numero_oc} en {carpeta or "(carpeta no detectada)"}', flush=True)
                     # Adjuntar CARTILLA SSOMA si es entrega en Lurín
                     # Detecta por modality (versión nueva del dashboard) O por contenido del cuerpo (versión online)
                     es_lurin = (str(modality or '').lower() == 'planta') or ('lurín' in html_body.lower()) or ('lurin' in html_body.lower())
@@ -304,6 +315,7 @@ if __name__ == '__main__':
     print(f'  Carpeta OCs         : {OC_FOLDER or "*** NO DETECTADA ***"}')
     print(f'  Carpeta Cotizaciones: {COT_FOLDER or "*** NO DETECTADA ***"}')
     print(f'  Carpeta Facturas    : {FACT_FOLDER or "*** NO DETECTADA ***"}')
+    print(f'  Carpeta Comprobantes: {COMP_FOLDER or "*** NO DETECTADA ***"}')
     if SP_LOCAL:
         print(f'  Destino SharePoint  : {SP_LOCAL}')
     else:
