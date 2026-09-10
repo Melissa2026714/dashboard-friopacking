@@ -295,6 +295,25 @@ function impLogLine(html){
   el.scrollTop = el.scrollHeight; // la línea nueva (ej. "☁ subido") siempre debe quedar visible sin scrollear a mano
 }
 
+// El navegador a veces no puede leer el archivo en el primer intento (típicamente porque
+// sigue abierto en Excel o OneDrive lo está sincronizando en ese instante) y tira
+// "NotReadableError: ...reference to a file was acquired" aunque el archivo esté perfectamente
+// bien — es un bloqueo transitorio, no un problema del Excel. Se reintenta un par de veces
+// con una pequeña espera antes de darlo por fallido.
+async function _leerArrayBufferConReintento(file, intentos, esperaMs){
+  intentos = intentos || 3;
+  esperaMs = esperaMs || 500;
+  let ultimoError;
+  for(let i=0;i<intentos;i++){
+    try{
+      return await file.arrayBuffer();
+    }catch(e){
+      ultimoError = e;
+      if(i<intentos-1) await new Promise(function(r){ setTimeout(r, esperaMs); });
+    }
+  }
+  throw new Error('tras '+intentos+' intentos — ¿está abierto en Excel o sincronizándose en OneDrive? / '+ultimoError.message);
+}
 // Detecta qué es cada archivo (por contenido, no por nombre, salvo Supervisores/Proveedores
 // que no tienen una hoja distintiva propia) — así Piero no tiene que nombrarlos de forma exacta.
 async function clasificarArchivo(file){
@@ -302,10 +321,10 @@ async function clasificarArchivo(file){
   // Consulta(s).xlsx ya se procesa acá también (antes era una excepción manual desde
   // compras.html) — se detecta por nombre porque no tiene una hoja distintiva propia.
   if(name.includes('consulta')){
-    const wb = XLSX.read(await file.arrayBuffer(), {type:'array', cellDates:true});
+    const wb = XLSX.read(await _leerArrayBufferConReintento(file), {type:'array', cellDates:true});
     return {tipo:'consultas', wb};
   }
-  const wb = XLSX.read(await file.arrayBuffer(), {type:'array', cellDates:true});
+  const wb = XLSX.read(await _leerArrayBufferConReintento(file), {type:'array', cellDates:true});
   const esAlmacen = wb.SheetNames.some(n=>/an[aá]lisis.*inventario|inventario.*an[aá]lisis/i.test(n)) || name.includes('almacen') || name.includes('almacén');
   if(esAlmacen) return {tipo:'almacen', wb};
   if(name.includes('supervisor')) return {tipo:'supervisores', wb};
