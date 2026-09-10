@@ -1232,7 +1232,7 @@ function importProveedores(wb){
   alert(`✅ Proveedores importado (${Math.round(t1-t0)}ms)\n\n• ${proveedores.length} proveedores con correo registrado\n• (${totalFilas-proveedores.length} sin correo se omitieron — agrégales correo en el Excel y reimporta)`);
 }
 // Razones sociales genéricas que no sirven para distinguir empresas entre sí
-var _PROV_STOPWORDS={'S':1,'A':1,'C':1,'R':1,'L':1,'SA':1,'SAC':1,'SRL':1,'EIRL':1,'SOCIEDAD':1,'ANONIMA':1,'CERRADA':1,'ABIERTA':1,'EMPRESA':1,'INDIVIDUAL':1,'RESPONSABILIDAD':1,'LIMITADA':1,'COMERCIAL':1,'DEL':1,'DE':1,'LA':1,'EL':1,'Y':1,'PERU':1};
+var _PROV_STOPWORDS={'S':1,'A':1,'C':1,'R':1,'L':1,'E':1,'I':1,'SA':1,'SAC':1,'SRL':1,'EIRL':1,'SOCIEDAD':1,'ANONIMA':1,'CERRADA':1,'ABIERTA':1,'EMPRESA':1,'INDIVIDUAL':1,'RESPONSABILIDAD':1,'LIMITADA':1,'COMERCIAL':1,'DEL':1,'DE':1,'LA':1,'EL':1,'Y':1,'PERU':1};
 function _provWords(s){
   return _normNombre(s).split(' ').filter(function(w){return w&&!_PROV_STOPWORDS[w];});
 }
