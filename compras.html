@@ -6680,7 +6680,13 @@ async function importMaestro(wb){
     bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB),
     replaceAllSB('sinoc',sinOcData,sinocToSB),
     bulkUpsertSB('proj',projData,'nombre',projToSB),
-    bulkUpsertSB('oc_items',flattenSkus(skusMap),'oc,seq',itemToSB)
+    // oc_items usa (oc,seq) como llave, y seq es la posición de cada línea dentro de su OC en
+    // ESTE import — si una OC tenía 3 líneas en el import anterior y ahora el Maestro trae solo
+    // 1 (p.ej. NISIRA consolidó/depuró líneas), el upsert solo pisa seq=0 y deja seq=1 y seq=2
+    // huérfanos en Supabase para siempre (así se detectó: OC 0001-0012100 mostraba 3 ítems en el
+    // dashboard con solo 1 línea vigente en el Maestro). replaceAllSB borra todo antes de
+    // reinsertar, igual que ya hace 'sinoc', así no quedan líneas fantasma.
+    replaceAllSB('oc_items',flattenSkus(skusMap),itemToSB)
   ]).then(function(rs){
     if(rs.some(function(ok){return !ok;}))showSavedLabel('⚠️ MAESTRO no se guardó completo en Supabase — revisa tu conexión e importa de nuevo','#dc2626');
   });
@@ -6797,7 +6803,9 @@ async function importPedidoSinReq(wb){
   // Fase 2: p4 vive en Supabase (una fila por registro) en vez del blob compartido.
   Promise.all([
     bulkUpsertSB('p4',p4Data,'oc',p4ToSB),
-    bulkUpsertSB('p4_items',flattenSkus(skusMap4),'oc,seq',p4ItemToSB)
+    // Mismo problema que oc_items (ver comentario en importMaestro): upsert por (oc,seq) deja
+    // líneas huérfanas cuando una OC trae menos ítems que en el import anterior.
+    replaceAllSB('p4_items',flattenSkus(skusMap4),p4ItemToSB)
   ]).then(function(rs){
     if(rs.some(function(ok){return !ok;}))showSavedLabel('⚠️ PedidoSinReq no se guardó completo en Supabase — revisa tu conexión e importa de nuevo','#dc2626');
   });
