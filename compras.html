@@ -646,6 +646,17 @@ function syncOcMetaSB(oc){
     if(r.error)console.warn('No se pudo guardar oc_meta en Supabase:',r.error);
   });
 }
+// Caché cruzado de ETA/Zarpe/Entrega Proveedor entre Maestro y Pedido Sin Req: cualquiera
+// de los dos imports puede traer estas 3 fechas para una OC — se guardan aquí (oc_meta,
+// por OC) para que Compras Directas las tenga sin importar cuál de los dos archivos se
+// importó más recientemente. Solo pisa eta_imp/zarpe_imp/entrega_prov_imp — un upsert
+// parcial no toca reg/correo/compras/... del resto de la fila.
+function syncOcMetaImportCacheSB(ocData){
+  const rows=ocData.map(o=>({oc:o.oc,eta_imp:o.etaImp||null,zarpe_imp:o.zarpeImp||null,entrega_prov_imp:o.entregaProvImp||null}))
+    .filter(r=>r.eta_imp||r.zarpe_imp||r.entrega_prov_imp);
+  if(!rows.length)return Promise.resolve(true);
+  return bulkUpsertSB('oc_meta',rows,'oc',x=>x);
+}
 function syncCotMetaSB(key){
   const row={ped_cod:key,en_cotizacion:!!(D.cotMeta&&D.cotMeta[key]),fecha:(D.cotMetaFecha&&D.cotMetaFecha[key])||null};
   sb.from('cot_meta').upsert(row,{onConflict:'ped_cod'}).then(function(r){
@@ -664,7 +675,8 @@ async function cargarSinocProjMetaSB(){
       ocMetaRows.forEach(function(r){
         om[r.oc]={reg:r.reg,correo:r.correo,fcorreo:r.fcorreo,compras:r.compras,fcompras:r.fcompras,
           almacen:r.almacen,falmacen:r.falmacen,fentManual:r.fent_manual,fEntregaProv:r.f_entrega_prov,
-          fZarpe:r.f_zarpe,eta:r.eta};
+          fZarpe:r.f_zarpe,eta:r.eta,
+          etaImp:r.eta_imp,zarpeImp:r.zarpe_imp,entregaProvImp:r.entrega_prov_imp};
       });
       D.ocMeta=om;
     }
@@ -1997,7 +2009,9 @@ function exportarP4(){
     const completed=(r.estado==='Atendido Completo');
     const trackEff=function(campo,imp){
       if(!esImport)return 'NACIONAL';
-      return rm[campo]||imp||(completed?'CONCLUIDO':'');
+      // imp: lo que trajo ESTE import; rm[OC_META_IMP_CAMPOS[campo]]: lo que dejó el OTRO
+      // import en el caché cruzado, si este no lo tenía.
+      return rm[campo]||imp||rm[OC_META_IMP_CAMPOS[campo]]||(completed?'CONCLUIDO':'');
     };
     return{
       'OC':r.oc,'F. OC':r.foc||'','F. Aprob.':r.fapro||'',
@@ -2154,6 +2168,9 @@ const OC_META_FECHA_CAMPOS={
   fZarpe:{icono:'⚓',etiqueta:'Fecha de Zarpe'},
   eta:{icono:'🚢',etiqueta:'ETA Estimada'}
 };
+// campo (manual, en ocMeta) → nombre del campo de caché cruzado (también en ocMeta, ver
+// syncOcMetaImportCacheSB) que puede haber llenado el OTRO import (Maestro o Pedido Sin Req).
+const OC_META_IMP_CAMPOS={fEntregaProv:'entregaProvImp',fZarpe:'zarpeImp',eta:'etaImp'};
 function editOcMetaFecha(cell,oc,campo,importDefault){
   const cfg=OC_META_FECHA_CAMPOS[campo];
   if(!D.ocMeta)D.ocMeta={};
@@ -2183,6 +2200,9 @@ function editOcMetaFecha(cell,oc,campo,importDefault){
 function ocMetaFechaCellHtml(oc,campo,importDefault,completed){
   const cfg=OC_META_FECHA_CAMPOS[campo];
   const manual=(D.ocMeta[oc]&&D.ocMeta[oc][campo])||'';
+  // Si este import (Maestro o Pedido Sin Req, el que se acaba de correr) no trajo el dato,
+  // se prueba con lo que haya dejado el OTRO import en el caché cruzado de oc_meta.
+  importDefault=importDefault||(D.ocMeta[oc]&&D.ocMeta[oc][OC_META_IMP_CAMPOS[campo]])||'';
   const val=manual||importDefault||'';
   const isAuto=!manual&&!!importDefault;
   const ocEsc=oc.replace(/'/g,"\\'");
@@ -2600,7 +2620,8 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
     '  • kalbujar@friopacking.pe\n'+
     '  • ccheca@friopacking.pe\n'+
     '  • jcenteno@friopacking.pe\n'+
-    '  • plinares@friopacking.pe\n\n'+
+    '  • plinares@friopacking.pe\n'+
+    '  • msihuairo@friopacking.pe\n\n'+
     'Importante: No se permitirá el ingreso al almacén si la documentación no ha sido enviada y validada con anticipación.\n\n'+
     '📍 Ubicación: Calle Los Frutales S/N – Ref. Av. San Pedro, altura de Ekonodrywall – Lurín, Lima.\n\n'+
     'Al momento de la entrega, el transportista deberá presentar en físico:\n\n'+
@@ -2629,7 +2650,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
     '<p>Adjunto la Orden de Compra <strong>'+oc+'</strong>. Agradeceremos confirmar la fecha de entrega del producto.</p>'+
     tablaHtmlBody+
     '<p>Para el ingreso al almacén de Lurín, es indispensable cumplir con la <strong>CARTILLA SSOMA</strong> y enviar previamente toda la documentación a los siguientes correos:</p>'+
-    '<ul><li>seguridadlurin@friopacking.pe</li><li>kbuleje@friopacking.pe</li><li>kalbujar@friopacking.pe</li><li>ccheca@friopacking.pe</li><li>jcenteno@friopacking.pe</li><li>plinares@friopacking.pe</li><li>eoscco@friopacking.pe</li></ul>'+
+    '<ul><li>seguridadlurin@friopacking.pe</li><li>kbuleje@friopacking.pe</li><li>kalbujar@friopacking.pe</li><li>ccheca@friopacking.pe</li><li>jcenteno@friopacking.pe</li><li>plinares@friopacking.pe</li><li>eoscco@friopacking.pe</li><li>msihuairo@friopacking.pe</li></ul>'+
     '<p><strong>Importante:</strong> No se permitirá el ingreso al almacén si la documentación no ha sido enviada y validada con anticipación.</p>'+
     '<p>📍 <strong>Ubicación:</strong> Calle Los Frutales S/N – Ref. Av. San Pedro, altura de Ekonodrywall – Lurín, Lima.</p>'+
     '<p>Al momento de la entrega, el transportista deberá presentar en físico:</p>'+
@@ -5055,7 +5076,7 @@ function renderSkuResumen(oc,items,extraChips){
     const rm2=D.ocMeta[oc]||{};
     const completed2=(p4Rec.estado||it0.estado)==='Atendido Completo';
     const trackChip=function(campo,icono,imp){
-      const v=rm2[campo]||imp||'';
+      const v=rm2[campo]||imp||rm2[OC_META_IMP_CAMPOS[campo]]||'';
       if(v)return icono+' '+v;
       return completed2?'✓ concluido':'';
     };
@@ -6362,6 +6383,11 @@ async function importMaestro(wb){
     if(!ocMap[cod]){
       ocMap[cod]={
         oc:cod,foc:gd(r,'FechaOrden'),fapro:gd(r,'FechaAprobacionOC'),fent:gd(r,'ParaFechaOrden'),
+        // Seguimiento de importación (ver mismo comentario en importPedidoSinReq) — el
+        // Maestro también trae estas 3 columnas, así que igual se capturan aquí y se
+        // comparten vía oc_meta con Compras Directas (que puede haberse importado del
+        // otro archivo).
+        etaImp:gd(r,'ParaFechaOrden'),zarpeImp:gd(r,'ETD'),entregaProvImp:gd(r,'F. Entrega Real'),
         resp:g(r,'NombreResponsable'),estado:'',_estados:[],
         prov:g(r,'NombreProveedor'),ruc:g(r,'RucProveedor'),
         proy:g(r,'NombreProyecto'),idproy:g(r,'IdProyecto'),
@@ -6711,6 +6737,7 @@ async function importMaestro(wb){
   // blob compartido — se sube en paralelo mientras la persona ya ve los datos en pantalla.
   Promise.all([
     bulkUpsertSB('oc',ocData,'oc',ocToSB),
+    syncOcMetaImportCacheSB(ocData),
     bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB),
     replaceAllSB('sinoc',sinOcData,sinocToSB),
     bulkUpsertSB('proj',projData,'nombre',projToSB),
@@ -6841,6 +6868,7 @@ async function importPedidoSinReq(wb){
   // Fase 2: p4 vive en Supabase (una fila por registro) en vez del blob compartido.
   Promise.all([
     bulkUpsertSB('p4',p4Data,'oc',p4ToSB),
+    syncOcMetaImportCacheSB(p4Data),
     // Mismo problema que oc_items (ver comentario en importMaestro): upsert por (oc,seq) deja
     // líneas huérfanas cuando una OC trae menos ítems que en el import anterior.
     replaceAllSB('p4_items',flattenSkus(skusMap4),p4ItemToSB)

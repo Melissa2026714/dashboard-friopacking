@@ -130,6 +130,16 @@ function p4ToSB(r){
     cant_pend:r.cantPend??null,ped:r.ped??null,
     eta_imp:r.etaImp??null,zarpe_imp:r.zarpeImp??null,entrega_prov_imp:r.entregaProvImp??null};
 }
+// Caché cruzado de ETA/Zarpe/Entrega Proveedor entre Maestro y Pedido Sin Req (ver mismo
+// comentario en compras.html) — cualquiera de los dos archivos puede traer estas 3 fechas
+// para una OC; se guardan en oc_meta para que estén disponibles sin importar cuál de los
+// dos se importó más recientemente. Upsert parcial: no toca reg/correo/... del resto de la fila.
+function syncOcMetaImportCacheSB(ocData){
+  const rows=ocData.map(o=>({oc:o.oc,eta_imp:o.etaImp||null,zarpe_imp:o.zarpeImp||null,entrega_prov_imp:o.entregaProvImp||null}))
+    .filter(r=>r.eta_imp||r.zarpe_imp||r.entrega_prov_imp);
+  if(!rows.length)return Promise.resolve(true);
+  return bulkUpsertSB('oc_meta',rows,'oc',x=>x);
+}
 function p5ToSB(r){
   return {req:r.req,cod:r.cod,fecha:r.fecha??null,resp:r.resp??null,idproy:r.idproy??null,proy:r.proy??null,
     prod:r.prod??null,cant:r.cant??null,unid:r.unid??null,freq:r.freq??null,estado:r.estado??null};
@@ -655,6 +665,7 @@ async function importMaestro(wb){
     if(!ocMap[cod]){
       ocMap[cod]={
         oc:cod,foc:gd(r,'FechaOrden'),fapro:gd(r,'FechaAprobacionOC'),fent:gd(r,'ParaFechaOrden'),
+        etaImp:gd(r,'ParaFechaOrden'),zarpeImp:gd(r,'ETD'),entregaProvImp:gd(r,'F. Entrega Real'),
         resp:g(r,'NombreResponsable'),estado:'',_estados:[],
         prov:g(r,'NombreProveedor'),ruc:g(r,'RucProveedor'),
         proy:g(r,'NombreProyecto'),idproy:g(r,'IdProyecto'),
@@ -1003,6 +1014,7 @@ async function importMaestro(wb){
   window._sbErrors=[];
   const okSB=await Promise.all([
     bulkUpsertSB('oc',ocData,'oc',ocToSB),
+    syncOcMetaImportCacheSB(ocData),
     bulkUpsertSB('p5reqs',p5Data,'req,cod',p5ToSB),
     replaceAllSB('sinoc',sinOcData,sinocToSB),
     bulkUpsertSB('proj',projData,'nombre',projToSB),
@@ -1126,6 +1138,7 @@ async function importPedidoSinReq(wb){
   window._sbErrors=[];
   const okSB=await Promise.all([
     bulkUpsertSB('p4',p4Data,'oc',p4ToSB),
+    syncOcMetaImportCacheSB(p4Data),
     bulkUpsertSB('p4_items',flattenSkus(skusMap4),'oc,seq',p4ItemToSB)
   ]);
   if(okSB.some(function(ok){return !ok;})){
