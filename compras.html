@@ -481,7 +481,8 @@ function ocFromSB(r){
 function p4FromSB(r){
   return {oc:r.oc,foc:r.foc,fapro:r.fapro,fent:r.fent,frec:r.frec,fpedido:r.fpedido,respPed:r.resp_ped,
     estado:r.estado,prov:r.prov,ucomp:r.ucomp,prod:r.prod,cod:r.cod,unid:r.unid,
-    nItems:r.n_items,cantOrd:r.cant_ord,cantRec:r.cant_rec,cantPend:r.cant_pend,ped:r.ped};
+    nItems:r.n_items,cantOrd:r.cant_ord,cantRec:r.cant_rec,cantPend:r.cant_pend,ped:r.ped,
+    etaImp:r.eta_imp,zarpeImp:r.zarpe_imp,entregaProvImp:r.entrega_prov_imp};
 }
 function ocToSB(r){
   // ?? (no ||): cantRec/cantPend/ingreso/tc/punit/montoSoles suelen ser 0 legítimamente
@@ -497,7 +498,8 @@ function p4ToSB(r){
   return {oc:r.oc,foc:r.foc??null,fapro:r.fapro??null,fent:r.fent??null,frec:r.frec??null,fpedido:r.fpedido??null,
     resp_ped:r.respPed??null,estado:r.estado??null,prov:r.prov??null,ucomp:r.ucomp??null,prod:r.prod??null,
     cod:r.cod??null,unid:r.unid??null,n_items:r.nItems??null,cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,
-    cant_pend:r.cantPend??null,ped:r.ped??null};
+    cant_pend:r.cantPend??null,ped:r.ped??null,
+    eta_imp:r.etaImp??null,zarpe_imp:r.zarpeImp??null,entrega_prov_imp:r.entregaProvImp??null};
 }
 function p5ToSB(r){
   return {req:r.req,cod:r.cod,fecha:r.fecha??null,resp:r.resp??null,idproy:r.idproy??null,proy:r.proy??null,
@@ -1991,11 +1993,17 @@ function exportarP4(){
     const rm=D.ocMeta[r.oc]||{};
     const fentOverride=rm.fentManual||'';
     const fentEff=fentOverride||r.fent;
+    const esImport=String(r.oc).startsWith('0002');
+    const completed=(r.estado==='Atendido Completo');
+    const trackEff=function(campo,imp){
+      if(!esImport)return 'NACIONAL';
+      return rm[campo]||imp||(completed?'CONCLUIDO':'');
+    };
     return{
       'OC':r.oc,'F. OC':r.foc||'','F. Aprob.':r.fapro||'',
       'Correo':rm.correo?'Sí':'No','F. Correo':rm.fcorreo||'',
       'F. Entrega':fentEff||'',
-      'Entrega Proveedor':rm.fEntregaProv||'','Zarpe':rm.fZarpe||'','ETA Estimada':rm.eta||'',
+      'Entrega Proveedor':trackEff('fEntregaProv',r.entregaProvImp),'Zarpe':trackEff('fZarpe',r.zarpeImp),'ETA Estimada':trackEff('eta',r.etaImp),
       'Estado':r.estado||'','Usr. Comp.':r.ucomp||'',
       'Proveedor':r.prov||'','Resp. Pedido':r.respPed||'',
       'N° Pedido':(r.ped&&r.ped.length?r.ped.join(', '):''),'F. Pedido':r.fpedido||'',
@@ -2146,15 +2154,15 @@ const OC_META_FECHA_CAMPOS={
   fZarpe:{icono:'⚓',etiqueta:'Fecha de Zarpe'},
   eta:{icono:'🚢',etiqueta:'ETA Estimada'}
 };
-function editOcMetaFecha(cell,oc,campo){
+function editOcMetaFecha(cell,oc,campo,importDefault){
   const cfg=OC_META_FECHA_CAMPOS[campo];
   if(!D.ocMeta)D.ocMeta={};
   if(!D.ocMeta[oc])D.ocMeta[oc]={};
   const actual=D.ocMeta[oc][campo]||'';
-  const v=prompt(cfg.etiqueta+' (dd/mm/aaaa).\nDeja el campo vacío para borrarla.',actual);
+  const v=prompt(cfg.etiqueta+' (dd/mm/aaaa).'+(importDefault?'\nMaestro (por defecto): '+importDefault:'')+'\nDeja el campo vacío para '+(importDefault?'volver a usar la fecha del Maestro.':'borrarla.'),actual||importDefault||'');
   if(v===null)return; // canceló
   const t=v.trim();
-  if(t===''){
+  if(t===''||t===importDefault){
     delete D.ocMeta[oc][campo];
   } else {
     const m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -2169,23 +2177,41 @@ function editOcMetaFecha(cell,oc,campo){
   renderP2Table();
   renderP4Table();
 }
-function ocMetaFechaCellHtml(oc,campo){
+// importDefault: valor que trajo el Maestro (ETA/Zarpe/Entrega Proveedor de la fila 2) — se usa
+// mientras Camila no corrija a mano. completed: si la OC ya está Atendido Completo, un campo sin
+// dato no es "pendiente" (no hay nada más que esperar) — se muestra neutro en vez de en ámbar.
+function ocMetaFechaCellHtml(oc,campo,importDefault,completed){
   const cfg=OC_META_FECHA_CAMPOS[campo];
-  const val=(D.ocMeta[oc]&&D.ocMeta[oc][campo])||'';
+  const manual=(D.ocMeta[oc]&&D.ocMeta[oc][campo])||'';
+  const val=manual||importDefault||'';
+  const isAuto=!manual&&!!importDefault;
   const ocEsc=oc.replace(/'/g,"\\'");
-  const label=val?(cfg.icono+' '+val):'<span style="color:#f59e0b">— pendiente</span>';
-  const tip=val?(cfg.etiqueta+' (dato manual) — clic para editar'):('Clic para registrar '+cfg.etiqueta.toLowerCase());
-  return `<span onclick="editOcMetaFecha(this,'${ocEsc}','${campo}')" style="cursor:pointer;text-decoration:underline dotted ${val?'#1d4ed8':'#cbd5e1'};${val?'background:#dbeafe;border-radius:4px;padding:1px 6px;color:#1d4ed8;font-weight:600;':''}" title="${tip}">${label}</span>`;
+  const impEsc=(importDefault||'').replace(/'/g,"\\'");
+  let label,tip;
+  if(val){
+    label=cfg.icono+' '+val+(isAuto?' <span style="font-size:9px;color:#0369a1;font-weight:700">(Maestro)</span>':'');
+    tip=isAuto?(cfg.etiqueta+' — del Maestro, clic para corregir a mano'):(cfg.etiqueta+' (dato manual) — clic para editar');
+  } else if(completed){
+    label='<span style="color:#94a3b8">✓ concluido</span>';
+    tip='OC ya Atendido Completo — el Maestro no trae '+cfg.etiqueta.toLowerCase()+', clic para registrarla si la tienes';
+  } else {
+    label='<span style="color:#f59e0b">— pendiente</span>';
+    tip='Clic para registrar '+cfg.etiqueta.toLowerCase();
+  }
+  const bg=isAuto?'#e0f2fe':'#dbeafe',color=isAuto?'#0369a1':'#1d4ed8';
+  return `<span onclick="editOcMetaFecha(this,'${ocEsc}','${campo}','${impEsc}')" style="cursor:pointer;text-decoration:underline dotted ${val?color:'#cbd5e1'};${val?'background:'+bg+';border-radius:4px;padding:1px 6px;color:'+color+';font-weight:600;':''}" title="${tip}">${label}</span>`;
 }
 // Las 3 celdas de seguimiento de importación de una fila — o un solo rótulo "NACIONAL" si la
-// OC no empieza con 0002 (Tipo Importaciones).
-function importTrackingCellsHtml(oc){
-  if(!String(oc).startsWith('0002')){
+// OC no empieza con 0002 (Tipo Importaciones). r es la fila completa (trae etaImp/zarpeImp/
+// entregaProvImp del Maestro y el estado, para decidir "pendiente" vs "concluido").
+function importTrackingCellsHtml(r){
+  if(!String(r.oc).startsWith('0002')){
     return `<td colspan="3" style="text-align:center;color:#94a3b8;font-size:10px;font-weight:700;letter-spacing:.4px;background:#f8fafc">NACIONAL</td>`;
   }
-  return `<td style="background:#eff6ff">${ocMetaFechaCellHtml(oc,'fEntregaProv')}</td>`
-    +`<td style="background:#eff6ff">${ocMetaFechaCellHtml(oc,'fZarpe')}</td>`
-    +`<td style="background:#eff6ff">${ocMetaFechaCellHtml(oc,'eta')}</td>`;
+  const completed=(r.estado==='Atendido Completo');
+  return `<td style="background:#eff6ff">${ocMetaFechaCellHtml(r.oc,'fEntregaProv',r.entregaProvImp,completed)}</td>`
+    +`<td style="background:#eff6ff">${ocMetaFechaCellHtml(r.oc,'fZarpe',r.zarpeImp,completed)}</td>`
+    +`<td style="background:#eff6ff">${ocMetaFechaCellHtml(r.oc,'eta',r.etaImp,completed)}</td>`;
 }
 function toggleCotiz(key,checked){
   if(!D.cotMeta)D.cotMeta={};
@@ -5025,9 +5051,17 @@ function renderSkuResumen(oc,items,extraChips){
   const fentOv=(D.ocMeta[oc]&&D.ocMeta[oc].fentManual)||'';
   h+=chip('F. Entrega',(fentOv||it0.fent||'—')+(fentOv&&fentOv!==it0.fent?' ✏':''));
   if(String(oc).startsWith('0002')){
-    h+=chip('Entrega Proveedor',(D.ocMeta[oc]&&D.ocMeta[oc].fEntregaProv)?'📦 '+D.ocMeta[oc].fEntregaProv:'');
-    h+=chip('Fecha de Zarpe',(D.ocMeta[oc]&&D.ocMeta[oc].fZarpe)?'⚓ '+D.ocMeta[oc].fZarpe:'');
-    h+=chip('ETA Estimada',(D.ocMeta[oc]&&D.ocMeta[oc].eta)?'🚢 '+D.ocMeta[oc].eta:'');
+    const p4Rec=(D.p4||[]).find(function(x){return x.oc===oc;})||{};
+    const rm2=D.ocMeta[oc]||{};
+    const completed2=(p4Rec.estado||it0.estado)==='Atendido Completo';
+    const trackChip=function(campo,icono,imp){
+      const v=rm2[campo]||imp||'';
+      if(v)return icono+' '+v;
+      return completed2?'✓ concluido':'';
+    };
+    h+=chip('Entrega Proveedor',trackChip('fEntregaProv','📦',p4Rec.entregaProvImp));
+    h+=chip('Fecha de Zarpe',trackChip('fZarpe','⚓',p4Rec.zarpeImp));
+    h+=chip('ETA Estimada',trackChip('eta','🚢',p4Rec.etaImp));
   }
   h+=chip('Responsable',it0.resp);
   h+=chip('Proyecto',(it0.idproy||'')+(it0.proy?((it0.idproy?' — ':'')+it0.proy):''));
@@ -6048,7 +6082,7 @@ function renderP4Table(){
       <td style="text-align:center;background:#f0fdf4"><input type="checkbox" ${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].correo)?'checked':''} onchange="toggleCorreo(this,'${r.oc}')" style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a"></td>
       <td onclick="editFCorreo(this,'${r.oc}')" title="Clic para corregir la fecha real de envío del correo" style="text-align:center;background:#f0fdf4;font-size:11px;color:#15803d;font-weight:600;white-space:nowrap;cursor:pointer;text-decoration:underline dotted #15803d" id="fcorreo_${r.oc.replace(/[^a-z0-9]/gi,'_')}">${(D.ocMeta[r.oc]&&D.ocMeta[r.oc].fcorreo)||'—'}</td>
       <td>${fentHtml}</td>
-      ${importTrackingCellsHtml(r.oc)}
+      ${importTrackingCellsHtml(r)}
       <td>${badgeOC(r.estado)}</td>
       <td><span style="font-size:10px;font-weight:600;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px">${r.ucomp||'—'}</span></td>
       <td title="${r.prov}">${r.prov}</td>
@@ -6741,6 +6775,10 @@ async function importPedidoSinReq(wb){
     if(!ocMap[cod]){
       ocMap[cod]={
         oc:cod,foc:gd(r,'FechaOrden'),fapro:gd(r,'FechaAprobacionOC')||gd(r,'FechaAprobacion')||gd(r,'Fecha Aprobacion')||gd(r,'FechaAprobacionOrden'),fent:gd(r,'ParaFechaOrden'),
+        // Seguimiento de importación por defecto: el Maestro agrupa estas 3 columnas bajo los
+        // rótulos "ETA"/"Zarpe"/"Entrega Proveedor" (fila 2, encima de ParaFechaOrden/ETD/F.
+        // Entrega Real) — se usan como valor de partida y solo se pisan si Camila corrige a mano.
+        etaImp:gd(r,'ParaFechaOrden'),zarpeImp:gd(r,'ETD'),entregaProvImp:gd(r,'F. Entrega Real'),
         respPed:g(r,'ResponsablePedido'),estado:'',_estados:[],
         prov:g(r,'NombreProveedor').slice(0,35),ucomp:g(r,'UsuarioCompras'),
         ped:[],fpedido:gd(r,'FechaPedido')||gd(r,'Fecha Pedido')||gd(r,'FechaPed'),
