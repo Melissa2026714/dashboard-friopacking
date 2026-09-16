@@ -127,7 +127,8 @@ function p4ToSB(r){
   return {oc:r.oc,foc:r.foc??null,fapro:r.fapro??null,fent:r.fent??null,frec:r.frec??null,fpedido:r.fpedido??null,
     resp_ped:r.respPed??null,estado:r.estado??null,prov:r.prov??null,ucomp:r.ucomp??null,prod:r.prod??null,
     cod:r.cod??null,unid:r.unid??null,n_items:r.nItems??null,cant_ord:r.cantOrd??null,cant_rec:r.cantRec??null,
-    cant_pend:r.cantPend??null,ped:r.ped??null};
+    cant_pend:r.cantPend??null,ped:r.ped??null,
+    eta_imp:r.etaImp??null,zarpe_imp:r.zarpeImp??null,entrega_prov_imp:r.entregaProvImp??null};
 }
 function p5ToSB(r){
   return {req:r.req,cod:r.cod,fecha:r.fecha??null,resp:r.resp??null,idproy:r.idproy??null,proy:r.proy??null,
@@ -1060,6 +1061,9 @@ async function importPedidoSinReq(wb){
     if(!ocMap[cod]){
       ocMap[cod]={
         oc:cod,foc:gd(r,'FechaOrden'),fapro:gd(r,'FechaAprobacionOC')||gd(r,'FechaAprobacion')||gd(r,'Fecha Aprobacion')||gd(r,'FechaAprobacionOrden'),fent:gd(r,'ParaFechaOrden'),
+        // Seguimiento de importación por defecto (ver mismo comentario en compras.html):
+        // el Maestro agrupa estas 3 columnas bajo "ETA"/"Zarpe"/"Entrega Proveedor".
+        etaImp:gd(r,'ParaFechaOrden'),zarpeImp:gd(r,'ETD'),entregaProvImp:gd(r,'F. Entrega Real'),
         respPed:g(r,'ResponsablePedido'),estado:'',_estados:[],
         prov:g(r,'NombreProveedor').slice(0,35),ucomp:g(r,'UsuarioCompras'),
         ped:[],fpedido:gd(r,'FechaPedido')||gd(r,'Fecha Pedido')||gd(r,'FechaPed'),
