@@ -2,7 +2,7 @@
 title FRIOPACKING — Servidor OC Mailer + SharePoint
 echo.
 echo  ============================================================
-echo   FRIOPACKING S.A. — Servidor de Correos OC + SharePoint
+echo   FRIOPACKING S.A.C. — Servidor de Correos OC + SharePoint
 echo   Mantener esta ventana abierta al usar el dashboard
 echo  ============================================================
 echo.

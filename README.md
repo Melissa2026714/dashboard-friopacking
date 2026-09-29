@@ -1,4 +1,4 @@
-# Plataforma Compras — FRIOPACKING S.A.
+# Plataforma Compras — FRIOPACKING S.A.C.
 
 Dashboard de seguimiento de Órdenes de Compra, Requerimientos y Proyectos PMO 2026.
 

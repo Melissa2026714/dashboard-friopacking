@@ -3,7 +3,7 @@ title Dashboard Compras FRIOPACKING
 color 1F
 echo.
 echo  ========================================
-echo   FRIOPACKING S.A. - Dashboard de Compras
+echo   FRIOPACKING S.A.C. - Dashboard de Compras
 echo  ========================================
 echo.
 echo  Iniciando servidor local...

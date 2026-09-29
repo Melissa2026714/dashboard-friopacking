@@ -560,7 +560,7 @@ authGateCheck();
 
 <div id="ph" class="act">
   <div class="hlogo"><img src="https://cdn.prod.website-files.com/680993da51b017d5afeb2060/680993da51b017d5afeb24b9_LOGO%20FP%20FOOTER.png" style="height:56px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.4))" alt="Friopacking">
-    <div class="htitle"><h1>Almacén 2026</h1><p>Existencias, requerimientos, picking y códigos — FRIOPACKING S.A.</p></div></div>
+    <div class="htitle"><h1>Almacén 2026</h1><p>Existencias, requerimientos, picking y códigos — FRIOPACKING S.A.C.</p></div></div>
   <div class="hdiv"></div>
   <div class="hcards">
     <div class="hcard" onclick="nav('p-general')"><div class="hci">📋</div><div class="hct">General</div><div class="hcs" id="hc-general">cargando…</div></div>
@@ -621,7 +621,7 @@ authGateCheck();
   </div>
   <div class="sub" style="margin-top:6px">Haz clic en una fila para ver el detalle completo (consumo, lead time, EOQ, costos, cobertura…)</div>
 
-  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+  <div class="foot">FRIOPACKING S.A.C. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
 
 <!-- ══════════════ PÁGINA 2: REQUERIMIENTOS ══════════════ -->
@@ -702,7 +702,7 @@ authGateCheck();
     <div class="pag"><span id="reqItemInfo">—</span><div id="reqItemPag" style="display:flex;gap:4px"></div></div>
   </div>
 
-  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba) — datos propios, independientes de Compras</div>
+  <div class="foot">FRIOPACKING S.A.C. · Plataforma LOGÍSTICA · Módulo Almacén (prueba) — datos propios, independientes de Compras</div>
 </div>
 
 <!-- ══════════════ PÁGINA 3: PICKING ══════════════ -->
@@ -732,7 +732,7 @@ authGateCheck();
 
   <div id="pickGroups"></div>
 
-  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+  <div class="foot">FRIOPACKING S.A.C. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
 
 <!-- ══════════════ PÁGINA: PICKING FINALIZADO ══════════════ -->
@@ -756,7 +756,7 @@ authGateCheck();
 
   <div id="pickDoneGroups"></div>
 
-  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+  <div class="foot">FRIOPACKING S.A.C. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
 
 <!-- ══════════════ PÁGINA: DESPACHO (picking finalizado, aún sin guía — sigue en el patio) ══════════════ -->
@@ -787,7 +787,7 @@ authGateCheck();
 
   <div id="despachoGroups"></div>
 
-  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+  <div class="foot">FRIOPACKING S.A.C. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
 
 <!-- ══════════════ PÁGINA: DESPACHADO (antecedente — ya salió de almacén, con guía) ══════════════ -->
@@ -818,7 +818,7 @@ authGateCheck();
 
   <div id="despachadoGroups"></div>
 
-  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+  <div class="foot">FRIOPACKING S.A.C. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
 
 <!-- ══════════════ PÁGINA 4: CÓDIGOS ══════════════ -->
@@ -930,7 +930,7 @@ authGateCheck();
     <div class="pag"><span id="codInfo">—</span><div id="codPag" style="display:flex;gap:4px"></div></div>
   </div>
 
-  <div class="foot">FRIOPACKING S.A. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+  <div class="foot">FRIOPACKING S.A.C. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
 
 <!-- MODAL FICHA TÉCNICA -->
@@ -2847,7 +2847,7 @@ function enviarWhatsAppReq(rk){
   if(aPed.length)aPed.forEach(function(x,i){L.push((i+1)+'. '+x.it.cod+' — '+x.it.prod+' — *'+x.n+'* '+(x.it.unid||'')+(x.isImport?' _(IMPORTACIÓN — mayor tiempo de espera)_':''));});
   else L.push('— Ningún ítem pasa a compra.');
   L.push('');
-  L.push('_Almacén — FRIOPACKING S.A._');
+  L.push('_Almacén — FRIOPACKING S.A.C._');
   const txt=L.join('\n');
   const sup=buscarSupervisorAl(g0.resp);
   let num='';
@@ -3576,7 +3576,7 @@ function enviarCorreoDespacho(req,items,desp){
     +'<strong>Responsable del despacho:</strong> '+(desp.responsable||'—')+'<br>'
     +'<strong>Fecha/Hora:</strong> '+(desp.fechaHora||'—')+'</p>'
     +'<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin:12px 0">'+THEAD+'<tbody>'+filas+'</tbody></table>'
-    +'<p style="margin-top:18px">Saludos cordiales,<br><strong>Almacén — FRIOPACKING S.A.</strong></p>'
+    +'<p style="margin-top:18px">Saludos cordiales,<br><strong>Almacén — FRIOPACKING S.A.C.</strong></p>'
     +'</div>';
   function abrirMailVacio(){
     window.location.href='mailto:'+to+'?cc='+encodeURIComponent(cc)+'&subject='+encodeURIComponent(asunto);
@@ -3616,7 +3616,7 @@ function enviarWhatsAppDespacho(req,items,desp){
   L.push('*Ítems despachados:*');
   items.forEach(function(r,i){L.push((i+1)+'. '+r.cod+' — '+r.prod+' — *'+r.picking+'* '+(r.unid||''));});
   L.push('');
-  L.push('_Almacén — FRIOPACKING S.A._');
+  L.push('_Almacén — FRIOPACKING S.A.C._');
   const txt=L.join('\n');
   const sup=buscarSupervisorAl(g0.resp);
   let num='';
@@ -3780,7 +3780,7 @@ function enviarCorreoPickingCompletado(req,items){
     +'<p><strong>Proyecto:</strong> '+(g0.proy||'—')+'<br><strong>Responsable del requerimiento:</strong> '+(g0.resp||'—')+'</p>'
     +'<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin:12px 0">'+THEAD+'<tbody>'+filas+'</tbody></table>'
     +fotoHtml
-    +'<p style="margin-top:18px">Saludos cordiales,<br><strong>Almacén — FRIOPACKING S.A.</strong></p>'
+    +'<p style="margin-top:18px">Saludos cordiales,<br><strong>Almacén — FRIOPACKING S.A.C.</strong></p>'
     +'</div>';
 
   function abrirMailVacio(){
@@ -4360,7 +4360,7 @@ function verFicha(cod){
       <table style="width:100%;border-collapse:collapse;font-size:12.5px">${dupHtml}</table>
     </div>
     <div style="text-align:center;color:#94a3b8;font-size:10.5px;padding:14px;border-top:1px solid #e2e8f0">
-      FRIOPACKING S.A. · Generado ${c.fecha||''} · Módulo Almacén — Códigos
+      FRIOPACKING S.A.C. · Generado ${c.fecha||''} · Módulo Almacén — Códigos
       <button class="btn br" style="margin-top:8px" onclick="cerrarFicha()">Cerrar</button>
     </div>`;
   fichaSize('900px');
