@@ -100,6 +100,25 @@ def _buscar_archivos_oc(carpeta, numero_oc, max_files=5):
                 break
     return encontrados
 
+# Nombre SUNAT del comprobante electrónico: RUC-TIPO-SERIE-NUMERO (ej. "20607478440-01-F002-00000449").
+# Tipo 01 = factura, 03 = boleta. Si no viene con RUC, se acepta una serie suelta tipo "F002-00000449".
+_RE_CPE_SUNAT = re.compile(r'(?<!\d)\d{11}-(?:01|03)-([A-Z][A-Z0-9]{3})-(\d{1,8})(?!\d)', re.I)
+_RE_CPE_SERIE = re.compile(r'(?<![A-Z0-9])([FBE][A-Z0-9]{3})-(\d{1,8})(?!\d)', re.I)
+# Portal SUNAT (SOL): "PDF-DOC-E001-195120537220245" = serie E001, número 1951 pegado al RUC del emisor (11 díg.)
+_RE_CPE_SOL   = re.compile(r'(?<![A-Z0-9])(E\d{3})-(\d{12,19})(?!\d)', re.I)
+
+def _numero_factura_oc(numero_oc):
+    """Devuelve el N° de factura (ej. 'F002-00000449') leído del nombre del archivo en FACTURA."""
+    for fp in _buscar_archivos_oc(FACT_FOLDER, numero_oc):
+        nombre = os.path.basename(fp)
+        m = _RE_CPE_SUNAT.search(nombre) or _RE_CPE_SERIE.search(nombre)
+        if m:
+            return f'{m.group(1).upper()}-{m.group(2)}', nombre
+        m = _RE_CPE_SOL.search(nombre)
+        if m:
+            return f'{m.group(1).upper()}-{m.group(2)[:-11]}', nombre
+    return None, None
+
 # ──────────────────────────────────────────────────────────────────────────────
 
 app = Flask(__name__)
@@ -120,8 +139,17 @@ def add_headers(response):
 @app.route('/ping',     methods=['OPTIONS'])
 @app.route('/send-oc',  methods=['OPTIONS'])
 @app.route('/send-cot', methods=['OPTIONS'])
+@app.route('/factura-oc', methods=['OPTIONS'])
 def handle_options():
     return ('', 204)
+
+# ── N° de factura de una OC (para la solicitud de pago) ───────────────────────
+@app.route('/factura-oc', methods=['GET'])
+def factura_oc():
+    numero_oc = (request.args.get('oc') or '').strip()
+    factura, archivo = _numero_factura_oc(numero_oc)
+    print(f'[FACTURA-OC] oc={numero_oc}  factura={factura or "—"}  archivo={archivo or "—"}', flush=True)
+    return jsonify({'ok': bool(factura), 'factura': factura, 'archivo': archivo})
 
 # ── Ping ───────────────────────────────────────────────────────────────────────
 @app.route('/ping', methods=['GET'])

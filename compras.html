@@ -2799,7 +2799,32 @@ function verCorreoSolicitudPago(oc){
   // igual, con la aclaración en pantalla.
   var ocFin=(D.ocFin||{})[oc];
   var esCredito=ocFin?!!ocFin.esCredito:false;
-  var montoTotal=ocRows.reduce(function(s,o){return s+(o.montoSoles||0);},0);
+  // El pago se solicita en la MONEDA DE LA OC (no siempre soles): US$ y € se toman en su
+  // moneda original — precio unitario × cantidad de cada línea — en vez de montoSoles, que
+  // ya viene convertido con el tipo de cambio.
+  var simMon=function(m){m=String(m||'').toUpperCase();
+    if(/DOLAR|DOLLAR|USD|US\$/.test(m))return 'US$';
+    if(/EURO|EUR|€/.test(m))return '€';
+    if(/SOL|S\/|PEN/.test(m))return 'S/';
+    return '';};
+  var monedasOC=[];
+  items.forEach(function(it){var m=simMon(it.moneda);if(m&&monedasOC.indexOf(m)<0)monedasOC.push(m);});
+  if(!monedasOC.length)ocRows.forEach(function(o){String(o.moneda||'').split('/ ').forEach(function(p){var m=simMon(p);if(m&&monedasOC.indexOf(m)<0)monedasOC.push(m);});});
+  if(!monedasOC.length&&ocFin&&ocFin.moneda){var mf=simMon(ocFin.moneda);if(mf)monedasOC.push(mf);}
+  var monPago=monedasOC.length===1?monedasOC[0]:'S/';
+  var montoTotal=monedasOC.length===1?items.reduce(function(s,it){return s+(it.punit||0)*(it.cantOrd||0);},0):0;
+  if(!montoTotal)montoTotal=ocRows.reduce(function(s,o){
+    return s+(monPago==='S/'?(o.montoSoles||0):(o.tc?(o.montoSoles||0)/o.tc:0));},0);
+  // Las líneas traen precio SIN IGV, pero a Tesorería se le pide el TOTAL de la OC (con IGV).
+  // Si la OC está en R.EOC (CONSULTAS.xlsx), su TOTAL ya incluye IGV y manda; si no, se suma 18%.
+  // conIgv: si el TOTAL de R.EOC es igual al subtotal de líneas, la OC no lleva IGV (exonerada/inafecta)
+  // y el correo no muestra el desglose.
+  var conIgv=true;
+  if(ocFin&&ocFin.total&&simMon(ocFin.moneda)===monPago){
+    if(montoTotal&&Math.abs(ocFin.total/montoTotal-1)<0.01)conIgv=false;
+    montoTotal=ocFin.total;
+  }else montoTotal=montoTotal*1.18;
+  montoTotal=Math.round(montoTotal*100)/100;
   var montoStr=montoTotal?montoTotal.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
   var asunto='Solicitud de Pago — OC N° '+oc+' — '+prov;
   var w=window.open('','_blank','width=1100,height=880,scrollbars=yes,resizable=yes');
@@ -2849,7 +2874,7 @@ function verCorreoSolicitudPago(oc){
   h+='<div class="form-row"><div class="fcol"><label>N° Factura</label><input id="pago-factura" type="text" placeholder="Ej: F001-1234" oninput="actualizarPago()"></div>';
   h+='<div class="fcol" style="max-width:120px"><label>% a Pagar</label><select id="pago-pct" onchange="cambiarPct()"'+(esCredito?' disabled title="Esta OC es a CRÉDITO — el % a pagar no aplica, se solicita el 100%"':'')+'><option value="100">100%</option><option value="50">50%</option><option value="otro">Otro</option></select></div>';
   h+='<div class="fcol" id="pago-pct-otro-wrap" style="display:none;max-width:100px"><label>% personalizado</label><input id="pago-pct-otro" type="number" min="1" max="100" value="50" oninput="aplicarPctAMonto()"></div>';
-  h+='<div class="fcol"><label>Monto a pagar (S/)</label><input id="pago-monto" type="text" value="'+montoStr+'" oninput="actualizarPago()"></div></div>';
+  h+='<div class="fcol"><label>Monto a pagar ('+monPago+', inc. IGV)</label><input id="pago-monto" type="text" value="'+montoStr+'" oninput="actualizarPago()"></div></div>';
   h+=esCredito
     ?'<div style="font-size:11px;color:#0369a1;margin:-4px 0 10px">🔒 Esta OC es a <strong>CRÉDITO</strong> ('+(ocFin.formaPago||'')+') — el pago siempre va al 100%, el % a pagar solo aplica para OC al contado.</div>'
     :'<div style="font-size:11px;color:#64748b;margin:-4px 0 10px">ℹ El % a pagar solo aplica cuando la OC se pactó <strong>AL CONTADO</strong> con el proveedor. Si es a crédito, deja 100%.</div>';
@@ -2872,6 +2897,10 @@ function verCorreoSolicitudPago(oc){
   h+='var _cc='+JSON.stringify(CC_PAGO)+';';
   h+='var _montoTotal='+JSON.stringify(montoTotal)+';';
   h+='var _esCredito='+JSON.stringify(esCredito)+';';
+  h+='var _mon='+JSON.stringify(monPago)+';';
+  h+='var _conIgv='+JSON.stringify(conIgv)+';';
+  h+='function _fmt(n){return n.toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2});}';
+  h+='var _proyecto='+JSON.stringify([idproy,proy].filter(Boolean).join(' — '))+';';
   h+='function cambiarPct(){';
   h+='  var sel=document.getElementById("pago-pct").value;';
   h+='  document.getElementById("pago-pct-otro-wrap").style.display=sel==="otro"?"block":"none";';
@@ -2897,9 +2926,14 @@ function verCorreoSolicitudPago(oc){
   h+='  h+="<ul>";';
   h+='  h+="<li><strong>Proveedor:</strong> "+_prov+"</li>";';
   h+='  h+="<li><strong>Orden de Compra:</strong> N° "+_oc+"</li>";';
+  h+='  if(_proyecto)h+="<li><strong>Proyecto:</strong> "+_proyecto+"</li>";';
   h+='  h+="<li><strong>Factura:</strong> N° "+factura+"</li>";';
   h+='  if(pctVal&&!_esCredito)h+="<li><strong>% a pagar:</strong> "+pctVal+"% del total"+(Number(pctVal)<100?" (pago parcial al contado, según acuerdo con el proveedor)":" (al contado)")+"</li>";';
-  h+='  h+="<li><strong>Monto:</strong> S/ "+monto+"</li>";';
+  // Total con IGV y, entre paréntesis, el desglose base + IGV (se recalcula si se edita el monto o el %).
+  h+='  var _num=parseFloat(String(monto).replace(/,/g,""));';
+  h+='  var _desg="";';
+  h+='  if(_conIgv&&_num>0){var _base=Math.round(_num/1.18*100)/100;_desg=" ("+_mon+" "+_fmt(_base)+" + IGV "+_mon+" "+_fmt(Math.round((_num-_base)*100)/100)+")";}';
+  h+='  h+="<li><strong>Monto:</strong> "+_mon+" "+monto+_desg+"</li>";';
   h+='  if(concepto)h+="<li><strong>Concepto:</strong> "+concepto+"</li>";';
   h+='  h+="</ul>";';
   h+='  if(pendiente){';
@@ -2914,6 +2948,13 @@ function verCorreoSolicitudPago(oc){
   h+='}';
   h+='actualizarPago();';
   h+='var _MAILER_URL="http://127.0.0.1:5100";';
+  // Autollenar N° de factura desde el nombre del PDF en la carpeta FACTURA (formato SUNAT
+  // RUC-01-SERIE-NUMERO). Solo si el campo está vacío; con timeout para no colgar el formulario.
+  h+='fetch(_MAILER_URL+"/factura-oc?oc="+encodeURIComponent(_oc),{method:"GET",signal:AbortSignal.timeout(2000)})';
+  h+='  .then(function(r){return r.json();})';
+  h+='  .then(function(d){var inp=document.getElementById("pago-factura");';
+  h+='    if(d&&d.ok&&d.factura&&!inp.value.trim()){inp.value=d.factura;inp.title="Leído de: "+(d.archivo||"");actualizarPago();showToast("🧾 Factura "+d.factura+" detectada en la carpeta FACTURA");}';
+  h+='  }).catch(function(){});';
   h+='function abrirOutlookPago(){';
   h+='  var fullHtml=\'<div style="font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:2;color:#1e293b;max-width:740px">\'+window._pagoHtml+\'</div>\';';
   h+='  function abrirMail(){';
