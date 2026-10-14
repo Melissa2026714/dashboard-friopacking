@@ -242,6 +242,17 @@ def opd_info():
 # ── Guardar OPD/cotización adjuntadas en el dashboard ─────────────────────────
 # El dashboard lee el PDF en el navegador y manda aquí los archivos para que queden en
 # las carpetas de siempre con el N° de OPD en el nombre, y así /send-oc los adjunte.
+# En la etapa de solicitud todavía no hay N° de OPD: la cotización se rotula con el código
+# de la solicitud (ej. "SOL-OPD-2026-001") y, cuando llega la OPD, se renombra cambiando ese
+# código por "ORDEN DE PAGO <n°>".
+_RE_COD_SOL = re.compile(r'^SOL-OPD-\d{4}-\d{3,5}$', re.I)
+
+def _buscar_archivos_codigo(carpeta, codigo, max_files=5):
+    if not carpeta or not codigo:
+        return []
+    cod = codigo.upper()
+    return [os.path.join(carpeta, f) for f in sorted(os.listdir(carpeta)) if cod in f.upper()][:max_files]
+
 def _nombre_seguro(nombre):
     return re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', nombre).strip(' .') or 'archivo'
 
@@ -250,18 +261,37 @@ def guardar_opd():
     import base64
     data = request.json or {}
     numero = _normalizar_opd(data.get('numero'))
-    if not numero:
-        return jsonify({'ok': False, 'error': 'Falta el N° de OPD'}), 400
+    codigo = str(data.get('codigo') or '').strip().upper()
+    if codigo and not _RE_COD_SOL.match(codigo):
+        return jsonify({'ok': False, 'error': f'Código de solicitud inválido: {codigo}'}), 400
+    if not numero and not codigo:
+        return jsonify({'ok': False, 'error': 'Falta el N° de OPD o el código de solicitud'}), 400
     global OPD_FOLDER
     if not OPD_FOLDER:
         base = Path.home() / "Desktop" / "Melissa - FrioPacking 2026"
         if base.exists():
             (base / "OPD").mkdir(exist_ok=True)
             OPD_FOLDER = str(base / "OPD")
-    guardados, errores = [], []
+    guardados, errores, renombrados = [], [], []
+    # Llegó la OPD de una solicitud: la cotización rotulada con el código pasa a llevar el N°.
+    if numero and codigo and COT_FOLDER:
+        for fp in _buscar_archivos_codigo(COT_FOLDER, codigo):
+            fname = os.path.basename(fp)
+            nuevo = re.sub(re.escape(codigo), f'ORDEN DE PAGO {numero}', fname, flags=re.I)
+            destino = os.path.join(COT_FOLDER, nuevo)
+            try:
+                if os.path.exists(destino):
+                    raise FileExistsError('ya existe un archivo con ese nombre')
+                os.rename(fp, destino)
+                renombrados.append(nuevo)
+            except Exception as e:
+                errores.append(f'No se pudo renombrar {fname}: {e}')
     for clave, carpeta in (('opd', OPD_FOLDER), ('cot', COT_FOLDER)):
         f = data.get(clave)
         if not f:
+            continue
+        if clave == 'opd' and not numero:
+            errores.append('Falta el N° de OPD para guardar el PDF de la OPD')
             continue
         if not carpeta:
             errores.append(f'Carpeta {"OPD" if clave == "opd" else "COTIZACIONES"} no detectada')
@@ -270,6 +300,8 @@ def guardar_opd():
         ext = ext.lower() or '.pdf'
         if clave == 'opd':
             nombre = f'ORDEN DE PAGO {numero}{ext}'
+        elif not numero:
+            nombre = f'{stem}{ext}' if codigo in stem.upper() else f'{stem} {codigo}{ext}'
         else:
             rotulada = any((m.group(1).lstrip('0') or '0') == numero.lstrip('0') for m in _RE_OPD_NOMBRE.finditer(stem))
             nombre = f'{stem}{ext}' if rotulada else f'{stem} ORDEN DE PAGO {numero}{ext}'
@@ -287,7 +319,7 @@ def guardar_opd():
             print(f'[GUARDAR-OPD] guardado {nombre} en {carpeta}', flush=True)
         except Exception:
             pass
-    return jsonify({'ok': not errores, 'guardados': guardados, 'errores': errores})
+    return jsonify({'ok': not errores, 'guardados': guardados, 'renombrados': renombrados, 'errores': errores})
 
 # ── Ping ───────────────────────────────────────────────────────────────────────
 @app.route('/ping', methods=['GET'])
@@ -308,6 +340,8 @@ def send_oc():
     incluir_doc = data.get('incluirFacturaCot', False)
     incluir_factura = data.get('incluirFactura', False)
     es_opd    = data.get('tipo') == 'opd'
+    es_sol    = data.get('tipo') == 'sol-opd'
+    codigo    = str(data.get('codigo') or '').strip().upper()
 
     # Extraer número de OC del asunto: "Orden de Compra Nº 0001-0011557 — ..."
     match_oc = re.search(r'(\d{4}-\d{7})', subject)
@@ -341,6 +375,13 @@ def send_oc():
                     mail.HTMLBody = cuerpo
                     # OPD: adjuntar la OPD (carpeta OPD) y su cotización (COTIZACIONES, rotulada
                     # con el N° de OPD). A diferencia de la OC, aquí la cotización sí va al proveedor.
+                    if es_sol:
+                        archivos = _buscar_archivos_codigo(COT_FOLDER, codigo)
+                        for fp in archivos:
+                            mail.Attachments.Add(fp)
+                            print(f'[SEND-OC] 📎 Cotización adjuntada (solicitud {codigo}): {os.path.basename(fp)}', flush=True)
+                        if not archivos:
+                            print(f'[SEND-OC] ⚠️  No se encontró cotización con "{codigo}" en {COT_FOLDER or "(carpeta no detectada)"}', flush=True)
                     if es_opd:
                         for carpeta, etiqueta in ((OPD_FOLDER, 'OPD'), (COT_FOLDER, 'Cotización')):
                             archivos = _buscar_archivos_opd(carpeta, numero_oc)
@@ -350,8 +391,8 @@ def send_oc():
                             if not archivos:
                                 print(f'[SEND-OC] ⚠️  No se encontró {etiqueta} para OPD {numero_oc} en {carpeta or "(carpeta no detectada)"}', flush=True)
                     # Adjuntar PDF de la OC si se encuentra en la carpeta
-                    pdf_oc = None if es_opd else _buscar_pdf_oc(numero_oc)
-                    if es_opd:
+                    pdf_oc = None if (es_opd or es_sol) else _buscar_pdf_oc(numero_oc)
+                    if es_opd or es_sol:
                         pass
                     elif pdf_oc:
                         mail.Attachments.Add(pdf_oc)
@@ -364,7 +405,7 @@ def send_oc():
                     # el correo de OC al proveedor solo pide factura y comprobante, por si ya
                     # existen (ej. regularización con el proveedor) — la cotización es información
                     # interna y no debe llegar al proveedor.
-                    if es_opd:
+                    if es_opd or es_sol:
                         carpetas_chk = ()
                     elif incluir_doc:
                         carpetas_chk = ((COT_FOLDER, 'Cotización'), (FACT_FOLDER, 'Factura'), (COMP_FOLDER, 'Comprobante de pago'))
@@ -382,7 +423,7 @@ def send_oc():
                             print(f'[SEND-OC] ⚠️  No se encontró {etiqueta} para OC {numero_oc} en {carpeta or "(carpeta no detectada)"}', flush=True)
                     # Adjuntar CARTILLA SSOMA si es entrega en Lurín
                     # Detecta por modality (versión nueva del dashboard) O por contenido del cuerpo (versión online)
-                    es_lurin = (str(modality or '').lower() == 'planta') or ('lurín' in html_body.lower()) or ('lurin' in html_body.lower())
+                    es_lurin = not es_sol and ((str(modality or '').lower() == 'planta') or ('lurín' in html_body.lower()) or ('lurin' in html_body.lower()))
                     if es_lurin:
                         cartilla = os.path.join(DOWNLOADS, 'CARTILLA SSOMA FP.pdf')
                         if os.path.exists(cartilla):

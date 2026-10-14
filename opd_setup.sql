@@ -26,6 +26,10 @@ create table if not exists public.opd (
   updated_at    timestamptz not null default now()
 );
 
+-- Creada por SQL (no desde el Table Editor), la tabla no recibe permisos automáticos:
+-- sin este grant la plataforma muestra "permission denied for table opd".
+grant select, insert, update, delete on public.opd to authenticated;
+
 alter table public.opd enable row level security;
 create policy "opd select" on public.opd for select to authenticated using (true);
 create policy "opd insert" on public.opd for insert to authenticated with check (true);
