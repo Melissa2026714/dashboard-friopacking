@@ -438,6 +438,7 @@ function continuarLuegoDeLogin(prof,esLoginFresco){
   cargarOcP4P5SB();
   cargarItemsSB();
   cargarSinocProjMetaSB();
+  cargarOpdSB();
   mostrarUltimaCargaMaestro();
   if(prof.debe_cambiar_clave){
     document.getElementById('authGate').style.display='none';
@@ -785,6 +786,7 @@ authGateCheck();
     <button class="tab" onclick="nav('p6')">🏗️ Proyectos PMO <span class="tbdg" id="bdg6">—</span></button>
     <button class="tab" onclick="nav('p1')">📊 Gerencial / KPIs</button>
     <button class="tab" onclick="nav('p7')">🔍 Consultas</button>
+    <button class="tab" onclick="nav('p8')">📄 OPD <span class="tbdg" id="bdg8">—</span></button>
   </div>
   <div class="nbr">
     <!-- El botón IMPORTAR (MAESTRO/PedidoSinReq/Supervisores/Proveedores/CONSULTAS) se movió
@@ -792,6 +794,7 @@ authGateCheck();
          Facturas a la vez — ver assets/js/compras-shared.js. -->
     <button class="btn" id="saveBtn" onclick="manualSave()" title="Guardar y sincronizar con todos los usuarios" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">💾 GUARDAR</button>
     <button class="btn" onclick="abrirOCUrgente()" title="Enviar el correo de una OC recién creada en Nisira que aún no aparece en el dashboard" style="background:#d97706;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">⚡ OC Urgente</button>
+    <button class="btn" onclick="abrirOCUrgente(true)" title="Enviar al proveedor una OPD (Orden de Pago emitida por Provisión/Tesorería) con su cotización adjunta" style="background:#7c3aed;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px">📄 OPD</button>
     <button id="spLoginBtn" onclick="spLogin()" title="Iniciar sesión para subir a SharePoint" style="display:none;background:#0078d4;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">☁ SP</button>
     <button class="btn" onclick="setupGHToken()" title="Configurar token GitHub (solo admin)" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer">🔑</button>
     <button class="btn" onclick="abrirCambiarClave()" title="Cambiar mi clave" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer">🔐</button>
@@ -1762,12 +1765,13 @@ function nav(id){
   if(pg){ pg.classList.add('act'); }
   else { document.getElementById('ph').classList.add('act'); }
   const tabs=[...document.querySelectorAll('.tab')];
-  const ti={home:0,p2:1,p3:2,p4:3,p6:4,p1:5,p7:6};
+  const ti={home:0,p2:1,p3:2,p4:3,p6:4,p1:5,p7:6,p8:7};
   if(ti[id]!==undefined&&tabs[ti[id]])tabs[ti[id]].classList.add('act');
   curPage=id;
   if(id==='p4'){try{initP4();}catch(e){}}
   if(id==='p1'){initP1();renderGerencial();}
   if(id==='p7'){renderP7();}
+  if(id==='p8'){renderP8();}
   if(id==='p6'&&!mapInited){setTimeout(initMap,100);mapInited=true;}
 }
 
@@ -2361,23 +2365,32 @@ function configurarGrupoSuply(){
 // Reporte Maestro es manual, no en tiempo real — ver Plataforma LOGÍSTICA). Pide los datos
 // mínimos a mano y arma el mismo correo de siempre (CC precargado, modalidad, adjuntar OC/
 // factura/comprobante buscando por N° de OC en las carpetas locales) sin esperar la carga.
-function abrirOCUrgente(){
+// Con esOPD=true sirve para la OPD (Orden de Pago): la emite Provisión/Tesorería fuera de
+// Nisira Compras, así que tampoco llega en la carga. El servidor de correos adjunta la OPD
+// (carpeta OPD) y su cotización (COTIZACIONES), ambas con el N° de OPD en el nombre.
+function abrirOCUrgente(esOPD){
   cerrarOCUrgente();
+  esOPD=esOPD===true;
   var dlProv=(D.proveedores||[]).map(function(p){return '<option value="'+String(p.nombre||'').replace(/"/g,'&quot;')+'">';}).join('');
   var dlSup=(D.supervisores||[]).map(function(s){return '<option value="'+String(s.nombre||'').replace(/"/g,'&quot;')+'">';}).join('');
   var lbl='font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;display:block;margin:10px 0 4px';
   var inp='width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:inherit;box-sizing:border-box';
   var ov=document.createElement('div');
   ov.id='ocu-overlay';
+  ov.dataset.tipo=esOPD?'opd':'oc';
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
   ov.onclick=function(e){if(e.target===ov)cerrarOCUrgente();};
   ov.innerHTML=
     '<div style="background:#fff;border-radius:14px;max-width:480px;width:100%;padding:24px 26px;font-family:Inter,Arial,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.35);max-height:90vh;overflow:auto">'
     +'<div style="display:flex;align-items:center;justify-content:space-between">'
-    +'<h3 style="margin:0;font-size:16px;color:#0f172a">⚡ OC urgente (aún no cargada)</h3>'
+    +'<h3 style="margin:0;font-size:16px;color:#0f172a">'+(esOPD?'📄 Enviar OPD (Orden de Pago)':'⚡ OC urgente (aún no cargada)')+'</h3>'
     +'<button onclick="cerrarOCUrgente()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#64748b">✕</button></div>'
-    +'<p style="font-size:12px;color:#64748b;margin:6px 0 4px;line-height:1.5">Para una OC que acabas de crear en Nisira y todavía no aparece aquí. Arma el correo con el mismo CC/modalidad de siempre y adjunta automáticamente la OC/factura/comprobante buscando por N° de OC en tus carpetas — sin tabla de ítems, el detalle va en el PDF adjunto.</p>'
-    +'<label style="'+lbl+'">N° de OC *</label><input id="ocu-numero" style="'+inp+'" placeholder="Ej: 0001-0012075">'
+    +(esOPD
+      ?'<p style="font-size:12px;color:#64748b;margin:6px 0 4px;line-height:1.5">Escribe el N° de OPD y los datos se leen del PDF. Se adjuntan la OPD (carpeta <b>OPD</b>) y su cotización (carpeta <b>COTIZACIONES</b>); ambas deben tener el N° de OPD en el nombre, ej. <i>ORDEN DE PAGO 0012413</i>.</p>'
+        +'<label style="'+lbl+'">N° de OPD *</label><input id="ocu-numero" style="'+inp+'" placeholder="Ej: 0012413" onchange="opdLeerDatos()">'
+        +'<div id="ocu-opd-info" style="font-size:12px;margin-top:6px;line-height:1.5"></div>'
+      :'<p style="font-size:12px;color:#64748b;margin:6px 0 4px;line-height:1.5">Para una OC que acabas de crear en Nisira y todavía no aparece aquí. Arma el correo con el mismo CC/modalidad de siempre y adjunta automáticamente la OC/factura/comprobante buscando por N° de OC en tus carpetas — sin tabla de ítems, el detalle va en el PDF adjunto.</p>'
+        +'<label style="'+lbl+'">N° de OC *</label><input id="ocu-numero" style="'+inp+'" placeholder="Ej: 0001-0012075">')
     +'<label style="'+lbl+'">Proveedor *</label><input id="ocu-prov" list="ocu-dl-prov" style="'+inp+'" placeholder="Nombre del proveedor" oninput="ocuAutocompletarRuc()"><datalist id="ocu-dl-prov">'+dlProv+'</datalist>'
     +'<label style="'+lbl+'">RUC <span style="text-transform:none;font-weight:400">(opcional — mejora la búsqueda del correo/CC)</span></label><input id="ocu-ruc" style="'+inp+'" placeholder="20XXXXXXXXX">'
     +'<div style="display:flex;gap:10px">'
@@ -2400,11 +2413,172 @@ function ocuAutocompletarRuc(){
   var match=(D.proveedores||[]).find(function(p){return p.nombre&&p.nombre.trim().toLowerCase()===nombre.toLowerCase();});
   if(match&&match.ruc)rucEl.value=match.ruc;
 }
+// Lee del PDF de la OPD (vía servidor de correos) proveedor/RUC y confirma que existan la
+// OPD y su cotización con ese número en el nombre, antes de armar el correo.
+function opdNormalizar(n){
+  var d=String(n||'').replace(/\D/g,'').replace(/^0+/,'');
+  return d?('0000000'+d).slice(-7):'';
+}
+function opdLeerDatos(){
+  var numEl=document.getElementById('ocu-numero'),info=document.getElementById('ocu-opd-info');
+  if(!numEl||!info)return;
+  var num=opdNormalizar(numEl.value);
+  if(!num){info.innerHTML='';return;}
+  numEl.value=num;
+  info.innerHTML='<span style="color:#64748b">Buscando OPD '+num+'…</span>';
+  fetch('http://127.0.0.1:5100/opd-info?numero='+encodeURIComponent(num),{signal:AbortSignal.timeout(4000)})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(opdNormalizar(numEl.value)!==num)return;
+      window._opdInfo=d;
+      var provEl=document.getElementById('ocu-prov'),rucEl=document.getElementById('ocu-ruc');
+      if(d.prov&&provEl&&!provEl.value.trim())provEl.value=d.prov;
+      if(d.ruc&&rucEl&&!rucEl.value.trim())rucEl.value=d.ruc;
+      var ok='color:#15803d',warn='color:#b45309';
+      var lin=[];
+      lin.push(d.ok?'<span style="'+ok+'">✓ OPD: '+d.archivo+'</span>':'<span style="'+warn+'">⚠️ No encontré la OPD '+num+' en la carpeta OPD'+(d.carpetaOPD?'':' (carpeta no detectada)')+'</span>');
+      lin.push((d.cotizaciones||[]).length
+        ?'<span style="'+ok+'">✓ Cotización: '+d.cotizaciones.join(', ')+'</span>'
+        :'<span style="'+warn+'">⚠️ No hay cotización en COTIZACIONES con "ORDEN DE PAGO '+num+'" en el nombre</span>');
+      if(d.total)lin.push('<span style="color:#475569">Total '+(d.moneda==='USD'?'US$ ':(d.moneda==='PEN'?'S/ ':''))+d.total+(d.formaPago?' · '+d.formaPago:'')+'</span>');
+      info.innerHTML=lin.join('<br>');
+    })
+    .catch(function(){
+      info.innerHTML='<span style="color:#b45309">⚠️ Servidor de correos no activo: completa proveedor/RUC a mano y adjunta la OPD y la cotización en Outlook.</span>';
+    });
+}
+// ── Seguimiento de OPD (tabla opd en Supabase) ──────────────────────────────
+// Estados: Por enviar (se registró al armar el correo) → Enviada (se pulsó Abrir Outlook)
+// → Entregada (llegó el pedido) · Anulada. Cada cambio se guarda al instante en Supabase,
+// sin pasar por el GUARDAR de data.json.
+var OPD_ESTADOS=['Por enviar','Enviada','Entregada','Anulada'];
+function hoyISO(){return new Date().toLocaleDateString('en-CA');}
+function opdEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+async function cargarOpdSB(){
+  try{
+    const {data,error}=await sb.from('opd').select('*').order('numero',{ascending:false});
+    if(error){
+      D.opd=[];
+      window._opdErr=/opd/.test(error.message||'')&&/(exist|schema cache|relation)/i.test(error.message||'')
+        ?'Falta crear la tabla <b>opd</b> en Supabase: ejecuta <b>opd_setup.sql</b> una vez en el SQL Editor.'
+        :'No se pudo leer el seguimiento de OPD: '+opdEsc(error.message);
+      console.warn('No se pudo leer opd de Supabase:',error);
+    }else{D.opd=data||[];window._opdErr='';}
+  }catch(e){D.opd=D.opd||[];window._opdErr='No se pudo conectar con Supabase para leer las OPD.';}
+  try{document.getElementById('bdg8').textContent=(D.opd||[]).filter(function(o){return o.estado!=='Anulada'&&o.estado!=='Entregada';}).length;}catch(e){}
+  if(curPage==='p8')renderP8();
+}
+function opdGuardarSB(fila,accion){
+  if(!puedeEditar())return Promise.resolve(false);
+  fila.actualizado_por=(sesionPerfil&&sesionPerfil.nombre)||null;
+  fila.updated_at=new Date().toISOString();
+  var ex=(D.opd||[]).find(function(o){return o.numero===fila.numero;});
+  if(ex)Object.assign(ex,fila);
+  else{D.opd=D.opd||[];D.opd.unshift(Object.assign({estado:'Por enviar',creado_por:fila.actualizado_por},fila));}
+  if(curPage==='p8')renderP8();
+  try{document.getElementById('bdg8').textContent=D.opd.filter(function(o){return o.estado!=='Anulada'&&o.estado!=='Entregada';}).length;}catch(e){}
+  return sb.from('opd').upsert(ex?fila:Object.assign({creado_por:fila.actualizado_por},fila),{onConflict:'numero'}).then(function(r){
+    if(r.error){console.warn('No se pudo guardar opd en Supabase:',r.error);alert('⚠️ No se pudo guardar la OPD '+fila.numero+' en el seguimiento: '+r.error.message);return false;}
+    registrarAuditoria(accion||'opd_actualizar','opd',fila.numero,fila);
+    return true;
+  });
+}
+// Al armar el correo: crea la OPD (queda "Por enviar") o actualiza sus datos sin tocar el estado.
+function registrarOPD(numero,md,info){
+  info=(info&&info.numero===numero)?info:{};
+  var total=info.total?parseFloat(String(info.total).replace(/,/g,'')):null;
+  var fila={numero:numero,prov:md.prov||info.prov||null,ruc:md.ruc||info.ruc||null,
+    idproy:md.idproy||null,proy:md.proy||null,resp:md.resp||null};
+  if(info.fecha)fila.fecha_opd=info.fecha;
+  if(info.area)fila.area=info.area;
+  if(total!=null&&!isNaN(total))fila.total=total;
+  if(info.moneda)fila.moneda=info.moneda;
+  if(info.formaPago)fila.forma_pago=info.formaPago;
+  return opdGuardarSB(fila,'opd_registrar');
+}
+// Llamado desde la ventana del correo al pulsar "Abrir Outlook".
+function marcarOpdEnviada(numero){
+  var o=(D.opd||[]).find(function(x){return x.numero===numero;});
+  if(o&&o.estado!=='Por enviar')return;
+  opdGuardarSB({numero:numero,estado:'Enviada',f_envio:(o&&o.f_envio)||hoyISO()},'opd_enviada');
+}
+function opdCambiar(numero,campo,valor){
+  var o=(D.opd||[]).find(function(x){return x.numero===numero;})||{};
+  var fila={numero:numero};
+  fila[campo]=valor===''?null:valor;
+  if(campo==='estado'&&valor==='Enviada'&&!o.f_envio)fila.f_envio=hoyISO();
+  if(campo==='estado'&&valor==='Entregada'&&!o.f_entrega)fila.f_entrega=hoyISO();
+  if(campo==='f_entrega'&&valor&&(o.estado==='Por enviar'||o.estado==='Enviada'))fila.estado='Entregada';
+  opdGuardarSB(fila,campo==='estado'?'opd_estado':'opd_actualizar');
+}
+function opdReenviar(numero){
+  var o=(D.opd||[]).find(function(x){return x.numero===numero;});
+  if(!o)return;
+  verCorreoFormateadoOC(numero,false,{esOPD:true,prov:o.prov||'',ruc:o.ruc||'',idproy:o.idproy||'',proy:o.proy||'',resp:o.resp||''});
+}
+function renderP8(){
+  var av=document.getElementById('p8-aviso');
+  if(av){av.style.display=window._opdErr?'block':'none';av.innerHTML=window._opdErr||'';}
+  var all=D.opd||[];
+  var vivas=all.filter(function(o){return o.estado!=='Anulada';});
+  var fmt=function(n){return n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});};
+  var suma=function(m){return vivas.filter(function(o){return o.moneda===m;}).reduce(function(a,o){return a+(+o.total||0);},0);};
+  var set=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+  set('k8tot',vivas.length);
+  set('k8por',all.filter(function(o){return o.estado==='Por enviar';}).length);
+  set('k8env',all.filter(function(o){return o.estado==='Enviada';}).length);
+  set('k8ent',all.filter(function(o){return o.estado==='Entregada';}).length);
+  set('k8usd',fmt(suma('USD')));
+  set('k8pen',fmt(suma('PEN')));
+  var fe=(document.getElementById('f8est')||{value:''}).value;
+  var q=((document.getElementById('f8q')||{value:''}).value||'').trim().toLowerCase();
+  var rows=all.filter(function(o){
+    if(fe&&o.estado!==fe)return false;
+    if(!q)return true;
+    return [o.numero,o.prov,o.ruc,o.area,o.idproy,o.proy,o.resp,o.obs].join(' ').toLowerCase().indexOf(q)>=0;
+  });
+  set('f8cnt',rows.length+' registros');
+  var ed=puedeEditar();
+  var dis=ed?'':' disabled';
+  var inpS='border:1px solid #e2e8f0;border-radius:5px;padding:3px 6px;font-size:11px;font-family:inherit;background:#fff';
+  var colEst={'Por enviar':'#d97706','Enviada':'#2563eb','Entregada':'#16a34a','Anulada':'#94a3b8'};
+  var fFecha=function(d){if(!d)return '—';var p=String(d).slice(0,10).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d;};
+  var html=rows.map(function(o){
+    var n=opdEsc(o.numero);
+    var dias='—',diasCol='#475569';
+    if(o.estado==='Enviada'&&o.f_envio){
+      var d=Math.floor((new Date(hoyISO())-new Date(String(o.f_envio).slice(0,10)))/86400000);
+      dias=d;diasCol=d>15?'#dc2626':(d>7?'#d97706':'#16a34a');
+    }
+    var mon=o.moneda==='USD'?'US$ ':(o.moneda==='PEN'?'S/ ':'');
+    var opts=OPD_ESTADOS.map(function(e){return '<option'+(e===o.estado?' selected':'')+'>'+e+'</option>';}).join('');
+    return '<tr style="cursor:default'+(o.estado==='Anulada'?';opacity:.5':'')+'">'
+      +'<td><div style="display:flex;align-items:center;gap:5px"><button onclick="opdReenviar(\''+n+'\')" title="Abrir el correo de esta OPD (OPD + cotización adjuntas)" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;line-height:1">✉</button><strong>'+n+'</strong></div></td>'
+      +'<td>'+fFecha(o.fecha_opd)+'</td>'
+      +'<td title="RUC '+opdEsc(o.ruc)+'">'+opdEsc(o.prov)+'</td>'
+      +'<td>'+opdEsc([o.area,[o.idproy,o.proy].filter(Boolean).join(' — ')].filter(Boolean).join(' · ')||'—')+'</td>'
+      +'<td>'+opdEsc(o.resp||'—')+'</td>'
+      +'<td style="text-align:right;font-weight:600;color:#0f172a">'+(o.total!=null?mon+fmt(+o.total):'—')+'</td>'
+      +'<td>'+opdEsc(o.forma_pago||'—')+'</td>'
+      +'<td><select'+dis+' onchange="opdCambiar(\''+n+'\',\'estado\',this.value)" style="'+inpS+';font-weight:700;color:'+(colEst[o.estado]||'#475569')+'">'+opts+'</select></td>'
+      +'<td>'+fFecha(o.f_envio)+'</td>'
+      +'<td style="font-weight:700;color:'+diasCol+'">'+dias+'</td>'
+      +'<td><input type="date"'+dis+' value="'+opdEsc(o.f_entrega?String(o.f_entrega).slice(0,10):'')+'" onchange="opdCambiar(\''+n+'\',\'f_entrega\',this.value)" style="'+inpS+'"></td>'
+      +'<td><input'+dis+' value="'+opdEsc(o.obs||'')+'" placeholder="—" onchange="opdCambiar(\''+n+'\',\'obs\',this.value.trim())" style="'+inpS+';width:220px"></td>'
+      +'</tr>';
+  }).join('');
+  var tb=document.getElementById('tb8');
+  if(tb)tb.innerHTML=html||'<tr><td colspan="12" style="text-align:center;padding:24px;color:#94a3b8">'+(all.length?'Ninguna OPD coincide con el filtro.':'Aún no hay OPD registradas. Usa 📄 Nueva OPD: se registran solas al armar el correo.')+'</td></tr>';
+}
 function generarOCUrgente(){
+  var ov=document.getElementById('ocu-overlay');
+  var esOPD=!!(ov&&ov.dataset.tipo==='opd');
   var oc=(document.getElementById('ocu-numero').value||'').trim();
+  if(esOPD)oc=opdNormalizar(oc);
   var prov=(document.getElementById('ocu-prov').value||'').trim();
-  if(!oc||!prov){alert('Completa al menos el N° de OC y el Proveedor.');return;}
+  if(!oc||!prov){alert('Completa al menos el N° de '+(esOPD?'OPD':'OC')+' y el Proveedor.');return;}
   var manualDatos={
+    esOPD:esOPD,
     prov:prov,
     ruc:(document.getElementById('ocu-ruc').value||'').trim(),
     idproy:(document.getElementById('ocu-idproy').value||'').trim(),
@@ -2412,6 +2586,7 @@ function generarOCUrgente(){
     resp:(document.getElementById('ocu-resp').value||'').trim()
   };
   cerrarOCUrgente();
+  if(esOPD)registrarOPD(oc,manualDatos,window._opdInfo);
   verCorreoFormateadoOC(oc,false,manualDatos);
 }
 function verCorreoFormateadoOC(oc,esP4,manualDatos){
@@ -2420,6 +2595,11 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   // datos escritos a mano (proveedor/RUC/proyecto/responsable) y sin tabla de ítems, ya que
   // el detalle completo va en el PDF de la OC que se adjunta igual que siempre.
   var esUrgente=!!manualDatos;
+  var esOPD=!!(manualDatos&&manualDatos.esOPD);
+  var DOC=esOPD?'Orden de Pago':'Orden de Compra',DOCC=esOPD?'OPD':'OC';
+  var adjDoc=esOPD
+    ?'Adjunto la Orden de Pago <strong>'+oc+'</strong> y la cotización correspondiente'
+    :'Adjunto la Orden de Compra <strong>'+oc+'</strong>';
   var items=esUrgente?[]:(esP4?(SKUS_P4[oc]||SKUS[oc]||[]):(SKUS[oc]||SKUS_P4[oc]||[]));
   if(!esUrgente&&!items.length){alert('No se encontraron ítems para esta OC.');return;}
   var ocRows=D.oc?D.oc.filter(function(o){return o.oc===oc;}):[];
@@ -2435,7 +2615,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   var foc=it0.foc||'';
   var provSup=buscarProveedor(esUrgente?manualDatos.ruc:(ocRows[0]&&ocRows[0].ruc),prov);
   var emailProv=esUrgente?((provSup&&provSup.correo)||''):((ocRows[0]&&ocRows[0].emailProv)||(provSup&&provSup.correo)||'');
-  var asunto='Orden de Compra N° '+oc+' — FRIOPACKING S.A.C. // '+prov+(idproy?' // '+idproy:'')+(proy?' // '+proy:'');
+  var asunto=DOC+' N° '+oc+' — FRIOPACKING S.A.C. // '+prov+(idproy?' // '+idproy:'')+(proy?' // '+proy:'');
   var CC_OC='msihuairo@friopacking.pe;ccheca@friopacking.pe;mlujan@friopacking.pe;plinares@friopacking.pe;jaltamirano@friopacking.pe;jpomez@friopacking.pe;kalbujar@grupofriopacking.pe;jcenteno@friopacking.pe;mcondori@grupofriopacking.pe';
   // Agregar automáticamente al responsable de la OC si está en la base de Supervisores
   var respSup=buscarSupervisor(it0.resp);
@@ -2457,7 +2637,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   }
   var waLines=[];
   waLines.push('*FRIOPACKING S.A.C. — Área de Compras*');
-  waLines.push('*Orden de Compra N° '+oc+'*');
+  waLines.push('*'+DOC+' N° '+oc+'*');
   waLines.push('');
   waLines.push('*Proveedor:* '+prov);
   if(foc)waLines.push('*Fecha OC:* '+foc);
@@ -2474,13 +2654,13 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
     }
     if(items.length>waMax)waLines.push('… y '+(items.length-waMax)+' ítem(s) más (ver detalle en el correo).');
   }else{
-    waLines.push('_Ver detalle completo en la Orden de Compra adjunta._');
+    waLines.push('_Ver detalle completo en la '+DOC+' adjunta._');
   }
   waLines.push('');
-  waLines.push('_Agradecemos confirmar la recepción de esta Orden de Compra._');
+  waLines.push('_Agradecemos confirmar la recepción de esta '+DOC+'._');
   var waText=waLines.join('\n');
   // Descripción para plantilla Recojo
-  var descRecojo=items.length===1?items[0].prod:'los artículos detallados en la presente Orden de Compra';
+  var descRecojo=items.length===1?items[0].prod:'los artículos detallados en la presente '+DOC;
   // Build table rows HTML
   var tablaRows='';
   items.forEach(function(r,idx){
@@ -2495,7 +2675,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
       +'</tr>';
   });
   var w=window.open('','_blank','width=1380,height=960,scrollbars=yes,resizable=yes');
-  var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>OC '+oc+'</title><style>';
+  var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+DOCC+' '+oc+'</title><style>';
   h+='*{box-sizing:border-box;margin:0;padding:0}';
   h+='body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;background:#f1f5f9;padding:0}';
   h+='.topbar{background:#0f172a;padding:10px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}';
@@ -2545,7 +2725,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   h+='</style><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script></head><body>';
   h+='<div class="toast" id="toast">✅ Imagen copiada — pega con Ctrl+V en Outlook</div>';
   // Top bar con botones
-  h+='<div class="topbar"><div class="logo-top">FP</div><div class="brand-top">OC '+oc+' &nbsp;&mdash;&nbsp; '+prov+'</div>';
+  h+='<div class="topbar"><div class="logo-top">FP</div><div class="brand-top">'+DOCC+' '+oc+' &nbsp;&mdash;&nbsp; '+prov+'</div>';
   h+='<div style="margin-left:auto;display:flex;gap:8px">';
   h+='<button class="btn-s btn-img" onclick="copiarImagen()">&#128247; Copiar imagen</button>';
   h+='<button class="btn-s btn-wa" onclick="abrirWhatsApp()" title="Enviar por WhatsApp — al abrirse, elige el contacto o grupo de destino">&#128172; WhatsApp</button>';
@@ -2577,9 +2757,9 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   // Contenido del correo
   h+='<div class="mail-wrap"><div id="contenido-correo" style="padding:24px">';
   h+='<div class="logo">FRIOPACKING S.A.C.</div>';
-  h+='<div class="sublogo">Área de Compras &nbsp;|&nbsp; Orden de Compra</div>';
+  h+='<div class="sublogo">Área de Compras &nbsp;|&nbsp; '+DOC+'</div>';
   h+='<div class="subject-box">Asunto: '+asunto+'</div>';
-  h+='<div class="oc-hdr">Orden de Compra N° '+oc+'</div>';
+  h+='<div class="oc-hdr">'+DOC+' N° '+oc+'</div>';
   h+='<div class="oc-meta"><strong>Proveedor:</strong> '+prov;
   if(foc)h+='&nbsp;&nbsp;&nbsp;<strong>Fecha OC:</strong> '+foc;
   if(idproy)h+='&nbsp;&nbsp;&nbsp;<strong>ID Proyecto:</strong> '+idproy;
@@ -2590,7 +2770,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
     ?'<div style="margin:20px 0 8px"><span style="font-size:14px;font-weight:800;color:#1e3a5f;border-bottom:2px solid #0369a1;padding-bottom:4px">🏗 Proyecto: '+[idproy,proy].filter(Boolean).join(' — ')+'</span></div>'
     :'';
   var tablaHtmlBody=_proyHdr
-    +'<p style="margin:12px 0 4px;font-size:12px;font-weight:700;color:#0369a1">Orden de Compra N° '+oc+'</p>'
+    +'<p style="margin:12px 0 4px;font-size:12px;font-weight:700;color:#0369a1">'+DOC+' N° '+oc+'</p>'
     +(items.length
       ? ('<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;margin-bottom:8px">'
         +'<thead><tr style="background:#e0f2fe">'
@@ -2601,19 +2781,21 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
         +'<th style="'+_thStyle+';text-align:center;width:60px">Unidad</th>'
         +'</tr></thead>'
         +'<tbody>'+tablaRows+'</tbody></table>')
-      : '<p style="background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:10px 14px;color:#92400e;font-size:13px;font-family:Calibri,Arial,sans-serif"><strong>📎 El detalle completo de los artículos se encuentra en la Orden de Compra adjunta.</strong></p>');
+      : '<p style="background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:10px 14px;color:#92400e;font-size:13px;font-family:Calibri,Arial,sans-serif"><strong>📎 El detalle completo de los artículos se encuentra en la '+DOC+' adjunta.</strong></p>');
   h+='<div class="body-txt" id="mail-body"><p style="color:#94a3b8;font-style:italic">Seleccione una modalidad de entrega para ver el cuerpo del correo.</p></div>';
   h+='</div></div></div>';
   // Script
   h+='<script>';
   h+='var _oc='+JSON.stringify(oc)+';';
+  h+='var _tipo='+JSON.stringify(esOPD?'opd':'oc')+';';
+  h+='var _adjDoc='+JSON.stringify(adjDoc)+';';
   h+='var _asunto='+JSON.stringify(asunto)+';';
   h+='var _cc='+JSON.stringify(CC_OC)+';';
   h+='var _to='+JSON.stringify(emailProv)+';';
   h+='var _tablaHtml='+JSON.stringify(tablaHtmlBody)+';';
   h+='var _cuerpoPlanta='+JSON.stringify(
     'Estimados, buen día:\n\n'+
-    'Adjunto la Orden de Compra '+oc+'. Agradeceremos confirmar la fecha de entrega del producto.\n\n'+
+    'Adjunto la '+DOC+' '+oc+'. Agradeceremos confirmar la fecha de entrega del producto.\n\n'+
     'Para el ingreso al almacén de Lurín, es indispensable cumplir con la CARTILLA SSOMA y enviar previamente toda la documentación a los siguientes correos:\n\n'+
     '  • seguridadlurin@friopacking.pe\n'+
     '  • kbuleje@friopacking.pe\n'+
@@ -2638,7 +2820,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   )+';';
   h+='var _cuerpoRecojo='+JSON.stringify(
     'Estimados, buen día:\n\n'+
-    'Adjunto la Orden de Compra '+oc+' correspondiente a la adquisición de '+descRecojo+'.\n\n'+
+    'Adjunto la '+DOC+' '+oc+' correspondiente a la adquisición de '+descRecojo+'.\n\n'+
     'Debido a que la modalidad de atención para este pedido será RECOJO por nuestra cuenta, agradeceremos que nos indiquen lo siguiente:\n\n'+
     '  1. Fecha y hora confirmada en la que el producto estará listo para ser retirado.\n'+
     '  2. Dirección exacta y horarios de atención de su almacén de despacho.\n'+
@@ -2647,7 +2829,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
     'Quedamos atentos a su pronta confirmación y a la respectiva aceptación de la OC.\n\nSaludos cordiales,\nÁrea de Compras — FRIOPACKING S.A.C.'
   )+';';
   var _hPlanta='<p>Estimados, buen día:</p>'+
-    '<p>Adjunto la Orden de Compra <strong>'+oc+'</strong>. Agradeceremos confirmar la fecha de entrega del producto.</p>'+
+    '<p>'+adjDoc+'. Agradeceremos confirmar la fecha de entrega del producto.</p>'+
     tablaHtmlBody+
     '<p>Para el ingreso al almacén de Lurín, es indispensable cumplir con la <strong>CARTILLA SSOMA</strong> y enviar previamente toda la documentación a los siguientes correos:</p>'+
     '<ul><li>seguridadlurin@friopacking.pe</li><li>kbuleje@friopacking.pe</li><li>kalbujar@friopacking.pe</li><li>ccheca@friopacking.pe</li><li>jcenteno@friopacking.pe</li><li>plinares@friopacking.pe</li><li>eoscco@friopacking.pe</li><li>msihuairo@friopacking.pe</li></ul>'+
@@ -2660,19 +2842,19 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
     '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li><li>mcondori@grupofriopacking.pe</li></ul>'+
     '<p>Quedo atento a su confirmación.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.C.</span></p>';
   var _hRecojo='<p>Estimados, buen día:</p>'+
-    '<p>Adjunto la Orden de Compra <strong>'+oc+'</strong> correspondiente a la adquisición de '+descRecojo+'.</p>'+
+    '<p>'+adjDoc+(esOPD?', para la adquisición de ':' correspondiente a la adquisición de ')+descRecojo+'.</p>'+
     tablaHtmlBody+
     '<p>Debido a que la modalidad de atención para este pedido será <strong>RECOJO por nuestra cuenta</strong>, agradeceremos que nos indiquen lo siguiente:</p>'+
     '<ol><li>Fecha y hora confirmada en la que el producto estará listo para ser retirado.</li>'+
     '<li>Dirección exacta y horarios de atención de su almacén de despacho.</li>'+
     '<li>Requisitos de ingreso para nuestra unidad y conductor (si solicitan EPPs específicos, SCTR, o documentos impresos como copias de la OC).</li></ol>'+
     '<p>Una vez que nos confirmen la disponibilidad de la mercancía, les estaremos enviando los datos del transportista y la placa del vehículo para la respectiva autorización de ingreso.</p>'+
-    '<p>Quedamos atentos a su pronta confirmación y a la respectiva aceptación de la OC.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.C.</span></p>';
+    '<p>Quedamos atentos a su pronta confirmación y a la respectiva aceptación de la '+DOCC+'.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.C.</span></p>';
   var _hRegul='<p>Estimados, buen día:</p>'+
-    '<p>Por medio del presente, hacemos entrega formal de la Orden de Compra <strong>'+oc+'</strong> en calidad de <strong>regularización</strong>, correspondiente a los materiales ya suministrados y entregados directamente en obra.</p>'+
+    '<p>Por medio del presente, hacemos entrega formal de la '+DOC+' <strong>'+oc+'</strong> en calidad de <strong>regularización</strong>, correspondiente a los materiales ya suministrados y entregados directamente en obra.</p>'+
     tablaHtmlBody+
-    '<p>Agradeceremos confirmar la recepción de la presente Orden de Compra y enviarnos los siguientes documentos para completar la regularización:</p>'+
-    '<ul><li>Factura por el monto total de la OC.</li><li>Guía de remisión correspondiente.</li></ul>'+
+    '<p>Agradeceremos confirmar la recepción de la presente '+DOC+' y enviarnos los siguientes documentos para completar la regularización:</p>'+
+    '<ul><li>Factura por el monto total de la '+DOCC+'.</li><li>Guía de remisión correspondiente.</li></ul>'+
     '<p>Asimismo, para el registro de sus facturas, enviar a los siguientes correos:</p>'+
     '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li><li>mcondori@grupofriopacking.pe</li></ul>'+
     '<p>Quedamos atentos a cualquier consulta.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.C.</span></p>';
@@ -2687,7 +2869,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   h+='  var n3=(document.getElementById("ag-n3")||{value:""}).value.trim();var d3=(document.getElementById("ag-d3")||{value:""}).value.trim();';
   h+='  var dest="";if(n1)dest+="<li>"+n1+(d1?" — "+d1:"")+"</li>";if(n2)dest+="<li>"+n2+(d2?" — "+d2:"")+"</li>";if(n3)dest+="<li>"+n3+(d3?" — "+d3:"")+"</li>";';
   h+='  return "<p>Estimados, buen día:</p>"+';
-  h+='    "<p>Adjunto la Orden de Compra <strong>"+_oc+"</strong>. Agradeceremos coordinar el despacho del pedido.</p>"+';
+  h+='    "<p>"+_adjDoc+". Agradeceremos coordinar el despacho del pedido.</p>"+';
   h+='    _tablaHtml+';
   h+='    "<p>Enviar los productos por <strong>agencia "+ag+"</strong> a nombre de:</p>"+';
   h+='    "<ul>"+(dest||"<li>(completar destinatario)</li>")+"</ul>"+';
@@ -2731,6 +2913,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   h+='}';
   h+='function abrirOutlook(){';
   h+='  if(!_modActual)return;';
+  h+='  if(_tipo==="opd"){try{if(window.opener&&window.opener.marcarOpdEnviada)window.opener.marcarOpdEnviada(_oc);}catch(e){}}';
   h+='  var htmlBody=_modActual==="planta"?_htmlPlanta:(_modActual==="recojo"?_htmlRecojo:(_modActual==="regularizacion"?_htmlRegul:getHtmlAgencia()));';
   h+='  var fullHtml=\'<div style="font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:2;color:#1e293b;max-width:740px">\'+htmlBody+\'</div>\';';
   h+='  function abrirMail(){';
@@ -2761,11 +2944,11 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   h+='  fetch(_MAILER_URL+"/ping",{method:"GET",signal:AbortSignal.timeout(1500)})';
   h+='    .then(function(){';
   h+='      return fetch(_MAILER_URL+"/send-oc",{method:"POST",headers:{"Content-Type":"application/json"},';
-  h+='        body:JSON.stringify({to:_to,cc:_cc,subject:_asunto,htmlBody:htmlBody,autoSend:false,modality:_modActual,incluirFactura:true})});';
+  h+='        body:JSON.stringify({to:_to,cc:_cc,subject:_asunto,htmlBody:htmlBody,autoSend:false,modality:_modActual,incluirFactura:true,tipo:_tipo,numero:_oc})});';
   h+='    })';
   h+='    .then(function(r){return r.json();})';
   h+='    .then(function(d){';
-  h+='      if(d.ok){showToast("✅ Correo abierto en Outlook con la OC adjunta (y factura/comprobante de pago, si ya existen) — revisa y presiona Enviar");}';
+  h+='      if(d.ok){showToast(_tipo==="opd"?"✅ Correo abierto en Outlook con la OPD y su cotización adjuntas — revisa y presiona Enviar":"✅ Correo abierto en Outlook con la OC adjunta (y factura/comprobante de pago, si ya existen) — revisa y presiona Enviar");}';
   h+='      else{tryGraphThenClipboard();}';
   h+='    })';
   h+='    .catch(function(){tryGraphThenClipboard();});';
@@ -7246,6 +7429,41 @@ setInterval(function(){
       <th>RESPONSABLE</th>
     </tr></thead><tbody id="tb7"></tbody></table>
     <div class="pag"><span id="p7info">—</span><div class="pbts" id="p7pag"></div></div>
+  </div>
+</div>
+
+<!-- Seguimiento de OPD (Orden de Pago): la emite Provisión/Tesorería fuera de Nisira Compras.
+     Se registra sola al armar el correo con el botón 📄 OPD y vive en la tabla opd de Supabase
+     (ver opd_setup.sql). -->
+<div class="pg" id="pp8">
+  <div class="ib">
+    <span class="idot"></span>
+    <span>Seguimiento de OPD — Órdenes de Pago (Provisión / Tesorería)</span>
+    <span style="flex:1"></span>
+    <button class="thb" onclick="abrirOCUrgente(true)" style="background:#7c3aed;color:#fff;border-color:#7c3aed">📄 Nueva OPD</button>
+  </div>
+  <div id="p8-aviso" style="display:none;background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:12px"></div>
+  <div class="kpis">
+    <div class="kpi k0"><div class="klbl">Total OPD</div><div class="kval" id="k8tot">—</div><div class="ksub">Sin anuladas</div></div>
+    <div class="kpi k1"><div class="klbl">Por enviar</div><div class="kval" id="k8por">—</div><div class="ksub">Aún no van al proveedor</div></div>
+    <div class="kpi k2"><div class="klbl">Enviadas</div><div class="kval" id="k8env">—</div><div class="ksub">Esperando entrega</div></div>
+    <div class="kpi k3"><div class="klbl">Entregadas</div><div class="kval" id="k8ent">—</div><div class="ksub">Cerradas</div></div>
+    <div class="kpi k4"><div class="klbl">Monto US$</div><div class="kval" id="k8usd">—</div><div class="ksub">Con IGV</div></div>
+    <div class="kpi k5"><div class="klbl">Monto S/</div><div class="kval" id="k8pen">—</div><div class="ksub">Con IGV</div></div>
+  </div>
+  <div class="flt">
+    <select class="fsel" id="f8est" onchange="renderP8()"><option value="">Estado: Todos</option><option>Por enviar</option><option>Enviada</option><option>Entregada</option><option>Anulada</option></select>
+    <input class="fsrch" id="f8q" oninput="renderP8()" placeholder="Buscar N° OPD / Proveedor / RUC / Área / Proyecto / Responsable…"/>
+    <button class="fclr" onclick="document.getElementById('f8est').value='';document.getElementById('f8q').value='';renderP8()">✕ Limpiar</button>
+    <span class="fcnt" id="f8cnt">— registros</span>
+  </div>
+  <div class="tw">
+    <div class="th"><span class="thtt">Detalle de OPD</span></div>
+    <table class="ttbl"><thead><tr>
+      <th>N° OPD</th><th>F. OPD</th><th>PROVEEDOR</th><th>ÁREA / PROYECTO</th><th>RESPONSABLE</th>
+      <th style="text-align:right">TOTAL</th><th>FORMA DE PAGO</th><th>ESTADO</th><th>F. ENVÍO</th>
+      <th title="Días desde que se envió al proveedor sin registrar la entrega">DÍAS</th><th>F. ENTREGA</th><th>OBSERVACIÓN</th>
+    </tr></thead><tbody id="tb8"></tbody></table>
   </div>
 </div>
 

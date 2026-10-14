@@ -62,6 +62,77 @@ def _detectar_carpeta(nombre):
 COT_FOLDER  = _detectar_carpeta("COTIZACIONES")
 FACT_FOLDER = _detectar_carpeta("FACTURA")
 COMP_FOLDER = _detectar_carpeta("COMPROBANTES DE PAGO")
+# OPD (Orden de Pago): la emite Provisión/Tesorería fuera de Nisira Compras. Se guarda en
+# la carpeta OPD con su número en el nombre (ej. "ORDEN DE PAGO 0012413.pdf") y su cotización
+# en COTIZACIONES con el mismo rótulo (ej. "COTIZACION 221-2026 ... ORDEN DE PAGO 0012413.pdf").
+OPD_FOLDER  = _detectar_carpeta("OPD")
+
+# "ORDEN DE PAGO 0012413", "OPD 12413", "OPD-0012413"…
+_RE_OPD_NOMBRE = re.compile(r'(?:ORDEN\s*DE\s*PAGO|OPD)\s*(?:N\s*[°º.]?)?\s*[-_#:]?\s*0*(\d{1,9})(?!\d)', re.I)
+
+def _normalizar_opd(numero):
+    """'12413' / '0012413' / 'OPD 0012413' → '0012413' (7 dígitos, como viene en el PDF)."""
+    dig = re.sub(r'\D', '', str(numero or ''))
+    return (dig.lstrip('0') or '0').zfill(7) if dig else ''
+
+def _es_archivo_opd(fname):
+    return bool(_RE_OPD_NOMBRE.search(fname))
+
+def _buscar_archivos_opd(carpeta, numero, max_files=5):
+    """Archivos cuyo nombre dice ORDEN DE PAGO / OPD + número. En la carpeta OPD basta con el
+    número; en COTIZACIONES se exige el rótulo para no confundirlo con una OC 0001-00XXXXX."""
+    num = _normalizar_opd(numero)
+    if not carpeta or not num:
+        return []
+    corto = num.lstrip('0') or '0'
+    exts = ('.pdf', '.xlsx', '.xls', '.jpg', '.jpeg', '.png', '.docx')
+    solo_carpeta_opd = (carpeta == OPD_FOLDER)
+    encontrados = []
+    for fname in sorted(os.listdir(carpeta)):
+        if not fname.lower().endswith(exts):
+            continue
+        ok = any((m.group(1).lstrip('0') or '0') == corto for m in _RE_OPD_NOMBRE.finditer(fname))
+        if not ok and solo_carpeta_opd:
+            ok = bool(re.search(r'(?<!\d)0*' + corto + r'(?!\d)', fname))
+        if ok:
+            encontrados.append(os.path.join(carpeta, fname))
+            if len(encontrados) >= max_files:
+                break
+    return encontrados
+
+def _leer_datos_opd(fpath):
+    """Lee proveedor, RUC, área, total, moneda y forma de pago del PDF de la OPD (para autollenar)."""
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        return {}
+    try:
+        txt = '\n'.join((pg.extract_text() or '') for pg in PdfReader(fpath).pages)
+    except Exception as e:
+        print(f'[OPD] No se pudo leer {fpath}: {e}', flush=True)
+        return {}
+    def _m(rx):
+        m = re.search(rx, txt, re.I)
+        return m.group(1).strip() if m else ''
+    moneda = 'USD' if re.search(r'US\$|DOLARES', txt, re.I) else ('PEN' if re.search(r'S/|SOLES', txt, re.I) else '')
+    # "Ica, 13 de Octubre del 2026" → "2026-10-13"
+    fecha = ''
+    mf = re.search(r'(\d{1,2})\s+de\s+([a-záéíóú]+)\s+del?\s+(\d{4})', txt, re.I)
+    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
+             'setiembre', 'octubre', 'noviembre', 'diciembre']
+    if mf:
+        mes = mf.group(2).lower().replace('septiembre', 'setiembre')
+        if mes in meses:
+            fecha = f'{mf.group(3)}-{meses.index(mes) + 1:02d}-{int(mf.group(1)):02d}'
+    return {
+        'fecha':     fecha,
+        'prov':      _m(r'Proveedor\s*/\s*Responsable\s*:?\s*([^\n]+)'),
+        'ruc':       _m(r'DNI\s*/\s*RUC\s*:?\s*(\d{8,11})'),
+        'area':      _m(r'rea\s+Solicitante\s*:?\s*([^\n]+)'),
+        'formaPago': _m(r'Forma\s+de\s+pago\s*:?\s*([^:\n]+)'),
+        'total':     _m(r'([\d,]+\.\d{2})\s*(?:US\$|S/)'),
+        'moneda':    moneda,
+    }
 
 def _buscar_pdf_oc(numero_oc):
     """Busca el PDF de la OC en OC_FOLDER. numero_oc ej: '0001-0011557'"""
@@ -93,6 +164,8 @@ def _buscar_archivos_oc(carpeta, numero_oc, max_files=5):
     for fname in os.listdir(carpeta):
         fl = fname.lower()
         if not fl.endswith(exts):
+            continue
+        if _es_archivo_opd(fname):
             continue
         if num_limpio.lower() in fl or solo_num in fl or ultimo in fl:
             encontrados.append(os.path.join(carpeta, fname))
@@ -140,6 +213,7 @@ def add_headers(response):
 @app.route('/send-oc',  methods=['OPTIONS'])
 @app.route('/send-cot', methods=['OPTIONS'])
 @app.route('/factura-oc', methods=['OPTIONS'])
+@app.route('/opd-info', methods=['OPTIONS'])
 def handle_options():
     return ('', 204)
 
@@ -150,6 +224,19 @@ def factura_oc():
     factura, archivo = _numero_factura_oc(numero_oc)
     print(f'[FACTURA-OC] oc={numero_oc}  factura={factura or "—"}  archivo={archivo or "—"}', flush=True)
     return jsonify({'ok': bool(factura), 'factura': factura, 'archivo': archivo})
+
+# ── Datos de una OPD (para autollenar el formulario del dashboard) ────────────
+@app.route('/opd-info', methods=['GET'])
+def opd_info():
+    numero = _normalizar_opd(request.args.get('numero'))
+    opds = _buscar_archivos_opd(OPD_FOLDER, numero, max_files=1)
+    cots = _buscar_archivos_opd(COT_FOLDER, numero)
+    datos = _leer_datos_opd(opds[0]) if opds and opds[0].lower().endswith('.pdf') else {}
+    print(f'[OPD-INFO] opd={numero}  pdf={os.path.basename(opds[0]) if opds else "—"}  cotizaciones={len(cots)}', flush=True)
+    return jsonify({'ok': bool(opds), 'numero': numero,
+                    'archivo': os.path.basename(opds[0]) if opds else None,
+                    'cotizaciones': [os.path.basename(c) for c in cots],
+                    'carpetaOPD': bool(OPD_FOLDER), **datos})
 
 # ── Ping ───────────────────────────────────────────────────────────────────────
 @app.route('/ping', methods=['GET'])
@@ -169,10 +256,11 @@ def send_oc():
     modality  = data.get('modality', '')
     incluir_doc = data.get('incluirFacturaCot', False)
     incluir_factura = data.get('incluirFactura', False)
+    es_opd    = data.get('tipo') == 'opd'
 
     # Extraer número de OC del asunto: "Orden de Compra Nº 0001-0011557 — ..."
     match_oc = re.search(r'(\d{4}-\d{7})', subject)
-    numero_oc = match_oc.group(1) if match_oc else None
+    numero_oc = _normalizar_opd(data.get('numero')) if es_opd else (match_oc.group(1) if match_oc else None)
     print(f'[SEND-OC] asunto={subject[:60] if subject else "—"}  oc={numero_oc}  modality={repr(modality)}  len={len(html_body)}', flush=True)
     if not subject:
         return jsonify({'ok': False, 'error': 'Falta el asunto'}), 400
@@ -200,9 +288,21 @@ def send_oc():
                 else:
                     _ = mail.GetInspector
                     mail.HTMLBody = cuerpo
+                    # OPD: adjuntar la OPD (carpeta OPD) y su cotización (COTIZACIONES, rotulada
+                    # con el N° de OPD). A diferencia de la OC, aquí la cotización sí va al proveedor.
+                    if es_opd:
+                        for carpeta, etiqueta in ((OPD_FOLDER, 'OPD'), (COT_FOLDER, 'Cotización')):
+                            archivos = _buscar_archivos_opd(carpeta, numero_oc)
+                            for fp in archivos:
+                                mail.Attachments.Add(fp)
+                                print(f'[SEND-OC] 📎 {etiqueta} adjuntada: {os.path.basename(fp)}', flush=True)
+                            if not archivos:
+                                print(f'[SEND-OC] ⚠️  No se encontró {etiqueta} para OPD {numero_oc} en {carpeta or "(carpeta no detectada)"}', flush=True)
                     # Adjuntar PDF de la OC si se encuentra en la carpeta
-                    pdf_oc = _buscar_pdf_oc(numero_oc)
-                    if pdf_oc:
+                    pdf_oc = None if es_opd else _buscar_pdf_oc(numero_oc)
+                    if es_opd:
+                        pass
+                    elif pdf_oc:
                         mail.Attachments.Add(pdf_oc)
                         print(f'[SEND-OC] 📎 OC adjuntada: {os.path.basename(pdf_oc)}', flush=True)
                     else:
@@ -213,7 +313,9 @@ def send_oc():
                     # el correo de OC al proveedor solo pide factura y comprobante, por si ya
                     # existen (ej. regularización con el proveedor) — la cotización es información
                     # interna y no debe llegar al proveedor.
-                    if incluir_doc:
+                    if es_opd:
+                        carpetas_chk = ()
+                    elif incluir_doc:
                         carpetas_chk = ((COT_FOLDER, 'Cotización'), (FACT_FOLDER, 'Factura'), (COMP_FOLDER, 'Comprobante de pago'))
                     elif incluir_factura:
                         carpetas_chk = ((FACT_FOLDER, 'Factura'), (COMP_FOLDER, 'Comprobante de pago'))
@@ -344,6 +446,7 @@ if __name__ == '__main__':
     print(f'  Carpeta Cotizaciones: {COT_FOLDER or "*** NO DETECTADA ***"}')
     print(f'  Carpeta Facturas    : {FACT_FOLDER or "*** NO DETECTADA ***"}')
     print(f'  Carpeta Comprobantes: {COMP_FOLDER or "*** NO DETECTADA ***"}')
+    print(f'  Carpeta OPD         : {OPD_FOLDER or "*** NO DETECTADA ***"}')
     if SP_LOCAL:
         print(f'  Destino SharePoint  : {SP_LOCAL}')
     else:

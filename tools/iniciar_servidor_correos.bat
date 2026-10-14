@@ -10,7 +10,7 @@ echo.
 cd /d "%~dp0"
 
 echo  Verificando dependencias...
-python -m pip install --quiet flask flask-cors pywin32 2>nul
+python -m pip install --quiet flask flask-cors pywin32 pypdf 2>nul
 echo  Dependencias OK.
 echo.
 
