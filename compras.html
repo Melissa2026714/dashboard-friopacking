@@ -2371,6 +2371,7 @@ function configurarGrupoSuply(){
 function abrirOCUrgente(esOPD){
   cerrarOCUrgente();
   esOPD=esOPD===true;
+  window._opdFiles={};window._opdInfo=null;
   var dlProv=(D.proveedores||[]).map(function(p){return '<option value="'+String(p.nombre||'').replace(/"/g,'&quot;')+'">';}).join('');
   var dlSup=(D.supervisores||[]).map(function(s){return '<option value="'+String(s.nombre||'').replace(/"/g,'&quot;')+'">';}).join('');
   var lbl='font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;display:block;margin:10px 0 4px';
@@ -2386,8 +2387,14 @@ function abrirOCUrgente(esOPD){
     +'<h3 style="margin:0;font-size:16px;color:#0f172a">'+(esOPD?'📄 Enviar OPD (Orden de Pago)':'⚡ OC urgente (aún no cargada)')+'</h3>'
     +'<button onclick="cerrarOCUrgente()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#64748b">✕</button></div>'
     +(esOPD
-      ?'<p style="font-size:12px;color:#64748b;margin:6px 0 4px;line-height:1.5">Escribe el N° de OPD y los datos se leen del PDF. Se adjuntan la OPD (carpeta <b>OPD</b>) y su cotización (carpeta <b>COTIZACIONES</b>); ambas deben tener el N° de OPD en el nombre, ej. <i>ORDEN DE PAGO 0012413</i>.</p>'
-        +'<label style="'+lbl+'">N° de OPD *</label><input id="ocu-numero" style="'+inp+'" placeholder="Ej: 0012413" onchange="opdLeerDatos()">'
+      ?'<p style="font-size:12px;color:#64748b;margin:6px 0 4px;line-height:1.5">Adjunta o arrastra aquí el PDF de la OPD y su cotización: los datos se leen solos y los archivos se guardan en tus carpetas <b>OPD</b> y <b>COTIZACIONES</b> con el N° de OPD en el nombre, para adjuntarlos al correo.</p>'
+        +'<div id="ocu-drop" ondragover="event.preventDefault();this.style.borderColor=\'#7c3aed\';this.style.background=\'#f5f3ff\'" ondragleave="this.style.borderColor=\'#cbd5e1\';this.style.background=\'#f8fafc\'" ondrop="opdSoltarArchivos(event)" style="border:2px dashed #cbd5e1;border-radius:10px;background:#f8fafc;padding:12px;margin-top:10px;text-align:center">'
+        +'<div style="font-size:12px;color:#64748b;margin-bottom:8px">⬇ Arrastra aquí los PDF, o elige cada uno:</div>'
+        +'<div style="display:flex;gap:8px">'
+        +'<label style="flex:1;cursor:pointer;background:#7c3aed;color:#fff;border-radius:7px;padding:8px 6px;font-size:12px;font-weight:700">📄 PDF de la OPD<input id="ocu-opd-file" type="file" accept=".pdf" style="display:none" onchange="opdTomarArchivo(this.files[0],\'opd\')"></label>'
+        +'<label style="flex:1;cursor:pointer;background:#fff;color:#7c3aed;border:1px solid #c4b5fd;border-radius:7px;padding:8px 6px;font-size:12px;font-weight:700">📎 Cotización<input id="ocu-cot-file" type="file" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png,.docx" style="display:none" onchange="opdTomarArchivo(this.files[0],\'cot\')"></label>'
+        +'</div><div id="ocu-files" style="font-size:12px;text-align:left;margin-top:8px;line-height:1.6"></div></div>'
+        +'<label style="'+lbl+'">N° de OPD *</label><input id="ocu-numero" style="'+inp+'" placeholder="Se llena al adjuntar la OPD (o escríbelo, ej. 0012413)" onchange="opdLeerDatos()">'
         +'<div id="ocu-opd-info" style="font-size:12px;margin-top:6px;line-height:1.5"></div>'
       :'<p style="font-size:12px;color:#64748b;margin:6px 0 4px;line-height:1.5">Para una OC que acabas de crear en Nisira y todavía no aparece aquí. Arma el correo con el mismo CC/modalidad de siempre y adjunta automáticamente la OC/factura/comprobante buscando por N° de OC en tus carpetas — sin tabla de ítems, el detalle va en el PDF adjunto.</p>'
         +'<label style="'+lbl+'">N° de OC *</label><input id="ocu-numero" style="'+inp+'" placeholder="Ej: 0001-0012075">')
@@ -2425,6 +2432,7 @@ function opdLeerDatos(){
   var num=opdNormalizar(numEl.value);
   if(!num){info.innerHTML='';return;}
   numEl.value=num;
+  if(window._opdFiles&&window._opdFiles.opd)return;
   info.innerHTML='<span style="color:#64748b">Buscando OPD '+num+'…</span>';
   fetch('http://127.0.0.1:5100/opd-info?numero='+encodeURIComponent(num),{signal:AbortSignal.timeout(4000)})
     .then(function(r){return r.json();})
@@ -2570,6 +2578,120 @@ function renderP8(){
   var tb=document.getElementById('tb8');
   if(tb)tb.innerHTML=html||'<tr><td colspan="12" style="text-align:center;padding:24px;color:#94a3b8">'+(all.length?'Ninguna OPD coincide con el filtro.':'Aún no hay OPD registradas. Usa 📄 Nueva OPD: se registran solas al armar el correo.')+'</td></tr>';
 }
+// Lee el PDF de la OPD en el navegador (pdf.js), sin depender del servidor de correos ni
+// de que el archivo ya esté en la carpeta. Formato Nisira/Tesorería: "ORDEN DE PAGO\n0012413",
+// "Proveedor / Responsable <razón social>", "DNI / RUC <n°>", "Área Solicitante <área>",
+// "<total> US$", "Forma de pago <condición>", "Ica, 13 de Octubre del 2026".
+function opdTextoPDF(file){
+  return new Promise(function(resolve,reject){
+    function leer(){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      file.arrayBuffer().then(function(buf){return pdfjsLib.getDocument({data:buf}).promise;})
+        .then(function(pdf){
+          var ps=[];
+          for(var i=1;i<=Math.min(pdf.numPages,3);i++)ps.push(pdf.getPage(i).then(function(pg){return pg.getTextContent();}));
+          return Promise.all(ps);
+        })
+        .then(function(cs){
+          resolve(cs.map(function(c){return c.items.map(function(it){return it.str+(it.hasEOL?'\n':' ');}).join('');}).join('\n').replace(/[ \t]+/g,' '));
+        })
+        .catch(reject);
+    }
+    if(typeof pdfjsLib==='undefined')_ldScriptParent('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',leer);
+    else leer();
+  });
+}
+function opdParsearTexto(t){
+  var m=function(rx){var r=t.match(rx);return r?r[1].trim():'';};
+  var out={
+    numero:opdNormalizar(m(/ORDEN\s+DE\s+PAGO\s*(?:N[°º.]?\s*)?:?\s*(\d{5,9})/i)),
+    prov:m(/Proveedor\s*\/\s*Responsable\s*:?\s*([^\n]+)/i),
+    ruc:m(/DNI\s*\/\s*RUC\s*:?\s*(\d{8,11})/i),
+    area:m(/rea\s+Solicitante\s*:?\s*([^\n]+)/i),
+    formaPago:m(/Forma\s+de\s+pago\s*:?\s*([^:\n]+)/i),
+    total:m(/([\d,]+\.\d{2})\s*(?:US\$|S\/)/i),
+    moneda:/US\$|DOLARES/i.test(t)?'USD':(/S\/|SOLES/i.test(t)?'PEN':'')
+  };
+  var f=t.match(/(\d{1,2})\s+de\s+([a-záéíóú]+)\s+del?\s+(\d{4})/i);
+  var meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','setiembre','octubre','noviembre','diciembre'];
+  if(f){var mi=meses.indexOf(f[2].toLowerCase().replace('septiembre','setiembre'));if(mi>=0)out.fecha=f[3]+'-'+('0'+(mi+1)).slice(-2)+'-'+('0'+f[1]).slice(-2);}
+  return out;
+}
+function opdPintarArchivos(){
+  var el=document.getElementById('ocu-files');if(!el)return;
+  var F=window._opdFiles||{},lin=[];
+  if(F.opd)lin.push('<span style="color:#15803d">✓ OPD: '+opdEsc(F.opd.name)+'</span>');
+  if(F.cot)lin.push('<span style="color:#15803d">✓ Cotización: '+opdEsc(F.cot.name)+'</span>');
+  else if(F.opd)lin.push('<span style="color:#b45309">⚠️ Falta adjuntar la cotización</span>');
+  el.innerHTML=lin.join('<br>');
+}
+function opdTomarArchivo(file,tipo){
+  if(!file)return;
+  window._opdFiles=window._opdFiles||{};
+  if(tipo==='cot'){window._opdFiles.cot=file;opdPintarArchivos();return;}
+  window._opdFiles.opd=file;opdPintarArchivos();
+  var info=document.getElementById('ocu-opd-info');
+  if(info)info.innerHTML='<span style="color:#64748b">Leyendo '+opdEsc(file.name)+'…</span>';
+  opdTextoPDF(file).then(function(t){
+    if(!t.trim()){info.innerHTML='<span style="color:#b45309">⚠️ El PDF no tiene texto (¿escaneado?): completa N° de OPD, proveedor y RUC a mano.</span>';return;}
+    var d=opdParsearTexto(t);
+    if(!/ORDEN\s+DE\s+PAGO/i.test(t))info.innerHTML='<span style="color:#b45309">⚠️ Este PDF no parece una Orden de Pago. Revisa los datos.</span>';
+    var set=function(id,v){var el=document.getElementById(id);if(el&&v&&!el.value.trim())el.value=v;};
+    set('ocu-numero',d.numero);set('ocu-prov',d.prov);set('ocu-ruc',d.ruc);
+    var num=opdNormalizar((document.getElementById('ocu-numero')||{value:''}).value);
+    window._opdInfo=Object.assign({},d,{numero:num});
+    if(/ORDEN\s+DE\s+PAGO/i.test(t)){
+      var lin=['<span style="color:#15803d">✓ Leído: OPD '+(num||'?')+(d.fecha?' del '+d.fecha.split('-').reverse().join('/'):'')+'</span>'];
+      if(d.total)lin.push('<span style="color:#475569">Total '+(d.moneda==='USD'?'US$ ':(d.moneda==='PEN'?'S/ ':''))+d.total+(d.formaPago?' · '+opdEsc(d.formaPago):'')+(d.area?' · '+opdEsc(d.area):'')+'</span>');
+      if(!d.numero)lin.push('<span style="color:#b45309">⚠️ No encontré el N° de OPD en el PDF: escríbelo.</span>');
+      info.innerHTML=lin.join('<br>');
+    }
+  }).catch(function(e){
+    if(info)info.innerHTML='<span style="color:#b45309">⚠️ No se pudo leer el PDF ('+opdEsc(e&&e.message||e)+'): completa los datos a mano.</span>';
+  });
+}
+// Arrastrar: el PDF que dice "ORDEN DE PAGO" va como OPD, el resto como cotización.
+function opdSoltarArchivos(ev){
+  ev.preventDefault();
+  var dz=document.getElementById('ocu-drop');if(dz){dz.style.borderColor='#cbd5e1';dz.style.background='#f8fafc';}
+  var files=[].slice.call((ev.dataTransfer&&ev.dataTransfer.files)||[]);
+  files.reduce(function(prev,f){
+    return prev.then(function(){
+      var esPdf=/\.pdf$/i.test(f.name);
+      if(!esPdf)return opdTomarArchivo(f,'cot');
+      var yaOpd=window._opdFiles&&window._opdFiles.opd;
+      if(/ORDEN\s*DE\s*PAGO|OPD/i.test(f.name)&&!/COTIZ|COT[-_ ]/i.test(f.name)&&!yaOpd)return opdTomarArchivo(f,'opd');
+      return opdTextoPDF(f).then(function(t){
+        opdTomarArchivo(f,(/ORDEN\s+DE\s+PAGO/i.test(t.slice(0,300))&&!yaOpd)?'opd':'cot');
+      }).catch(function(){opdTomarArchivo(f,'cot');});
+    });
+  },Promise.resolve());
+}
+function opdArchivoB64(file){
+  return new Promise(function(resolve,reject){
+    var r=new FileReader();
+    r.onload=function(){resolve({nombre:file.name,b64:String(r.result).split(',')[1]||''});};
+    r.onerror=function(){reject(new Error('No se pudo leer '+file.name));};
+    r.readAsDataURL(file);
+  });
+}
+// Guarda en las carpetas OPD/COTIZACIONES (servidor de correos) lo adjuntado en el formulario.
+function opdGuardarArchivos(numero){
+  var F=window._opdFiles||{};
+  if(!F.opd&&!F.cot)return;
+  Promise.all([F.opd?opdArchivoB64(F.opd):null,F.cot?opdArchivoB64(F.cot):null])
+    .then(function(r){
+      return fetch('http://127.0.0.1:5100/guardar-opd',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({numero:numero,opd:r[0],cot:r[1]}),signal:AbortSignal.timeout(15000)});
+    })
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.ok)alert('⚠️ No se pudieron guardar todos los archivos de la OPD '+numero+':\n'+(d.errores||[]).join('\n')+'\n\nAdjúntalos a mano en Outlook.');
+    })
+    .catch(function(){
+      alert('⚠️ El servidor de correos no está activo, así que la OPD y la cotización no se guardaron en tus carpetas.\n\nEl correo se arma igual: adjúntalas a mano en Outlook (o abre iniciar_servidor_correos.bat y vuelve a generar el correo).');
+    });
+}
 function generarOCUrgente(){
   var ov=document.getElementById('ocu-overlay');
   var esOPD=!!(ov&&ov.dataset.tipo==='opd');
@@ -2586,7 +2708,7 @@ function generarOCUrgente(){
     resp:(document.getElementById('ocu-resp').value||'').trim()
   };
   cerrarOCUrgente();
-  if(esOPD)registrarOPD(oc,manualDatos,window._opdInfo);
+  if(esOPD){opdGuardarArchivos(oc);registrarOPD(oc,manualDatos,window._opdInfo);}
   verCorreoFormateadoOC(oc,false,manualDatos);
 }
 function verCorreoFormateadoOC(oc,esP4,manualDatos){
@@ -4916,7 +5038,7 @@ function markConsultasDirty(){
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-10-14T16:00:00Z-opd-orden-de-pago';
+const BUILD_ID='2026-10-14T18:00:00Z-opd-adjuntar-pdf';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;

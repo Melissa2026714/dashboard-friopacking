@@ -214,6 +214,7 @@ def add_headers(response):
 @app.route('/send-cot', methods=['OPTIONS'])
 @app.route('/factura-oc', methods=['OPTIONS'])
 @app.route('/opd-info', methods=['OPTIONS'])
+@app.route('/guardar-opd', methods=['OPTIONS'])
 def handle_options():
     return ('', 204)
 
@@ -237,6 +238,56 @@ def opd_info():
                     'archivo': os.path.basename(opds[0]) if opds else None,
                     'cotizaciones': [os.path.basename(c) for c in cots],
                     'carpetaOPD': bool(OPD_FOLDER), **datos})
+
+# ── Guardar OPD/cotización adjuntadas en el dashboard ─────────────────────────
+# El dashboard lee el PDF en el navegador y manda aquí los archivos para que queden en
+# las carpetas de siempre con el N° de OPD en el nombre, y así /send-oc los adjunte.
+def _nombre_seguro(nombre):
+    return re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', nombre).strip(' .') or 'archivo'
+
+@app.route('/guardar-opd', methods=['POST'])
+def guardar_opd():
+    import base64
+    data = request.json or {}
+    numero = _normalizar_opd(data.get('numero'))
+    if not numero:
+        return jsonify({'ok': False, 'error': 'Falta el N° de OPD'}), 400
+    global OPD_FOLDER
+    if not OPD_FOLDER:
+        base = Path.home() / "Desktop" / "Melissa - FrioPacking 2026"
+        if base.exists():
+            (base / "OPD").mkdir(exist_ok=True)
+            OPD_FOLDER = str(base / "OPD")
+    guardados, errores = [], []
+    for clave, carpeta in (('opd', OPD_FOLDER), ('cot', COT_FOLDER)):
+        f = data.get(clave)
+        if not f:
+            continue
+        if not carpeta:
+            errores.append(f'Carpeta {"OPD" if clave == "opd" else "COTIZACIONES"} no detectada')
+            continue
+        stem, ext = os.path.splitext(_nombre_seguro(f.get('nombre') or ''))
+        ext = ext.lower() or '.pdf'
+        if clave == 'opd':
+            nombre = f'ORDEN DE PAGO {numero}{ext}'
+        else:
+            rotulada = any((m.group(1).lstrip('0') or '0') == numero.lstrip('0') for m in _RE_OPD_NOMBRE.finditer(stem))
+            nombre = f'{stem}{ext}' if rotulada else f'{stem} ORDEN DE PAGO {numero}{ext}'
+        try:
+            contenido = base64.b64decode(f.get('b64') or '')
+            if not contenido:
+                raise ValueError('archivo vacío')
+            with open(os.path.join(carpeta, nombre), 'wb') as fh:
+                fh.write(contenido)
+            guardados.append(nombre)
+        except Exception as e:
+            errores.append(f'{nombre}: {e}')
+            continue
+        try:
+            print(f'[GUARDAR-OPD] guardado {nombre} en {carpeta}', flush=True)
+        except Exception:
+            pass
+    return jsonify({'ok': not errores, 'guardados': guardados, 'errores': errores})
 
 # ── Ping ───────────────────────────────────────────────────────────────────────
 @app.route('/ping', methods=['GET'])
