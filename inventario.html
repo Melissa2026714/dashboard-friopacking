@@ -19,6 +19,9 @@
      el botón "Exportar" de Requerimientos, que necesita salir con formato. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="assets/js/recojos-shared.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -231,6 +234,7 @@ function continuarLuegoDeLogin(prof,esLoginFresco){
   cargarProjOcMetaCotMetaSB();
   cargarTransitoSB();
   cargarAlmacenChicosSB();
+  cargarRecojosAlm();
   if(prof.debe_cambiar_clave){
     document.getElementById('authGate').style.display='none';
     abrirCambiarClave(true);
@@ -542,6 +546,7 @@ authGateCheck();
     <button class="tab" id="tab-despacho" onclick="nav('p-despacho')" title="Picking finalizado que aún no sale de almacén — falta armar camión y emitir guía">🚚 Despacho</button>
     <button class="tab" id="tab-despachado" onclick="nav('p-despachado')" title="Antecedente de requerimientos ya despachados, con su N° de guía">✅ Despachado</button>
     <button class="tab" id="tab-cod" onclick="nav('p-cod')">🔖 Códigos</button>
+    <button class="tab" id="tab-recojos" onclick="nav('p-recojos')" title="OC/OPD que se recogen en el local del proveedor: contacto, ubicación y fecha límite (los llena Compras)">📍 Recojos</button>
   </div>
   <div class="nbr">
     <!-- El botón IMPORTAR (Existencias/Kardex + Reporte Maestro/PedSinReq para Tránsito y
@@ -570,6 +575,7 @@ authGateCheck();
     <div class="hcard" onclick="nav('p-despacho')"><div class="hci">🚚</div><div class="hct">Despacho</div><div class="hcs" id="hc-despacho">cargando…</div></div>
     <div class="hcard" onclick="nav('p-despachado')"><div class="hci">✅</div><div class="hct">Despachado</div><div class="hcs" id="hc-despachado">cargando…</div></div>
     <div class="hcard" onclick="nav('p-cod')"><div class="hci">🔖</div><div class="hct">Códigos</div><div class="hcs" id="hc-cod">cargando…</div></div>
+    <div class="hcard" onclick="nav('p-recojos')"><div class="hci">📍</div><div class="hct">Recojos</div><div class="hcs" id="hc-recojos">cargando…</div></div>
   </div>
 </div>
 
@@ -821,6 +827,29 @@ authGateCheck();
   <div class="foot">FRIOPACKING S.A.C. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
 </div>
 
+<!-- ══════════════ PÁGINA: RECOJOS (los llena Compras, ver assets/js/recojos-shared.js) ══════════════ -->
+<div class="pg" id="p-recojos">
+  <div class="hd">
+    <div>
+      <h2>Recojos en proveedor</h2>
+      <div class="sub">OC/OPD que Friopacking recoge en el local del proveedor: Compras llena la ficha (contacto, ubicación y fecha límite) y aquí se marca cuando se recoge</div>
+    </div>
+    <button class="btn bi" onclick="cargarRecojosAlm()">↻ Actualizar</button>
+  </div>
+  <div id="rcAviso" class="note crit" style="display:none"></div>
+  <div class="kpis" id="rcKpis"></div>
+  <div id="rcMapa" style="height:380px;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:14px;background:#e2e8f0"></div>
+  <div class="filters">
+    <select id="rcEst" onchange="renderRecojos()"><option value="pend">Por recoger</option><option value="Recogido">Recogidos</option><option value="Anulado">Anulados</option><option value="">Todos</option></select>
+    <input id="rcq" type="text" placeholder="🔍 Buscar OC / OPD, proveedor, dirección, distrito, proyecto…" oninput="renderRecojos()">
+    <span class="fx" id="rccnt"></span>
+  </div>
+  <div class="tblwrap"><table><thead><tr>
+    <th>OC / OPD</th><th>Recoger hasta</th><th>Proveedor</th><th>Dirección</th><th>Contacto</th><th>Horario</th><th>Disponible desde</th><th>Requisitos</th><th>Proyecto</th><th>Estado</th><th>Acciones</th>
+  </tr></thead><tbody id="rcBody"></tbody></table></div>
+  <div class="foot">FRIOPACKING S.A.C. · Plataforma LOGÍSTICA · Módulo Almacén (prueba)</div>
+</div>
+
 <!-- ══════════════ PÁGINA 4: CÓDIGOS ══════════════ -->
 <div class="pg" id="p-cod">
   <div class="hd">
@@ -1016,13 +1045,151 @@ authGateCheck();
 
 <script>
 /* ═══════════════ NAVEGACIÓN ═══════════════ */
-const PAGES=['home','p-general','p-req','p-pick','p-pickdone','p-despacho','p-despachado','p-cod'];
-const TABS={home:'tab-home','p-general':'tab-general','p-req':'tab-req','p-pick':'tab-pick','p-pickdone':'tab-pickdone','p-despacho':'tab-despacho','p-despachado':'tab-despachado','p-cod':'tab-cod'};
+const PAGES=['home','p-general','p-req','p-pick','p-pickdone','p-despacho','p-despachado','p-cod','p-recojos'];
+const TABS={home:'tab-home','p-general':'tab-general','p-req':'tab-req','p-pick':'tab-pick','p-pickdone':'tab-pickdone','p-despacho':'tab-despacho','p-despachado':'tab-despachado','p-cod':'tab-cod','p-recojos':'tab-recojos'};
 function nav(id){
   PAGES.forEach(p=>{const el=document.getElementById(p==='home'?'ph':p);if(el)el.classList.remove('act');});
   document.getElementById(id==='home'?'ph':id).classList.add('act');
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('act'));
   document.getElementById(TABS[id]).classList.add('act');
+  if(id==='p-recojos')cargarRecojosAlm();
+}
+
+/* ═══════════════ RECOJOS — tabla recojos de Supabase, la llena Compras ═══════════════ */
+let RECOJOS=[],_rcMapa=null,_rcCapa=null,_rcMarcas={};
+async function cargarRecojosAlm(){
+  try{
+    const res=await recojosCargarSB();
+    const av=document.getElementById('rcAviso');
+    if(av){av.style.display=res.error?'flex':'none';av.innerHTML=res.error||'';}
+    if(!res.error)RECOJOS=res.rows;
+  }catch(e){console.warn('No se pudieron cargar los recojos:',e);}
+  const pend=RECOJOS.filter(r=>r.estado==='Listo para recoger'||r.estado==='Falta completar');
+  const venc=pend.filter(r=>{const d=recojoDiasRestantes(r.f_limite);return d!=null&&d<0;}).length;
+  const hc=document.getElementById('hc-recojos');
+  if(hc)hc.textContent=pend.length+' por recoger'+(venc?' · '+venc+' vencido'+(venc>1?'s':''):'');
+  if(document.getElementById('p-recojos').classList.contains('act'))renderRecojos();
+}
+function recojosFiltrados(){
+  const est=(document.getElementById('rcEst')||{value:'pend'}).value;
+  const q=((document.getElementById('rcq')||{value:''}).value||'').trim().toLowerCase();
+  return RECOJOS.filter(r=>{
+    if(est==='pend'){if(r.estado!=='Listo para recoger'&&r.estado!=='Falta completar')return false;}
+    else if(est&&r.estado!==est)return false;
+    if(!q)return true;
+    return [r.doc,r.prov,r.ruc,r.direccion,r.distrito,r.referencia,r.contacto,r.idproy,r.proy,r.resp].join(' ').toLowerCase().includes(q);
+  }).sort((a,b)=>{
+    // Pendientes por fecha límite (las vencidas y más próximas primero); recogidos, lo último arriba
+    if(est==='Recogido')return String(b.f_recogido||'').localeCompare(String(a.f_recogido||''));
+    return String(a.f_limite||'9999').localeCompare(String(b.f_limite||'9999'));
+  });
+}
+function renderRecojos(){
+  const all=RECOJOS;
+  const listo=all.filter(r=>r.estado==='Listo para recoger');
+  const pend=all.filter(r=>r.estado==='Listo para recoger'||r.estado==='Falta completar');
+  const dias=r=>recojoDiasRestantes(r.f_limite);
+  const vencidas=pend.filter(r=>dias(r)!=null&&dias(r)<0).length;
+  const prontas=pend.filter(r=>dias(r)!=null&&dias(r)>=0&&dias(r)<=2).length;
+  const falta=all.filter(r=>r.estado==='Falta completar').length;
+  const hace30=new Date(Date.now()-30*86400000).toLocaleDateString('en-CA');
+  const recog=all.filter(r=>r.estado==='Recogido'&&String(r.f_recogido||'')>=hace30).length;
+  const kp=document.getElementById('rcKpis');
+  if(kp)kp.innerHTML=
+     '<div class="kpi"><div class="kl">Listos para recoger</div><div class="kv">'+listo.length+'</div><div class="kd">Con dirección, contacto y fecha</div></div>'
+    +'<div class="kpi '+(prontas?'warn':'')+'"><div class="kl">Vencen hoy o en 2 días</div><div class="kv">'+prontas+'</div><div class="kd">Priorizar en la ruta</div></div>'
+    +'<div class="kpi '+(vencidas?'alert':'')+'"><div class="kl">Fecha límite vencida</div><div class="kv">'+vencidas+'</div><div class="kd">Coordinar con Compras</div></div>'
+    +'<div class="kpi"><div class="kl">Falta completar</div><div class="kv">'+falta+'</div><div class="kd">Compras aún llena la ficha</div></div>'
+    +'<div class="kpi good"><div class="kl">Recogidos (30 días)</div><div class="kv">'+recog+'</div><div class="kd">Cerrados</div></div>';
+  const rows=recojosFiltrados();
+  const cnt=document.getElementById('rccnt');if(cnt)cnt.textContent=rows.length+' recojo'+(rows.length===1?'':'s');
+  const ed=puedeEditar();
+  const pillEst={'Falta completar':'p-low','Listo para recoger':'p-sobre','Recogido':'p-ok','Anulado':'p-gray'};
+  const btn='border:none;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;white-space:nowrap';
+  const body=document.getElementById('rcBody');
+  if(body)body.innerHTML=rows.map(r=>{
+    const sem=recojoSemaforo(r);
+    const maps=recojoMapsHref(r);
+    const wa=recojoWaHref(r.celular,'Buen día, le saluda Friopacking (Almacén). Coordinamos el recojo de la '+(r.tipo_doc||'OC')+' '+r.doc+'.');
+    const falt=r.estado==='Falta completar'?recojoFaltantes(r):[];
+    const id=recojoEsc(r.id);
+    let acc='';
+    if(maps)acc+='<a href="'+recojoEsc(maps)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="'+btn+';background:#2563eb;color:#fff">📍 Maps</a> ';
+    if(wa)acc+='<a href="'+recojoEsc(wa)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="'+btn+';background:#16a34a;color:#fff">💬</a> ';
+    if(ed&&(r.estado==='Listo para recoger'||r.estado==='Falta completar'))acc+='<button onclick="event.stopPropagation();marcarRecogido(\''+id+'\')" style="'+btn+';background:#0d9488;color:#fff">✅ Recogido</button>';
+    if(ed&&r.estado==='Recogido')acc+='<button onclick="event.stopPropagation();deshacerRecogido(\''+id+'\')" style="'+btn+';background:#f1f5f9;color:#475569">↩ Deshacer</button>';
+    return '<tr class="rowclick" onclick="recojoVerEnMapa(\''+id+'\')" style="'+(r.estado==='Anulado'?'opacity:.5':'')+'">'
+      +'<td><b>'+recojoEsc(r.doc)+'</b><div class="mono">'+recojoEsc(r.tipo_doc||'OC')+'</div></td>'
+      +'<td><b>'+recojoFecha(r.f_limite)+'</b><div style="font-size:11px;font-weight:700;color:'+sem.col+'">'+sem.txt+'</div></td>'
+      +'<td>'+recojoEsc(r.prov||'—')+(r.ruc?'<div class="mono">'+recojoEsc(r.ruc)+'</div>':'')+'</td>'
+      +'<td style="white-space:normal;min-width:220px">'+recojoEsc(r.direccion||'—')+(r.distrito?' · <b>'+recojoEsc(r.distrito)+'</b>':'')+(r.referencia?'<div style="font-size:11px;color:#64748b">Ref.: '+recojoEsc(r.referencia)+'</div>':'')+'</td>'
+      +'<td>'+recojoEsc(r.contacto||'—')+(r.celular?'<div class="mono">'+recojoEsc(r.celular)+'</div>':'')+'</td>'
+      +'<td>'+recojoEsc(r.horario||'—')+'</td>'
+      +'<td>'+recojoFecha(r.f_disponible)+'</td>'
+      +'<td style="white-space:normal;min-width:160px">'+recojoEsc(r.requisitos||'—')+(r.obs?'<div style="font-size:11px;color:#64748b">Compras: '+recojoEsc(r.obs)+'</div>':'')+'</td>'
+      +'<td>'+recojoEsc([r.idproy,r.proy].filter(Boolean).join(' — ')||'—')+(r.resp?'<div style="font-size:11px;color:#64748b">'+recojoEsc(r.resp)+'</div>':'')+'</td>'
+      +'<td><span class="pill '+(pillEst[r.estado]||'p-gray')+'">'+recojoEsc(r.estado)+'</span>'
+        +(falt.length?'<div style="font-size:10px;color:#a16207;margin-top:3px">Falta: '+falt.join(', ')+'</div>':'')
+        +(r.estado==='Recogido'?'<div style="font-size:10px;color:#15803d;margin-top:3px">'+recojoFecha(r.f_recogido)+(r.recogido_por?' · '+recojoEsc(r.recogido_por):'')+'</div>':'')
+        +(r.obs_almacen?'<div style="font-size:10px;color:#64748b;margin-top:2px">'+recojoEsc(r.obs_almacen)+'</div>':'')+'</td>'
+      +'<td>'+(acc||'—')+'</td></tr>';
+  }).join('')||'<tr><td colspan="11" style="text-align:center;padding:24px;color:#94a3b8">'+(RECOJOS.length?'Ningún recojo coincide con el filtro.':'Aún no hay recojos. Compras los registra con el botón 🚚 de cada OC.')+'</td></tr>';
+  pintarMapaRecojos(rows);
+}
+function pintarMapaRecojos(rows){
+  const div=document.getElementById('rcMapa');
+  if(!div||typeof L==='undefined')return;
+  if(!_rcMapa){
+    _rcMapa=L.map('rcMapa').setView(RECOJO_LIMA,11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(_rcMapa);
+    _rcCapa=L.layerGroup().addTo(_rcMapa);
+  }
+  setTimeout(()=>_rcMapa.invalidateSize(),100);
+  _rcCapa.clearLayers();_rcMarcas={};
+  const pts=[];
+  rows.forEach(r=>{
+    if(r.lat==null||r.lon==null)return;
+    const sem=recojoSemaforo(r);
+    const m=L.circleMarker([+r.lat,+r.lon],{radius:9,color:'#fff',weight:2,fillColor:r.estado==='Recogido'?'#16a34a':sem.col,fillOpacity:.95});
+    const maps=recojoMapsHref(r);
+    m.bindPopup('<b>'+recojoEsc(r.tipo_doc||'OC')+' '+recojoEsc(r.doc)+'</b><br>'+recojoEsc(r.prov||'')
+      +'<br>'+recojoEsc(r.direccion||'')+(r.distrito?', '+recojoEsc(r.distrito):'')
+      +(r.contacto||r.celular?'<br>👤 '+recojoEsc(r.contacto||'')+' '+recojoEsc(r.celular||''):'')
+      +'<br>📅 Recoger hasta <b>'+recojoFecha(r.f_limite)+'</b> <span style="color:'+sem.col+'">('+sem.txt+')</span>'
+      +(r.horario?'<br>🕒 '+recojoEsc(r.horario):'')
+      +(maps?'<br><a href="'+recojoEsc(maps)+'" target="_blank" rel="noopener">Abrir en Google Maps</a>':''));
+    m.addTo(_rcCapa);_rcMarcas[r.id]=m;pts.push([+r.lat,+r.lon]);
+  });
+  if(pts.length===1)_rcMapa.setView(pts[0],14);
+  else if(pts.length>1)_rcMapa.fitBounds(pts,{padding:[30,30],maxZoom:14});
+}
+function recojoVerEnMapa(id){
+  const m=_rcMarcas[id];
+  if(!m){const r=RECOJOS.find(x=>x.id===id);const u=r&&recojoMapsHref(r);if(u)window.open(u,'_blank','noopener');return;}
+  document.getElementById('rcMapa').scrollIntoView({behavior:'smooth',block:'center'});
+  _rcMapa.setView(m.getLatLng(),16);m.openPopup();
+}
+async function recojoActualizar(id,cambios,accion){
+  if(!puedeEditar()){alert('Tu usuario es de solo lectura.');return false;}
+  cambios.actualizado_por=(sesionPerfil&&sesionPerfil.nombre)||null;
+  cambios.updated_at=new Date().toISOString();
+  const {error}=await sb.from('recojos').update(cambios).eq('id',id);
+  if(error){alert('⚠️ No se pudo guardar: '+error.message);return false;}
+  const r=RECOJOS.find(x=>x.id===id);if(r)Object.assign(r,cambios);
+  registrarAuditoria(accion,'recojos',r?r.doc:id,cambios);
+  cargarRecojosAlm();
+  return true;
+}
+function marcarRecogido(id){
+  const r=RECOJOS.find(x=>x.id===id);if(!r)return;
+  const obs=prompt('Recojo de '+(r.tipo_doc||'OC')+' '+r.doc+' ('+(r.prov||'')+').\nObservación opcional (ej. recogió Juan, faltó 1 ítem). Acepta para marcarlo como Recogido hoy:','');
+  if(obs===null)return;
+  recojoActualizar(id,{estado:'Recogido',f_recogido:recojoHoyISO(),recogido_por:(sesionPerfil&&sesionPerfil.nombre)||null,obs_almacen:obs.trim()||r.obs_almacen||null},'recojo_recogido');
+}
+function deshacerRecogido(id){
+  const r=RECOJOS.find(x=>x.id===id);if(!r)return;
+  if(!confirm('¿Volver a poner pendiente el recojo de '+r.doc+'?'))return;
+  recojoActualizar(id,{estado:recojoEstadoSegunDatos(Object.assign({},r,{estado:''})),f_recogido:null,recogido_por:null},'recojo_deshacer');
 }
 
 /* ═══════════════ EXISTENCIAS — datos de ejemplo hasta que se importe el Análisis Inventario real ═══════════════ */
