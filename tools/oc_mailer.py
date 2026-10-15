@@ -213,6 +213,7 @@ def add_headers(response):
 @app.route('/send-oc',  methods=['OPTIONS'])
 @app.route('/send-cot', methods=['OPTIONS'])
 @app.route('/factura-oc', methods=['OPTIONS'])
+@app.route('/docs-pago', methods=['OPTIONS'])
 @app.route('/opd-info', methods=['OPTIONS'])
 @app.route('/guardar-opd', methods=['OPTIONS'])
 def handle_options():
@@ -225,6 +226,68 @@ def factura_oc():
     factura, archivo = _numero_factura_oc(numero_oc)
     print(f'[FACTURA-OC] oc={numero_oc}  factura={factura or "—"}  archivo={archivo or "—"}', flush=True)
     return jsonify({'ok': bool(factura), 'factura': factura, 'archivo': archivo})
+
+# ── Factura y cotización de una OC (para autollenar la Solicitud de Pago) ─────
+# Devuelve el texto de los PDF hallados por N° de OC en FACTURA y COTIZACIONES; el
+# dashboard saca de ahí el N° de factura y el monto (mismo lector que al adjuntar a mano).
+def _texto_pdf(fpath, max_pages=3):
+    if not fpath.lower().endswith('.pdf'):
+        return ''
+    try:
+        from pypdf import PdfReader
+        return '\n'.join((pg.extract_text() or '') for pg in PdfReader(fpath).pages[:max_pages])[:20000]
+    except Exception as e:
+        print(f'[DOCS-PAGO] No se pudo leer {os.path.basename(fpath)}: {e}', flush=True)
+        return ''
+
+@app.route('/docs-pago', methods=['GET'])
+def docs_pago():
+    numero_oc = (request.args.get('oc') or '').strip()
+    out = {'ok': True, 'oc': numero_oc}
+    for clave, carpeta in (('facturas', FACT_FOLDER), ('cotizaciones', COT_FOLDER)):
+        out[clave] = [{'nombre': os.path.basename(fp), 'texto': _texto_pdf(fp)}
+                      for fp in _buscar_archivos_oc(carpeta, numero_oc)]
+    print(f'[DOCS-PAGO] oc={numero_oc}  facturas={len(out["facturas"])}  cotizaciones={len(out["cotizaciones"])}', flush=True)
+    return jsonify(out)
+
+# Factura/cotización adjuntadas a mano en la Solicitud de Pago: se guardan en FACTURA /
+# COTIZACIONES con el N° de OC en el nombre (si no lo traen) para que la próxima vez se
+# encuentren solas. Devuelve las rutas para adjuntarlas al correo.
+def _guardar_adjuntos_pago(adjuntos, numero_oc):
+    import base64, tempfile
+    rutas = []
+    for f in adjuntos or []:
+        try:
+            contenido = base64.b64decode(f.get('b64') or '')
+            if not contenido:
+                continue
+            carpeta = (FACT_FOLDER if f.get('tipo') == 'factura' else COT_FOLDER) or tempfile.gettempdir()
+            stem, ext = os.path.splitext(_nombre_seguro(f.get('nombre') or 'archivo'))
+            if numero_oc and not _buscar_archivos_oc_nombre(stem + ext, numero_oc):
+                stem = f'{stem} OC {numero_oc}'
+            destino = os.path.join(carpeta, stem + ext)
+            n = 2
+            while os.path.exists(destino):
+                with open(destino, 'rb') as fh:
+                    if fh.read() == contenido:
+                        break
+                destino = os.path.join(carpeta, f'{stem} ({n}){ext}')
+                n += 1
+            if not os.path.exists(destino):
+                with open(destino, 'wb') as fh:
+                    fh.write(contenido)
+            rutas.append(destino)
+            print(f'[SEND-OC] 💾 {f.get("tipo")} guardada: {destino}', flush=True)
+        except Exception as e:
+            print(f'[SEND-OC] ⚠️  No se pudo guardar {f.get("nombre")}: {e}', flush=True)
+    return rutas
+
+def _buscar_archivos_oc_nombre(fname, numero_oc):
+    partes = numero_oc.split('-')
+    solo_num = partes[-1]
+    ultimo = solo_num.lstrip('0') or '0'
+    fl = fname.lower()
+    return numero_oc.replace('-', ' ').lower() in fl or solo_num in fl or ultimo in fl
 
 # ── Datos de una OPD (para autollenar el formulario del dashboard) ────────────
 @app.route('/opd-info', methods=['GET'])
@@ -413,14 +476,21 @@ def send_oc():
                         carpetas_chk = ((FACT_FOLDER, 'Factura'), (COMP_FOLDER, 'Comprobante de pago'))
                     else:
                         carpetas_chk = ()
+                    guardados = _guardar_adjuntos_pago(data.get('adjuntos'), numero_oc)
+                    adjuntados = set()
                     for carpeta, etiqueta in carpetas_chk:
                         archivos = _buscar_archivos_oc(carpeta, numero_oc)
                         if archivos:
                             for fp in archivos:
+                                adjuntados.add(os.path.normcase(fp))
                                 mail.Attachments.Add(fp)
                                 print(f'[SEND-OC] 📎 {etiqueta} adjuntada: {os.path.basename(fp)}', flush=True)
                         else:
                             print(f'[SEND-OC] ⚠️  No se encontró {etiqueta} para OC {numero_oc} en {carpeta or "(carpeta no detectada)"}', flush=True)
+                    for fp in guardados:
+                        if os.path.normcase(fp) not in adjuntados:
+                            mail.Attachments.Add(fp)
+                            print(f'[SEND-OC] 📎 Adjunto manual: {os.path.basename(fp)}', flush=True)
                     # Adjuntar CARTILLA SSOMA si es entrega en Lurín
                     # Detecta por modality (versión nueva del dashboard) O por contenido del cuerpo (versión online)
                     es_lurin = not es_sol and ((str(modality or '').lower() == 'planta') or ('lurín' in html_body.lower()) or ('lurin' in html_body.lower()))
