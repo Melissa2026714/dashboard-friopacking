@@ -2754,7 +2754,7 @@ function abrirFichaRecojo(doc,tipoDoc,ctx){
     var lat=r&&r.lat!=null?+r.lat:null,lon=r&&r.lon!=null?+r.lon:null;
     _recojoMapa=L.map('rc-mapa').setView(lat!=null?[lat,lon]:RECOJO_LIMA,lat!=null?16:11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(_recojoMapa);
-    _recojoPin=null;
+    _recojoPin=null;recojoLeerLink._ult=null;
     if(lat!=null)recojoPonerPin(lat,lon,false);
     if(ed)_recojoMapa.on('click',function(e){recojoPonerPin(e.latlng.lat,e.latlng.lng,false);
       var inf=document.getElementById('rc-maps-info');if(inf)inf.innerHTML='<span style="color:#15803d">✓ Punto marcado en el mapa ('+e.latlng.lat.toFixed(5)+', '+e.latlng.lng.toFixed(5)+')</span>';});
@@ -2772,8 +2772,31 @@ function recojoLeerLink(){
   var el=document.getElementById('rc-maps'),inf=document.getElementById('rc-maps-info');
   if(!el)return;
   var c=recojoParseMaps(el.value);
-  if(c){recojoPonerPin(c.lat,c.lon,true);if(inf)inf.innerHTML='<span style="color:#15803d">✓ Ubicado en el mapa desde el link ('+c.lat.toFixed(5)+', '+c.lon.toFixed(5)+')</span>';}
-  else if(el.value.trim()&&inf)inf.innerHTML='<span style="color:#b45309">Este link no trae coordenadas (link corto): haz clic en el mapa para marcar el punto. El link igual se guarda para abrirlo en Google Maps.</span>';
+  if(c){recojoPonerPin(c.lat,c.lon,true);if(inf)inf.innerHTML='<span style="color:#15803d">✓ Ubicado en el mapa desde el link ('+c.lat.toFixed(5)+', '+c.lon.toFixed(5)+')</span>';return;}
+  var url=el.value.trim();
+  if(!url||!inf)return;
+  var manual='haz clic en el mapa para marcar el punto. El link igual se guarda para abrirlo en Google Maps.';
+  if(!/^https?:\/\/(maps\.app\.goo\.gl|goo\.gl|g\.co|(www\.)?google\.com(\.pe)?\/maps|maps\.google\.com)\//i.test(url)){
+    inf.innerHTML='<span style="color:#b45309">Este link no trae coordenadas: '+manual+'</span>';return;
+  }
+  // Link corto (maps.app.goo.gl): el navegador no puede seguir la redirección, pero el
+  // servidor de correos sí (/resolver-maps) y devuelve las coordenadas del link final.
+  if(recojoLeerLink._ult===url)return;
+  recojoLeerLink._ult=url;
+  inf.innerHTML='<span style="color:#64748b">Ubicando el link corto…</span>';
+  fetch('http://127.0.0.1:5100/resolver-maps?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(12000)})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(el.value.trim()!==url)return;
+      if(d.ok&&d.lat!=null){
+        recojoPonerPin(d.lat,d.lon,true);
+        inf.innerHTML='<span style="color:#15803d">✓ Ubicado desde el link corto'+(d.lugar?': '+recojoEsc(d.lugar):'')+' ('+(+d.lat).toFixed(5)+', '+(+d.lon).toFixed(5)+'). Si no es el punto exacto, haz clic en el mapa para corregirlo.</span>';
+      }else inf.innerHTML='<span style="color:#b45309">No se pudo leer la ubicación de este link: '+manual+'</span>';
+    })
+    .catch(function(){
+      recojoLeerLink._ult=null;
+      inf.innerHTML='<span style="color:#b45309">Link corto: para ubicarlo solo, abre el servidor de correos (iniciar_servidor_correos.bat) y vuelve a pegarlo. Mientras tanto, '+manual+'</span>';
+    });
 }
 function cerrarFichaRecojo(){
   if(_recojoMapa){try{_recojoMapa.remove();}catch(e){}_recojoMapa=null;_recojoPin=null;}
@@ -5549,7 +5572,7 @@ function markConsultasDirty(){
 // BUILD_ID cambia con cada corrección importante. Si una pestaña quedó abierta
 // desde antes de un fix, detecta que hay una versión nueva publicada y bloquea
 // GUARDAR para que esa pestaña vieja no pise datos recientes de otros usuarios.
-const BUILD_ID='2026-10-14T22:00:00Z-recojos';
+const BUILD_ID='2026-10-15T10:00:00Z-recojos-link-corto';
 let _staleClient=false;
 function showUpdateBanner(){
   if(document.getElementById('_updBanner'))return;

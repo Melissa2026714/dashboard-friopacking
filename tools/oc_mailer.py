@@ -216,6 +216,7 @@ def add_headers(response):
 @app.route('/docs-pago', methods=['OPTIONS'])
 @app.route('/opd-info', methods=['OPTIONS'])
 @app.route('/guardar-opd', methods=['OPTIONS'])
+@app.route('/resolver-maps', methods=['OPTIONS'])
 def handle_options():
     return ('', 204)
 
@@ -383,6 +384,42 @@ def guardar_opd():
         except Exception:
             pass
     return jsonify({'ok': not errores, 'guardados': guardados, 'renombrados': renombrados, 'errores': errores})
+
+# ── Link corto de Google Maps → coordenadas (ficha de recojo) ──────────────────
+# Los links maps.app.goo.gl no traen coordenadas y el navegador no puede seguir su
+# redirección (CORS); aquí se sigue y se leen del link final. Solo hosts de Google Maps.
+_HOSTS_MAPS = ('maps.app.goo.gl', 'goo.gl', 'g.co', 'www.google.com', 'google.com', 'maps.google.com', 'www.google.com.pe', 'google.com.pe')
+
+@app.route('/resolver-maps', methods=['GET'])
+def resolver_maps():
+    import urllib.request, urllib.parse
+    url = (request.args.get('url') or '').strip()
+    p = urllib.parse.urlparse(url)
+    if p.scheme not in ('http', 'https') or (p.hostname or '').lower() not in _HOSTS_MAPS \
+            or ((p.hostname or '').lower() not in ('maps.app.goo.gl', 'maps.google.com') and '/maps' not in p.path and (p.hostname or '').lower() not in ('goo.gl', 'g.co')):
+        return jsonify({'ok': False, 'error': 'Solo se aceptan links de Google Maps'}), 400
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            final = r.geturl()
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'No se pudo abrir el link: {e}'}), 502
+    lat = lon = None
+    for pat in (r'!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)', r'@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)',
+                r'[?&](?:q|query|ll|destination)=(-?\d{1,2}\.\d+)(?:,|%2C)\+?(-?\d{1,3}\.\d+)'):
+        m = re.search(pat, final)
+        if m:
+            lat, lon = float(m.group(1)), float(m.group(2))
+            break
+    lugar = ''
+    m = re.search(r'/maps/place/([^/@]+)', final)
+    if m:
+        lugar = urllib.parse.unquote_plus(m.group(1))
+    try:
+        print(f'[RESOLVER-MAPS] {url} -> {lat},{lon} {lugar}', flush=True)
+    except Exception:
+        pass
+    return jsonify({'ok': lat is not None, 'lat': lat, 'lon': lon, 'lugar': lugar, 'url': final})
 
 # ── Ping ───────────────────────────────────────────────────────────────────────
 @app.route('/ping', methods=['GET'])
