@@ -3590,6 +3590,18 @@ function verCorreoSolicitudPago(oc){
   var montoTotal=monedasOC.length===1?items.reduce(function(s,it){return s+(it.punit||0)*(it.cantOrd||0);},0):0;
   if(!montoTotal)montoTotal=ocRows.reduce(function(s,o){
     return s+(monPago==='S/'?(o.montoSoles||0):(o.tc?(o.montoSoles||0)/o.tc:0));},0);
+  // El Reporte Maestro puede no traer todas las líneas de la OC (p. ej. una línea sin O.P./proyecto
+  // asignado), y el correo pedía de menos. CONSULTAS trae la OC completa tal como sale en el PDF
+  // de Nisira: si sus líneas suman más, manda su subtotal. Se cruza por número + proveedor porque
+  // la serie (OCO/OSR) no viene en el código de la OC.
+  var _nrm=function(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');};
+  var cnsOC=(D.consultas||[]).filter(function(c){
+    return String(c.oc||'').replace(/^[A-Z]+\s+/,'')===oc&&(!prov||_nrm(c.proveedor)===_nrm(prov));});
+  var monCns=[];cnsOC.forEach(function(c){var m=simMon(c.moneda);if(m&&monCns.indexOf(m)<0)monCns.push(m);});
+  if(monCns.length===1&&monCns[0]===monPago){
+    var subCns=cnsOC.reduce(function(s,c){return s+(Number(c.valor)||0)*(Number(c.cant)||0);},0);
+    if(subCns>montoTotal+0.005)montoTotal=subCns;
+  }
   // Las líneas traen precio SIN IGV, pero a Tesorería se le pide el TOTAL de la OC (con IGV).
   // Si la OC está en R.EOC (CONSULTAS.xlsx), su TOTAL ya incluye IGV y manda; si no, se suma 18%.
   // conIgv: si el TOTAL de R.EOC es igual al subtotal de líneas, la OC no lleva IGV (exonerada/inafecta)
