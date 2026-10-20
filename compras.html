@@ -2868,6 +2868,9 @@ function abrirSolicitudOPD(){
   ov.id='sol-overlay';
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
   ov.onclick=function(e){if(e.target===ov)cerrarSolicitudOPD();};
+  // Lo que el usuario escribe a mano no se pisa al leer la cotización.
+  var marcar=function(e){if(e.target&&e.target.id&&e.target.type!=='file')e.target.dataset.manual='1';};
+  ov.addEventListener('input',marcar);ov.addEventListener('change',marcar);
   ov.innerHTML=
     '<div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:24px 26px;font-family:Inter,Arial,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.35);max-height:90vh;overflow:auto">'
     +'<div style="display:flex;align-items:center;justify-content:space-between">'
@@ -2904,22 +2907,95 @@ function solAutocompletarRuc(){
   var match=(D.proveedores||[]).find(function(p){return p.nombre&&p.nombre.trim().toLowerCase()===nombre.toLowerCase();});
   if(match&&match.ruc)rucEl.value=match.ruc;
 }
-// La cotización de cada proveedor tiene otro formato: no se intenta leer el monto, solo se
-// sugiere proveedor/RUC si el PDF trae un RUC de la base de proveedores.
+// "1,168.20" / "1.168,20" / "990" → número
+function solNumero(s){
+  s=String(s||'').replace(/\s/g,'');
+  if(/,\d{1,2}$/.test(s))s=s.replace(/\./g,'').replace(',','.');else s=s.replace(/,/g,'');
+  if((s.match(/\./g)||[]).length>1)s=s.replace(/\.(?=.*\.)/g,''); // "1.241.78"
+  var n=parseFloat(s);return isFinite(n)?n:null;
+}
+// Cada proveedor arma su cotización distinto: se buscan las etiquetas más comunes y lo que
+// no se encuentre queda vacío para llenarlo a mano.
+function solParsearCot(t){
+  var out={};
+  var lineas=t.split('\n');
+  // RUC del proveedor: el que está en la base de proveedores; si no, el primero que no esté
+  // en la línea del cliente (FRIOPACKING).
+  var rucs=[];(t.match(/\b(?:10|20)\d{9}\b/g)||[]).forEach(function(r){if(rucs.indexOf(r)<0)rucs.push(r);});
+  var enBase=null;
+  rucs.some(function(r){enBase=(D.proveedores||[]).find(function(p){return String(p.ruc)===r&&!/FRIOPACKING/i.test(p.nombre||'');});return !!enBase;});
+  if(enBase){out.ruc=String(enBase.ruc);out.prov=enBase.nombre||'';}
+  else{
+    out.ruc=rucs.find(function(r){return !lineas.some(function(l){return l.indexOf(r)>=0&&/FRIOPACKING|CLIENTE|SE[ÑN]OR(ES)?/i.test(l);});})||'';
+    var nm=t.match(/a\s+nombre\s+de\s*:?\s*([^\n]+?)(?:\s{2,}|\n|$)/i)
+      ||t.match(/^\s*([A-ZÁÉÍÓÚÑ0-9&.,' -]{4,80}?\b(?:E\.?I\.?R\.?L\.?|S\.?A\.?C\.?|S\.?R\.?L\.?|S\.?A\.?A\.?|S\.?A\.?))\s*$/m);
+    if(nm&&!/FRIOPACKING/i.test(nm[1]))out.prov=nm[1].trim();
+  }
+  // Total: el mayor monto junto a una etiqueta "TOTAL" (no subtotal). Así gana el total con
+  // IGV aunque el encabezado de la tabla diga "Precio Total" junto al N° de ítem.
+  var rx=/(SUB\s*-?\s*)?TOTAL[^\d\n]{0,40}?(?:\n[^\d\n]{0,25})?(\d[\d.,]*\d)/gi,mm,mejor=null;
+  while((mm=rx.exec(t))){
+    if(mm[1])continue;
+    var n=solNumero(mm[2]);
+    if(n&&n>0&&(!mejor||n>mejor.n))mejor={n:n,txt:mm[0]};
+  }
+  // Más confiable que la etiqueta (que a veces queda lejos de su número en el PDF): un par
+  // subtotal / total con IGV (total = subtotal × 1.18) entre los montos del documento.
+  var nums=(t.match(/\d{1,3}(?:[.,]\d{3})+[.,]\d{2}(?!\d)|\d+[.,]\d{2}(?!\d)/g)||[]).map(solNumero).filter(function(n){return n>0;});
+  var conIgv=null;
+  nums.forEach(function(a){nums.forEach(function(c){
+    if(Math.abs(a*1.18-c)<=0.02+c*0.0001&&(!conIgv||c>conIgv))conIgv=c;});});
+  if(conIgv&&(!mejor||conIgv>=mejor.n*0.5))out.total=Math.round(conIgv*100)/100;
+  else if(mejor)out.total=Math.round(mejor.n*100)/100;
+  // Moneda: "Moneda: Dólares/Soles"; si no, el símbolo junto al total; si no, el que más aparece.
+  var mon=t.match(/Moneda\s*:?\s*(D[oó]lar|Sol|US\$|USD|S\/|PEN)/i);
+  var esUSD=function(x){return /D[oó]lar|US\$|USD|\$/i.test(x)&&!/S\/|SOLES|PEN/i.test(x);};
+  if(mon)out.moneda=esUSD(mon[1])?'USD':'PEN';
+  else if(mejor&&/US\$|USD|\$|S\//i.test(mejor.txt))out.moneda=esUSD(mejor.txt)?'USD':'PEN';
+  else{var nU=(t.match(/US\$|USD|D[OÓ]LARES/gi)||[]).length,nS=(t.match(/S\/|SOLES/gi)||[]).length;if(nU||nS)out.moneda=nU>nS?'USD':'PEN';}
+  // Condición de pago
+  var fp=t.match(/(?:(?:Forma|Condici[oó]n(?:es)?|Modalidad)\s+de|F\.)[ \t]*pago[ \t]*:?[ \t]*([^\n]{3,80})/i);
+  if(fp){
+    var f=fp[1].replace(/^[\s●•·\-:]+/,'').trim();
+    if(/contado|contra\s*entrega|adelantad|anticipad/i.test(f))out.fpago='CONTADO';
+    else{var d=f.match(/(\d{1,3})\s*d[ií]as/i);if(d)out.fpago='CRÉDITO '+d[1]+' DÍAS';else if(f.length<=40&&/[a-z]{3}/i.test(f))out.fpago=f.toUpperCase();}
+  }
+  // Descripción: la primera línea de ítem ("01.00 MESA METALICA ... UND 1 990.00")
+  var it=t.match(/^\s*0?\d{1,3}(?:\.\d{1,2})?\s+([A-ZÁÉÍÓÚÑ][^\n]{5,150}?)\s+(?:UND|UNID|UNIDAD(?:ES)?|UN|PZA|PZAS|KG|MT|ML|M2|M|GLB|GLOBAL|JGO|JUEGO|SERV|SERVICIO|NIU|CJ|CAJA|ROLLO|LT)\.?\s+\d/im);
+  if(it)out.desc=it[1].trim();
+  var nc=t.match(/COTIZACI[OÓ]N\s*(?:N\s*[°º.o]?\s*|Nro\.?\s*)?:?\s*(\d[\d \-]{1,15}\d)/i);
+  if(nc)out.nroCot=nc[1].replace(/\s+/g,'');
+  return out;
+}
 function solTomarCot(file){
   if(!file)return;
   window._solCot=file;
   var info=document.getElementById('sol-cot-info');
   if(info)info.innerHTML='<span style="color:#15803d">✓ '+opdEsc(file.name)+'</span>';
-  if(!/\.pdf$/i.test(file.name))return;
+  if(!/\.pdf$/i.test(file.name)){if(info)info.innerHTML+='<br><span style="color:#64748b">Solo se leen datos de cotizaciones en PDF: completa el formulario a mano.</span>';return;}
+  if(info)info.innerHTML+='<br><span style="color:#64748b">Leyendo la cotización…</span>';
   opdTextoPDF(file).then(function(t){
-    var rucs=t.match(/\b(?:10|20)\d{9}\b/g)||[];
-    var prov=null;
-    rucs.some(function(r){prov=(D.proveedores||[]).find(function(p){return String(p.ruc)===r;});return !!prov;});
-    var pEl=document.getElementById('sol-prov'),rEl=document.getElementById('sol-ruc');
-    if(prov&&pEl&&!pEl.value.trim()){pEl.value=prov.nombre||'';if(rEl&&!rEl.value.trim())rEl.value=prov.ruc||'';
-      if(info)info.innerHTML+='<br><span style="color:#475569">Proveedor detectado por RUC: '+opdEsc(prov.nombre)+'</span>';}
-  }).catch(function(){});
+    if(!t.trim()){info.innerHTML='<span style="color:#15803d">✓ '+opdEsc(file.name)+'</span><br><span style="color:#b45309">⚠️ El PDF no tiene texto (¿escaneado?): completa los datos a mano.</span>';return;}
+    var d=solParsearCot(t),leidos=[],faltan=[];
+    var set=function(id,val,etq){
+      var el=document.getElementById(id);if(!el)return;
+      if(val===undefined||val===null||val===''){faltan.push(etq);return;}
+      if(el.dataset.manual)return;
+      el.value=val;leidos.push(etq);
+    };
+    set('sol-prov',d.prov,'Proveedor');set('sol-ruc',d.ruc,'RUC');set('sol-desc',d.desc,'Descripción');
+    set('sol-total',d.total,'Monto');set('sol-moneda',d.moneda,'Moneda');set('sol-fpago',d.fpago,'Condición de pago');
+    if(d.nroCot)set('sol-obs','Cotización N° '+d.nroCot,'N° de cotización');
+    var mon=d.moneda==='USD'?'US$ ':(d.moneda==='PEN'?'S/ ':'');
+    var lin=['<span style="color:#15803d">✓ '+opdEsc(file.name)+'</span>'];
+    if(leidos.length)lin.push('<span style="color:#0369a1">Leído: '+leidos.join(', ')
+      +(d.total?' · <b>'+mon+d.total.toLocaleString('en-US',{minimumFractionDigits:2})+'</b>':'')+(d.fpago?' · '+opdEsc(d.fpago):'')+'</span>');
+    if(faltan.length)lin.push('<span style="color:#b45309">⚠️ No encontré: '+faltan.join(', ')+'. Complétalo a mano.</span>');
+    lin.push('<span style="color:#64748b">Revisa los datos antes de generar el correo, sobre todo la moneda y el monto.</span>');
+    info.innerHTML=lin.join('<br>');
+  }).catch(function(e){
+    if(info)info.innerHTML='<span style="color:#15803d">✓ '+opdEsc(file.name)+'</span><br><span style="color:#b45309">⚠️ No se pudo leer el PDF ('+opdEsc(e&&e.message||e)+'): completa los datos a mano.</span>';
+  });
 }
 function generarSolicitudOPD(){
   var v=function(id){return ((document.getElementById(id)||{value:''}).value||'').trim();};
