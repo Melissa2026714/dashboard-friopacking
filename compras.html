@@ -2967,14 +2967,14 @@ function verCorreoSolicitudOPD(id){
     ['Monto total (inc. IGV)',opdMontoTxt(o)],['Condición de pago',o.forma_pago],['Área solicitante',o.area],
     ['Proyecto',[o.idproy,o.proy].filter(Boolean).join(' — ')],['Responsable',o.resp],['Observación',o.obs]]
     .filter(function(r){return r[1]&&r[1]!=='—';});
-  var td='font-family:Calibri,Arial,sans-serif;font-size:14px;border:1px solid #ddd6fe;padding:7px 12px;vertical-align:top';
+  var td='font-family:Calibri,Arial,sans-serif;font-size:14px;border:1px solid #bae6fd;padding:7px 12px;vertical-align:top';
   var tabla='<table style="border-collapse:collapse;margin:8px 0 14px">'+filas.map(function(r){
-    return '<tr><td style="'+td+';background:#f5f3ff;font-weight:700;color:#5b21b6;white-space:nowrap">'+r[0]+'</td><td style="'+td+';color:#1e293b">'+opdEsc(r[1])+'</td></tr>';}).join('')+'</table>';
+    return '<tr><td style="'+td+';background:#e0f2fe;font-weight:700;color:#0369a1;white-space:nowrap">'+r[0]+'</td><td style="'+td+';color:#1e293b">'+opdEsc(r[1])+'</td></tr>';}).join('')+'</table>';
   var cuerpo='<p>Estimado Sr. Álvaro, buen día:</p>'
     +'<p>Solicitamos su aprobación para la emisión de una <strong>Orden de Pago (OPD)</strong> por la siguiente compra puntual. Adjuntamos la cotización del proveedor.</p>'
     +tabla
     +'<p>Una vez aprobada, agradeceremos a Provisión emitir la OPD y remitirla al Área de Compras, para enviarla al proveedor junto con la cotización.</p>'
-    +'<p>Saludos cordiales,<br><strong style="color:#5b21b6">Área de Compras — FRIOPACKING S.A.C.</strong></p>';
+    +'<p>Saludos cordiales,<br><strong>Área de Compras — FRIOPACKING S.A.C.</strong></p>';
   var J=function(x){return JSON.stringify(x).replace(/</g,'\\u003c');};
   var w=window.open('','_blank','width=1000,height=860,scrollbars=yes,resizable=yes');
   if(!w){alert('El navegador bloqueó la ventana del correo: permite ventanas emergentes para esta página.');return;}
@@ -2983,13 +2983,13 @@ function verCorreoSolicitudOPD(id){
     +'.topbar{background:#0f172a;padding:10px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0}'
     +'.brand{color:#e2e8f0;font-size:13px;font-weight:700}.btn{padding:8px 18px;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer}'
     +'.inner{max-width:900px;margin:20px auto;padding:0 24px 40px}.info{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;font-size:12px;color:#475569;margin-bottom:14px;line-height:1.7}'
-    +'.mail{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px 28px}.subj{background:#f5f3ff;border-left:4px solid #7c3aed;padding:10px 16px;font-size:12px;color:#5b21b6;font-weight:600;margin-bottom:18px}'
+    +'.mail{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px 28px}.subj{background:#f0f9ff;border-left:4px solid #0369a1;padding:10px 16px;font-size:12px;color:#0369a1;font-weight:600;margin-bottom:18px;border-radius:0 6px 6px 0}'
     +'#mail-body{font-size:14px;line-height:1.8;outline:none}#mail-body p{margin-bottom:14px}'
     +'.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;font-weight:600;display:none}'
     +'</style></head><body>'
     +'<div class="toast" id="toast"></div>'
     +'<div class="topbar"><div class="brand">📝 Solicitud de OPD '+opdEsc(o.codigo||'')+' · '+opdEsc(o.prov||'')+'</div><div style="margin-left:auto;display:flex;gap:8px">'
-    +'<button class="btn" style="background:linear-gradient(135deg,#7c3aed,#a855f7)" onclick="abrirOutlook()">✉ Abrir Outlook</button>'
+    +'<button class="btn" style="background:linear-gradient(135deg,#0369a1,#0891b2)" onclick="abrirOutlook()">✉ Abrir Outlook</button>'
     +'<button class="btn" style="background:#334155" onclick="copiarCorreo()">📋 Copiar correo</button></div></div>'
     +'<div class="inner"><div class="info"><b>Para:</b> '+opdEsc(to)+'<br><b>CC:</b> '+opdEsc(cc).replace(/;/g,' · ')
     +'<br><b>Adjunto:</b> '+(o.cotizacion?opdEsc(o.cotizacion)+' (carpeta COTIZACIONES)':'<span style="color:#b45309">sin cotización registrada: adjúntala en Outlook</span>')
