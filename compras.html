@@ -2927,6 +2927,18 @@ function generarSolicitudOPD(){
   if(!prov||!desc||!(total>0)){alert('Completa al menos Proveedor, Descripción y Monto total.');return;}
   var cot=window._solCot;
   if(!cot&&!confirm('No adjuntaste la cotización. ¿Generar la solicitud igual? (tendrás que adjuntarla a mano en Outlook)'))return;
+  // Con cotización, verificar el servidor ANTES de generar: si no está activo, avisar con el
+  // formulario aún abierto para que pueda iniciarlo y reintentar sin perder lo llenado.
+  var servidor=window._solServidor;window._solServidor=null;
+  if(cot&&!servidor){
+    fetch('http://127.0.0.1:5100/ping',{signal:AbortSignal.timeout(2000)})
+      .then(function(r){if(!r.ok)throw new Error();return 'ok';})
+      .catch(function(){
+        return confirm('⚠️ El servidor de correos no está activo: la cotización no se guardará en COTIZACIONES ni se adjuntará sola al correo.\n\n• Cancelar: abre iniciar_servidor_correos.bat y vuelve a pulsar "Generar correo" (el formulario sigue abierto).\n• Aceptar: generar igual y adjuntarla a mano en Outlook.')?'off':null;
+      })
+      .then(function(s){if(s){window._solServidor=s;generarSolicitudOPD();}});
+    return;
+  }
   var codigo=opdSiguienteCodigo();
   var cotNombre=null;
   if(cot){var mm=cot.name.match(/^(.*?)(\.[^.]+)?$/);cotNombre=mm[1]+' '+codigo+((mm[2]||'.pdf').toLowerCase());}
@@ -2936,7 +2948,7 @@ function generarSolicitudOPD(){
     obs:v('sol-obs')||null,cotizacion:cotNombre};
   cerrarSolicitudOPD();
   opdGuardarSB(fila,'opd_solicitar');
-  if(cot){
+  if(cot&&servidor==='ok'){
     opdArchivoB64(cot).then(function(c){
       return fetch('http://127.0.0.1:5100/guardar-opd',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({codigo:codigo,cot:c}),signal:AbortSignal.timeout(15000)});
