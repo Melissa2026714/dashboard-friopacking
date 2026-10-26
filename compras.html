@@ -3253,7 +3253,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   var provSup=buscarProveedor(esUrgente?manualDatos.ruc:(ocRows[0]&&ocRows[0].ruc),prov);
   var emailProv=esUrgente?((provSup&&provSup.correo)||''):((ocRows[0]&&ocRows[0].emailProv)||(provSup&&provSup.correo)||'');
   var asunto=DOC+' N° '+oc+' — FRIOPACKING S.A.C. // '+prov+(idproy?' // '+idproy:'')+(proy?' // '+proy:'');
-  var CC_OC='msihuairo@friopacking.pe;ccheca@friopacking.pe;mlujan@friopacking.pe;plinares@friopacking.pe;jaltamirano@friopacking.pe;jpomez@friopacking.pe;kalbujar@grupofriopacking.pe;jcenteno@friopacking.pe;mcondori@grupofriopacking.pe';
+  var CC_OC='msihuairo@friopacking.pe;ccheca@friopacking.pe;mlujan@friopacking.pe;plinares@friopacking.pe;jaltamirano@friopacking.pe;jpomez@friopacking.pe;kalbujar@friopacking.pe;jcenteno@friopacking.pe;mcondori@grupofriopacking.pe';
   // Agregar automáticamente al responsable de la OC si está en la base de Supervisores
   var respSup=buscarSupervisor(it0.resp);
   if(respSup&&respSup.correo&&!CC_OC.toLowerCase().includes(respSup.correo)){
@@ -3433,53 +3433,24 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   h+='var _cc='+JSON.stringify(CC_OC)+';';
   h+='var _to='+JSON.stringify(emailProv)+';';
   h+='var _tablaHtml='+JSON.stringify(tablaHtmlBody)+';';
-  h+='var _cuerpoPlanta='+JSON.stringify(
-    'Estimados, buen día:\n\n'+
-    'Adjunto la '+DOC+' '+oc+'. Agradeceremos confirmar la fecha de entrega del producto.\n\n'+
-    'Para el ingreso al almacén de Lurín, es indispensable cumplir con la CARTILLA SSOMA y enviar previamente toda la documentación a los siguientes correos:\n\n'+
-    '  • seguridadlurin@friopacking.pe\n'+
-    '  • kbuleje@friopacking.pe\n'+
-    '  • kalbujar@friopacking.pe\n'+
-    '  • ccheca@friopacking.pe\n'+
-    '  • jcenteno@friopacking.pe\n'+
-    '  • plinares@friopacking.pe\n'+
-    '  • msihuairo@friopacking.pe\n\n'+
-    'Importante: No se permitirá el ingreso al almacén si la documentación no ha sido enviada y validada con anticipación.\n\n'+
-    '📍 Ubicación: Calle Los Frutales S/N – Ref. Av. San Pedro, altura de Ekonodrywall – Lurín, Lima.\n\n'+
-    'Al momento de la entrega, el transportista deberá presentar en físico:\n\n'+
-    '  • Factura correspondiente a los productos entregados.\n'+
-    '  • Guía de remisión correspondiente.\n\n'+
-    'Estos documentos son indispensables para realizar la recepción de la mercancía.\n\n'+
-    'Asimismo, para el registro de sus facturas, enviar a los siguientes correos:\n\n'+
-    '  • provision@friopacking.pe\n'+
-    '  • agalindo@friopacking.pe\n'+
-    '  • dochante@grupofriopacking.pe\n'+
-    '  • jcenteno@friopacking.pe\n'+
-    '  • mcondori@grupofriopacking.pe\n\n'+
-    'Quedo atento a su confirmación.\nSaludos cordiales,\nÁrea de Compras — FRIOPACKING S.A.C.'
-  )+';';
-  h+='var _cuerpoRecojo='+JSON.stringify(
-    'Estimados, buen día:\n\n'+
-    'Adjunto la '+DOC+' '+oc+' correspondiente a la adquisición de '+descRecojo+'.\n\n'+
-    'Debido a que la modalidad de atención para este pedido será RECOJO por nuestra cuenta, agradeceremos que nos indiquen lo siguiente:\n\n'+
-    '  1. Fecha y hora confirmada en la que el producto estará listo para ser retirado.\n'+
-    '  2. Dirección exacta y horarios de atención de su almacén de despacho.\n'+
-    '  3. Requisitos de ingreso para nuestra unidad y conductor (si solicitan EPPs específicos, SCTR, o documentos impresos como copias de la OC).\n\n'+
-    'Una vez que nos confirmen la disponibilidad de la mercancía, les estaremos enviando los datos del transportista y la placa del vehículo para la respectiva autorización de ingreso.\n\n'+
-    'Quedamos atentos a su pronta confirmación y a la respectiva aceptación de la OC.\n\nSaludos cordiales,\nÁrea de Compras — FRIOPACKING S.A.C.'
-  )+';';
+  var _hFact='<p>Asimismo, para el registro de sus facturas, enviar a <strong>provision@friopacking.pe</strong> con copia a:</p>'+
+    '<ul><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li><li>mcondori@grupofriopacking.pe</li></ul>'+
+    '<p><strong>Asunto:</strong> tipo de documento, número y proveedor (ej. <em>Fact F004-525 / Climatizados S.A.</em>).<br>'+
+    '<strong>Sustentos:</strong> copia de la '+DOC+' y guía de remisión sellada (bienes) o acta de conformidad (servicios). Sin ellos la factura será rechazada.<br>'+
+    '<strong>Recepción de facturas:</strong> de lunes a viernes, de 9:00 a.m. a 6:00 p.m., por correo electrónico.</p>';
+  h+='var _htmlFact='+JSON.stringify(_hFact)+';';
   var _hPlanta='<p>Estimados, buen día:</p>'+
     '<p>'+adjDoc+'. Agradeceremos confirmar la fecha de entrega del producto.</p>'+
     tablaHtmlBody+
-    '<p>Para el ingreso al almacén de Lurín, es indispensable cumplir con la <strong>CARTILLA SSOMA</strong> y enviar previamente toda la documentación a los siguientes correos:</p>'+
+    '<p>Para el ingreso al almacén de Lurín, es indispensable cumplir con la <strong>CARTILLA SSOMA</strong> (adjunta) y enviar previamente los documentos solicitados en ella a los siguientes correos:</p>'+
     '<ul><li>seguridadlurin@friopacking.pe</li><li>kbuleje@friopacking.pe</li><li>kalbujar@friopacking.pe</li><li>ccheca@friopacking.pe</li><li>jcenteno@friopacking.pe</li><li>plinares@friopacking.pe</li><li>eoscco@friopacking.pe</li><li>msihuairo@friopacking.pe</li></ul>'+
     '<p><strong>Importante:</strong> No se permitirá el ingreso al almacén si la documentación no ha sido enviada y validada con anticipación.</p>'+
     '<p>📍 <strong>Ubicación:</strong> Calle Los Frutales S/N – Ref. Av. San Pedro, altura de Ekonodrywall – Lurín, Lima.</p>'+
+    '<p>🕘 <strong>Horario de recepción de mercadería:</strong> de 9:00 a.m. a 5:00 p.m. (refrigerio de 1:00 p.m. a 2:00 p.m., sin recepción).</p>'+
     '<p>Al momento de la entrega, el transportista deberá presentar en físico:</p>'+
     '<ul><li>Factura correspondiente a los productos entregados.</li><li>Guía de remisión correspondiente.</li></ul>'+
     '<p>Estos documentos son indispensables para realizar la recepción de la mercancía.</p>'+
-    '<p>Asimismo, para el registro de sus facturas, enviar a los siguientes correos:</p>'+
-    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li><li>mcondori@grupofriopacking.pe</li></ul>'+
+    _hFact+
     '<p>Quedo atento a su confirmación.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.C.</span></p>';
   var _hRecojo='<p>Estimados, buen día:</p>'+
     '<p>'+adjDoc+(esOPD?', para la adquisición de ':' correspondiente a la adquisición de ')+descRecojo+'.</p>'+
@@ -3495,8 +3466,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
     tablaHtmlBody+
     '<p>Agradeceremos confirmar la recepción de la presente '+DOC+' y enviarnos los siguientes documentos para completar la regularización:</p>'+
     '<ul><li>Factura por el monto total de la '+DOCC+'.</li><li>Guía de remisión correspondiente.</li></ul>'+
-    '<p>Asimismo, para el registro de sus facturas, enviar a los siguientes correos:</p>'+
-    '<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li><li>mcondori@grupofriopacking.pe</li></ul>'+
+    _hFact+
     '<p>Quedamos atentos a cualquier consulta.<br>Saludos cordiales,<br><span class="footer-firma">Área de Compras — FRIOPACKING S.A.C.</span></p>';
   h+='var _htmlPlanta='+JSON.stringify(_hPlanta)+';';
   h+='var _htmlRecojo='+JSON.stringify(_hRecojo)+';';
@@ -3514,8 +3484,7 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
   h+='    "<p>Enviar los productos por <strong>agencia "+ag+"</strong> a nombre de:</p>"+';
   h+='    "<ul>"+(dest||"<li>(completar destinatario)</li>")+"</ul>"+';
   h+='    "<p>Adjuntar por este medio <strong>voucher, clave y guía</strong>.</p>"+';
-  h+='    "<p>Asimismo, para el registro de sus facturas, enviar a los siguientes correos:</p>"+';
-  h+='    "<ul><li>provision@friopacking.pe</li><li>agalindo@friopacking.pe</li><li>dochante@grupofriopacking.pe</li><li>jcenteno@friopacking.pe</li><li>mcondori@grupofriopacking.pe</li></ul>"+';
+  h+='    _htmlFact+';
   h+='    "<p>Quedamos atentos a su confirmación.<br>Saludos cordiales,<br><span class=\\"footer-firma\\">Área de Compras — FRIOPACKING S.A.C.</span></p>";';
   h+='}';
   h+='function autocompletarDNI(nId,dId){';
@@ -7998,7 +7967,17 @@ function softSelect(id, options, defaultLabel){
   options.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);});
   if(prev&&options.includes(prev))el.value=prev; else el.value='';
 }
+// El Maestro trae IdProyecto pero NombreProyecto vacío en las filas Pendiente (sin OC):
+// se completa el nombre con el que ese mismo PRY tiene en las OCs o en los requerimientos.
+function completarProyPorId(){
+  const mapa={};
+  [D.oc,D.p5reqs].forEach(arr=>(arr||[]).forEach(r=>{
+    if(r&&r.idproy&&r.proy&&!mapa[r.idproy])mapa[r.idproy]=r.proy;
+  }));
+  (D.sinoc||[]).forEach(r=>{if(r.idproy&&!r.proy&&mapa[r.idproy])r.proy=mapa[r.idproy];});
+}
 function refreshAllPages(){
+  try{completarProyPorId();}catch(e){}
   // Update badges
   try{document.getElementById('bdg2').textContent=D.oc.length;}catch(e){}
   try{document.getElementById('bdg3').textContent=sinocActivos().length;}catch(e){}
