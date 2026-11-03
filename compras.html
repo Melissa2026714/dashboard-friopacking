@@ -2432,6 +2432,10 @@ function abrirOCUrgente(esOPD,solId){
         +'<label style="'+lbl+'">N° de OPD *</label><input id="ocu-numero" style="'+inp+'" placeholder="Se llena al adjuntar la OPD (o escríbelo, ej. 0012413)" onchange="opdLeerDatos()">'
         +'<div id="ocu-opd-info" style="font-size:12px;margin-top:6px;line-height:1.5"></div>'
       :'<p style="font-size:12px;color:#64748b;margin:6px 0 4px;line-height:1.5">Para una OC que acabas de crear en Nisira y todavía no aparece aquí. Arma el correo con el mismo CC/modalidad de siempre y adjunta automáticamente la OC/factura/comprobante buscando por N° de OC en tus carpetas — sin tabla de ítems, el detalle va en el PDF adjunto.</p>'
+        +'<div id="ocu-drop" ondragover="event.preventDefault();this.style.borderColor=\'#0891b2\';this.style.background=\'#ecfeff\'" ondragleave="this.style.borderColor=\'#cbd5e1\';this.style.background=\'#f8fafc\'" ondrop="event.preventDefault();this.style.borderColor=\'#cbd5e1\';this.style.background=\'#f8fafc\';ocuTomarPDF(event.dataTransfer.files[0])" style="border:2px dashed #cbd5e1;border-radius:10px;background:#f8fafc;padding:12px;margin-top:10px;text-align:center">'
+        +'<div style="font-size:12px;color:#64748b;margin-bottom:8px">⬇ Arrastra aquí el PDF de la OC (Nisira) y se llenan los datos solos</div>'
+        +'<label style="display:inline-block;cursor:pointer;background:#0891b2;color:#fff;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:700">📄 Adjuntar PDF de la OC<input type="file" accept=".pdf" style="display:none" onchange="ocuTomarPDF(this.files[0])"></label>'
+        +'<div id="ocu-oc-info" style="font-size:12px;text-align:left;margin-top:8px;line-height:1.6"></div></div>'
         +'<label style="'+lbl+'">N° de OC *</label><input id="ocu-numero" style="'+inp+'" placeholder="Ej: 0001-0012075">')
     +'<label style="'+lbl+'">Proveedor *</label><input id="ocu-prov" list="ocu-dl-prov" style="'+inp+'" placeholder="Nombre del proveedor" oninput="ocuAutocompletarRuc()"><datalist id="ocu-dl-prov">'+dlProv+'</datalist>'
     +'<label style="'+lbl+'">RUC <span style="text-transform:none;font-weight:400">(opcional — mejora la búsqueda del correo/CC)</span></label><input id="ocu-ruc" style="'+inp+'" placeholder="20XXXXXXXXX">'
@@ -2460,6 +2464,65 @@ function ocuAutocompletarRuc(){
   if(!nombre||!rucEl||rucEl.value.trim())return;
   var match=(D.proveedores||[]).find(function(p){return p.nombre&&p.nombre.trim().toLowerCase()===nombre.toLowerCase();});
   if(match&&match.ruc)rucEl.value=match.ruc;
+}
+// Lee del PDF de la OC de Nisira: N° ("0001/0012460"), "RUC - PROVEEDOR" (el que no es el RUC
+// de Friopacking) e ID de proyecto ("PRD 2026-0000041" en Observaciones → PRY2026-0000041).
+// El nombre del proyecto sale de otras OC ya cargadas con ese ID. El responsable no viene en
+// el PDF (los contactos son siempre Compras), así que se completa a mano.
+var RUC_FRIOPACKING='20494691524';
+function ocuParsearTextoOC(t){
+  var out={};
+  var n=t.match(/(?:^|[^\d\/])(\d{4})\s*\/\s*(\d{7})(?!\d)/);
+  if(n)out.numero=n[1]+'-'+n[2];
+  var rx=/(?:^|\D)(\d{11})\s+-\s+([^\n_:]+)/g,r;
+  while((r=rx.exec(t))){
+    if(r[1]===RUC_FRIOPACKING)continue;
+    out.ruc=r[1];out.prov=r[2].replace(/\s+/g,' ').trim();break;
+  }
+  if(out.ruc){
+    var p=(D.proveedores||[]).find(function(x){return String(x.ruc||'').trim()===out.ruc;});
+    if(p&&p.nombre)out.prov=p.nombre;
+  }
+  var py=t.match(/PR[DY]\s*(\d{4})\s*-\s*(\d{7})/i);
+  if(py){
+    out.idproy='PRY'+py[1]+'-'+py[2];
+    var cuenta={};
+    [SKUS,SKUS_P4].forEach(function(S){
+      Object.keys(S||{}).forEach(function(k){
+        (S[k]||[]).forEach(function(it){if(it.idproy===out.idproy&&it.proy)cuenta[it.proy]=(cuenta[it.proy]||0)+1;});
+      });
+    });
+    out.proy=Object.keys(cuenta).sort(function(a,b){return cuenta[b]-cuenta[a];})[0]||'';
+  }
+  return out;
+}
+function ocuTomarPDF(file){
+  var info=document.getElementById('ocu-oc-info');
+  if(!file||!info)return;
+  if(!/\.pdf$/i.test(file.name)){info.innerHTML='<span style="color:#b45309">⚠️ Adjunta el PDF de la OC.</span>';return;}
+  info.innerHTML='<span style="color:#64748b">Leyendo '+opdEsc(file.name)+'…</span>';
+  opdTextoPDF(file).then(function(t){
+    if(!t.trim()){info.innerHTML='<span style="color:#b45309">⚠️ El PDF no tiene texto (¿escaneado?): completa los datos a mano.</span>';return;}
+    var d=ocuParsearTextoOC(t);
+    var lin=[];
+    if(!/ORDEN\s+DE\s+(COMPRA|SERVICIO)/i.test(t))lin.push('<span style="color:#b45309">⚠️ Este PDF no parece una OC de Nisira. Revisa los datos.</span>');
+    // El PDF manda: reemplaza lo que hubiera escrito antes (salvo el responsable, que no trae).
+    var set=function(id,v){var el=document.getElementById(id);if(el&&v)el.value=v;};
+    set('ocu-numero',d.numero);set('ocu-prov',d.prov);set('ocu-ruc',d.ruc);
+    set('ocu-idproy',d.idproy);set('ocu-proy',d.proy);
+    lin.push('<span style="color:#15803d">✓ Leído: '+opdEsc(file.name)+'</span>');
+    var falta=[];
+    if(!d.numero)falta.push('N° de OC');
+    if(!d.prov)falta.push('proveedor');
+    if(!d.idproy)falta.push('proyecto');
+    if(falta.length)lin.push('<span style="color:#b45309">No encontré en el PDF: '+falta.join(', ')+'. Complétalo a mano.</span>');
+    else if(d.idproy&&!d.proy)lin.push('<span style="color:#b45309">ID '+d.idproy+' sin nombre de proyecto en las OC cargadas: escríbelo.</span>');
+    lin.push('<span style="color:#64748b">El responsable no viene en el PDF: elígelo si quieres copiar a su supervisor.</span>');
+    info.innerHTML=lin.join('<br>');
+    var rEl=document.getElementById('ocu-resp');if(rEl)rEl.focus();
+  }).catch(function(e){
+    info.innerHTML='<span style="color:#b45309">⚠️ No se pudo leer el PDF ('+opdEsc(e&&e.message||e)+'): completa los datos a mano.</span>';
+  });
 }
 // Lee del PDF de la OPD (vía servidor de correos) proveedor/RUC y confirma que existan la
 // OPD y su cotización con ese número en el nombre, antes de armar el correo.
