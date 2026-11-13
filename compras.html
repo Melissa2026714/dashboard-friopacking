@@ -629,11 +629,22 @@ async function replaceAllSB(table,rows,mapper,batchSize,filterCol){
   }
   return true;
 }
+function cmpOcRecientePrimero(a,b){
+  const pa=a.foc?a.foc.split('/').reverse().join(''):'';
+  const pb=b.foc?b.foc.split('/').reverse().join(''):'';
+  if(pa!==pb)return pb.localeCompare(pa);
+  const na=parseInt((a.oc||'').replace(/\D/g,''),10)||0;
+  const nb=parseInt((b.oc||'').replace(/\D/g,''),10)||0;
+  return nb-na;
+}
 async function cargarOcP4P5SB(){
   try{
     const [ocRows,p4Rows,p5Rows]=await Promise.all([fetchAllSB('oc'),fetchAllSB('p4'),fetchAllSB('p5reqs')]);
-    if(ocRows.length)D.oc=ocRows.map(ocFromSB);
-    if(p4Rows.length)D.p4=p4Rows.map(p4FromSB);
+    // Supabase devuelve las filas sin orden (fetchAllSB no hace ORDER BY), así que hay que
+    // reordenar igual que al importar el Maestro: F. OC más reciente primero y, dentro del
+    // mismo día, N° de OC descendente. Sin esto Compras Directas salía desordenada.
+    if(ocRows.length)D.oc=ocRows.map(ocFromSB).sort(cmpOcRecientePrimero);
+    if(p4Rows.length)D.p4=p4Rows.map(p4FromSB).sort(cmpOcRecientePrimero);
     if(p5Rows.length)D.p5reqs=p5Rows;
     try{fixOcEstados();}catch(e){}
     try{refreshAllPages();}catch(e){}
