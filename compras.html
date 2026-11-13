@@ -3301,8 +3301,18 @@ function verCorreoFormateadoOC(oc,esP4,manualDatos){
     ?'Adjunto la Orden de Pago <strong>'+oc+'</strong> y la cotización correspondiente'
     :'Adjunto la Orden de Compra <strong>'+oc+'</strong>';
   var items=esUrgente?[]:(esP4?(SKUS_P4[oc]||SKUS[oc]||[]):(SKUS[oc]||SKUS_P4[oc]||[]));
-  if(!esUrgente&&!items.length){alert('No se encontraron ítems para esta OC.');return;}
   var ocRows=D.oc?D.oc.filter(function(o){return o.oc===oc;}):[];
+  // La OC puede estar en D.oc (tabla 'oc') sin su detalle en oc_items: pasa cuando alguien
+  // importa un Reporte Maestro más antiguo después de uno nuevo — replaceAllSB('oc_items')
+  // reescribe TODO el detalle con el archivo viejo, pero bulkUpsertSB('oc') no borra las OCs
+  // nuevas (así quedó 0001-0012554 el 13/11/2026). En vez de bloquear el envío: si la OC
+  // tiene 1 solo ítem, la fila de D.oc ya trae cod/prod/cant/unid; si tiene varios, se manda
+  // sin tabla (igual que la OC urgente) porque el detalle completo va en el PDF adjunto.
+  if(!esUrgente&&!items.length&&ocRows.length){
+    if((ocRows[0].nItems||1)<=1&&ocRows[0].cod)items=[ocRows[0]];
+    else{esUrgente=true;manualDatos=Object.assign({},ocRows[0]);}
+  }
+  if(!esUrgente&&!items.length){alert('No se encontraron ítems para esta OC.');return;}
   items=items.map(function(r){
     if(r.unid)return r;
     var match=ocRows.find(function(o){return o.cod===r.cod;})||ocRows[0];
